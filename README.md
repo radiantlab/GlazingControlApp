@@ -23,7 +23,7 @@ We use a board with columns Backlog → Ready → In Progress → Review → Don
 ## Communication
 
 Primary: Discord private server channel Team 76  
-Escalation: email to partner or instructor
+Secondary: email to partner or instructor
 
 ## Getting Started
 
