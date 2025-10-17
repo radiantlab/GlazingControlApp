@@ -1,9 +1,24 @@
-# Control service skeleton
+# Control service
 
-Planned modules
-- command queue
-- retry policy
-- safety guard  min dwell times and rate limiting
-- adapter for real hardware or simulator
+What this gives you today
+- Lists panels and groups
+- Sets tint level for a single panel or a group
+- Enforces dwell time per panel
+- Writes an audit log to `svc/data/audit.json`
+- Simulator by default and a stub for real hardware
 
-No code yet  will be added after API validation
+## Setup
+
+Python 3.11 or newer
+
+```bash
+cd svc
+python -m venv .venv
+# Windows
+. .venv/Scripts/activate
+# macOS or Linux
+# source .venv/bin/activate
+
+pip install --upgrade pip
+pip install -r requirements.txt
+python main.py

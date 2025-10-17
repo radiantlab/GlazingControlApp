@@ -211,3 +211,5 @@ svc/data/*.json
 svc/.venv/
 svc/.env
 
+# Visual Studio local settings
+.vs/
