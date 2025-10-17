@@ -5,7 +5,6 @@ from .models import Panel, Group, TintLevel
 class RealAdapter:
     """
     Placeholder for the real trailer integration.
-    Implement these methods once the local API is validated.
     """
     def list_panels(self) -> List[Panel]:
         raise NotImplementedError("real adapter not implemented yet")
@@ -18,3 +17,4 @@ class RealAdapter:
 
     def set_group(self, group_id: str, level: TintLevel, min_dwell: int) -> List[str]:
         raise NotImplementedError("real adapter not implemented yet")
+
