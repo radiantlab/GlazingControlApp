@@ -31,7 +31,6 @@ class Simulator:
         if not self._can_change(p, min_dwell):
             return False
         
-        
         # Set a realistic transition time (Unconfirmed but works for development)
         time.sleep(2.0)
         
