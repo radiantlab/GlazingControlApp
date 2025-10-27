@@ -213,3 +213,7 @@ svc/.env
 
 # Visual Studio local settings
 .vs/
+
+# API Docs
+docs/TintSpecifics.txt
+docs/TintSpecificAPIPages.pdf
