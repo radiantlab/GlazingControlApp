@@ -1,1 +1,10 @@
 {"ts": 1760726759.5898983, "actor": "api", "target_type": "panel", "target_id": "P01", "level": 50, "applied_to": ["P01"], "result": "panel updated"}
+{"ts": 1761606135.4254916, "actor": "api", "target_type": "panel", "target_id": "P01", "level": 50, "applied_to": ["P01"], "result": "panel updated"}
+{"ts": 1761606147.8508916, "actor": "api", "target_type": "panel", "target_id": "P01", "level": 55, "applied_to": [], "result": "dwell time not met"}
+{"ts": 1761606162.6037679, "actor": "api", "target_type": "panel", "target_id": "P02", "level": 55, "applied_to": ["P02"], "result": "panel updated"}
+{"ts": 1761606480.7200904, "actor": "api", "target_type": "panel", "target_id": "P08", "level": 56, "applied_to": ["P08"], "result": "panel updated"}
+{"ts": 1761606522.6949575, "actor": "api", "target_type": "panel", "target_id": "P08", "level": 31, "applied_to": ["P08"], "result": "panel updated"}
+{"ts": 1761606574.0336995, "actor": "api", "target_type": "panel", "target_id": "P08", "level": 25, "applied_to": ["P08"], "result": "panel updated"}
+{"ts": 1761606581.7225833, "actor": "api", "target_type": "panel", "target_id": "P08", "level": 50, "applied_to": [], "result": "dwell time not met"}
+{"ts": 1761606623.4984012, "actor": "api", "target_type": "panel", "target_id": "P08", "level": 50, "applied_to": ["P08"], "result": "panel updated"}
+{"ts": 1761606623.993461, "actor": "api", "target_type": "panel", "target_id": "P08", "level": 50, "applied_to": [], "result": "dwell time not met"}
