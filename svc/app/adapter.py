@@ -76,7 +76,8 @@ class RealAdapter:
         try:
             with open(WINDOW_MAPPING_FILE, "r", encoding="utf-8") as f:
                 mapping = json.load(f)
-            return mapping
+            # Filter out comment keys (starting with '_')
+            return {k: v for k, v in mapping.items() if not k.startswith('_')}
         except Exception as e:
             logger.error(f"Failed to load window mapping: {e}")
             return {}
