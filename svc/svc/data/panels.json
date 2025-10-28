@@ -5,14 +5,14 @@
       "name": "Facade 1",
       "group_id": "G-facade",
       "level": 50,
-      "last_change_ts": 1760726759.5898983
+      "last_change_ts": 1761606135.4239554
     },
     "P02": {
       "id": "P02",
       "name": "Facade 2",
       "group_id": "G-facade",
-      "level": 0,
-      "last_change_ts": 0.0
+      "level": 55,
+      "last_change_ts": 1761606162.6023843
     },
     "P03": {
       "id": "P03",
@@ -53,8 +53,8 @@
       "id": "P08",
       "name": "Facade 8",
       "group_id": "G-facade",
-      "level": 0,
-      "last_change_ts": 0.0
+      "level": 50,
+      "last_change_ts": 1761606623.4969633
     },
     "P09": {
       "id": "P09",

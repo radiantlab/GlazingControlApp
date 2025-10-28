@@ -217,3 +217,7 @@ svc/.env
 # API Docs
 docs/TintSpecifics.txt
 docs/TintSpecificAPIPages.pdf
+
+# web node and build
+web/node_modules/
+web/dist/
