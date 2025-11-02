@@ -36,6 +36,11 @@ export const api = {
     health: () => http<{ status: string; mode: string }>("/health"),
     panels: () => http<Panel[]>("/panels"),
     groups: () => http<Group[]>("/groups"),
+    createGroup: (name: string, memberIds: string[]) =>
+        http<Group>("/groups", {
+            method: "POST",
+            body: JSON.stringify({ name, member_ids: memberIds })
+        }),
     setPanelLevel: (panelId: string, level: number) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
