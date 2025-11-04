@@ -1,17 +1,17 @@
 
 ## What you need to install
-**Git** ñ Get it from [https://git-scm.com](https://git-scm.com)  
+**Git** ‚Äì Get it from [https://git-scm.com](https://git-scm.com)  
 Check installation:
 	git --version
 
 
-**Python 3.11 or newer** ñ Get it from [https://python.org](https://python.org)  
-On Windows, check ìAdd Python to PATHî.  
+**Python 3.11 or newer** ‚Äì Get it from [https://python.org](https://python.org)  
+On Windows, check ‚ÄúAdd Python to PATH‚Äù.  
 Check installation:
 	python --version
 
 
-**Node.js (LTS) and NPM** ñ Get it from [https://nodejs.org](https://nodejs.org)  
+**Node.js (LTS) and NPM** ‚Äì Get it from [https://nodejs.org](https://nodejs.org)  
 Check installation:
 	node --version
 	npm --version
@@ -26,7 +26,7 @@ Clone the repository and go inside
 
 ## Run the service
 Open a terminal in the `svc` folder:
-	cd svc
+`cd svc`
 
 
 Create and activate a virtual environment:
