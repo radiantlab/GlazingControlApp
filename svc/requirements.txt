@@ -1,3 +1,7 @@
+# This file is kept for backward compatibility
+# UV users should use pyproject.toml and run `uv sync`
+# To generate this file from pyproject.toml: `uv pip compile pyproject.toml -o requirements.txt`
+#
 fastapi==0.115.5
 uvicorn==0.32.1
 pydantic==2.9.2

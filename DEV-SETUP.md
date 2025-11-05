@@ -15,7 +15,20 @@ Check installation
 python --version
 ```
 
-3. `Node.js (LTS) and NPM`  
+3. `UV` (Recommended package manager)  
+Get it from `https://github.com/astral-sh/uv`  
+Installation (one-liner):
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+Or use pip: `pip install uv`  
+Or use homebrew: `brew install uv`  
+Check installation  
+```bash
+uv --version
+```
+
+4. `Node.js (LTS) and NPM`  
 Get it from `https://nodejs.org`  
 Check installation  
 ```bash
@@ -35,6 +48,53 @@ cd GlazingControlApp
 ---
 
 # Run the service
+
+## Using UV (Recommended)
+
+1. Open a terminal in the `svc` folder  
+```bash
+cd svc
+```
+
+2. Install dependencies and sync virtual environment  
+UV will automatically create and manage a virtual environment:
+```bash
+uv sync
+```
+
+3. Create your `.env` file from the example
+
+3.1 Windows  
+```cmd
+copy .env.example .env
+```
+
+3.2 Mac Linux  
+```bash
+cp .env.example .env
+```
+
+4. Start the server  
+```bash
+uv run python main.py
+```
+Or activate the virtual environment first:
+```bash
+source .venv/bin/activate  # Mac/Linux
+# or
+.venv\Scripts\activate  # Windows
+python main.py
+```
+
+You should see Uvicorn running on port 8000
+
+Open the API docs in a browser at `http://127.0.0.1:8000/docs`
+
+---
+
+## Using pip and venv (Legacy)
+
+If you prefer to use pip and venv instead of UV:
 
 1. Open a terminal in the `svc` folder  
 ```bash

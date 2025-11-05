@@ -12,6 +12,24 @@ What this gives you today
 
 Python 3.11 or newer
 
+### Using UV (Recommended)
+
+```bash
+cd svc
+uv sync
+uv run python main.py
+```
+
+UV automatically creates and manages a virtual environment. You can also activate it manually:
+```bash
+source .venv/bin/activate  # macOS/Linux
+# or
+. .venv\Scripts\activate  # Windows
+python main.py
+```
+
+### Using pip and venv (Legacy)
+
 ```bash
 cd svc
 python -m venv .venv
@@ -92,6 +110,11 @@ The adapter automatically:
 ## Testing
 
 Run tests with:
+```bash
+uv run pytest tests/
+```
+
+Or with pip/venv:
 ```bash
 pytest tests/
 ```

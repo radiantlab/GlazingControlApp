@@ -7,10 +7,20 @@ on:
     branches: [ "main" ]
 
 jobs:
-  quick-check:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Echo
-        run: echo "CI OK"
+      
+      - name: Install UV
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      
+      - name: Set up Python
+        run: uv python install 3.12
+      
+      - name: Install dependencies
+        working-directory: ./svc
+        run: uv sync
