@@ -221,3 +221,7 @@ docs/TintSpecificAPIPages.pdf
 # web node and build
 web/node_modules/
 web/dist/
+
+svc/svc/data/audit.json
+svc/svc/data/panels.json
+svc/svc/data/window_mapping.json
