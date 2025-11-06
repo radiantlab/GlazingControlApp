@@ -1,6 +1,6 @@
 {
   "_comment": "Mapping from panel IDs to Halio window UUIDs",
-  "_instructions": "Replace the placeholder UUIDs with actual window UUIDs from Halio site",
+  "_instructions": "Replace the placeholder UUIDs with actual window UUIDs from your Halio site",
   
   "P01": "00000000-0000-0000-0000-000000000001",
   "P02": "00000000-0000-0000-0000-000000000002",
