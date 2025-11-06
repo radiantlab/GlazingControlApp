@@ -69,7 +69,7 @@ uv sync
 copy .env.example .env
 ```
 
-3.2 Mac Linux  
+3.2 Mac/Linux  
 ```bash
 cp .env.example .env
 ```
