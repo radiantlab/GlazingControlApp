@@ -2,32 +2,139 @@ from __future__ import annotations
 import json
 import os
 import time
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from .models import Panel, Group, Snapshot, AuditEntry
-from .config import PANELS_FILE, AUDIT_FILE
+from .config import PANELS_FILE, PANELS_CONFIG_FILE, PANELS_STATE_FILE, AUDIT_FILE
 
 def _ensure_dirs() -> None:
-    os.makedirs(os.path.dirname(PANELS_FILE), exist_ok=True)
+    os.makedirs(os.path.dirname(PANELS_CONFIG_FILE), exist_ok=True)
+    os.makedirs(os.path.dirname(PANELS_STATE_FILE), exist_ok=True)
     os.makedirs(os.path.dirname(AUDIT_FILE), exist_ok=True)
 
-def load_snapshot() -> Snapshot:
-    _ensure_dirs()
+def _migrate_from_legacy_panels_json() -> None:
+    """Migrate old panels.json to new separated config and state files."""
     if not os.path.exists(PANELS_FILE):
-        return Snapshot()
+        return
+    
+    if os.path.exists(PANELS_CONFIG_FILE) and os.path.exists(PANELS_STATE_FILE):
+        # Already migrated, skip
+        return
+    
+    _ensure_dirs()
     with open(PANELS_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
-    panels = {k: Panel(**v) for k, v in data.get("panels", {}).items()}
-    groups = {k: Group(**v) for k, v in data.get("groups", {}).items()}
+    
+    # Extract config (structure)
+    config_panels = {}
+    for panel_id, panel_data in data.get("panels", {}).items():
+        config_panels[panel_id] = {
+            "id": panel_data["id"],
+            "name": panel_data["name"],
+            "group_id": panel_data.get("group_id"),
+        }
+    
+    config_data = {
+        "panels": config_panels,
+        "groups": data.get("groups", {}),
+    }
+    
+    # Extract state (runtime values)
+    state_data = {}
+    for panel_id, panel_data in data.get("panels", {}).items():
+        state_data[panel_id] = {
+            "level": panel_data.get("level", 0),
+            "last_change_ts": panel_data.get("last_change_ts", 0.0),
+        }
+    
+    # Write new files
+    with open(PANELS_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config_data, f, indent=2)
+    
+    with open(PANELS_STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(state_data, f, indent=2)
+
+def load_config() -> Tuple[Dict[str, Dict], Dict[str, Dict]]:
+    """Load panel and group configuration (structure only)."""
+    _ensure_dirs()
+    _migrate_from_legacy_panels_json()
+    
+    if not os.path.exists(PANELS_CONFIG_FILE):
+        return {}, {}
+    
+    with open(PANELS_CONFIG_FILE, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    
+    return data.get("panels", {}), data.get("groups", {})
+
+def load_state() -> Dict[str, Dict]:
+    """Load panel runtime state (level, last_change_ts)."""
+    _ensure_dirs()
+    _migrate_from_legacy_panels_json()
+    
+    if not os.path.exists(PANELS_STATE_FILE):
+        return {}
+    
+    with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def load_snapshot() -> Snapshot:
+    """Load complete snapshot by merging config and state."""
+    config_panels, config_groups = load_config()
+    state_data = load_state()
+    
+    # Merge config and state into Panel objects
+    panels = {}
+    for panel_id, panel_config in config_panels.items():
+        panel_state = state_data.get(panel_id, {})
+        panels[panel_id] = Panel(
+            id=panel_config["id"],
+            name=panel_config["name"],
+            group_id=panel_config.get("group_id"),
+            level=panel_state.get("level", 0),
+            last_change_ts=panel_state.get("last_change_ts", 0.0),
+        )
+    
+    groups = {k: Group(**v) for k, v in config_groups.items()}
     return Snapshot(panels=panels, groups=groups)
 
-def save_snapshot(s: Snapshot) -> None:
+def save_config(panels: Dict[str, Panel], groups: Dict[str, Group]) -> None:
+    """Save panel and group configuration (structure only)."""
     _ensure_dirs()
-    data = {
-        "panels": {k: v.model_dump() for k, v in s.panels.items()},
-        "groups": {k: v.model_dump() for k, v in s.groups.items()},
+    config_panels = {}
+    for panel_id, panel in panels.items():
+        config_panels[panel_id] = {
+            "id": panel.id,
+            "name": panel.name,
+            "group_id": panel.group_id,
+        }
+    
+    config_groups = {k: v.model_dump() for k, v in groups.items()}
+    
+    config_data = {
+        "panels": config_panels,
+        "groups": config_groups,
     }
-    with open(PANELS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    
+    with open(PANELS_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config_data, f, indent=2)
+
+def save_state(panels: Dict[str, Panel]) -> None:
+    """Save panel runtime state (level, last_change_ts only)."""
+    _ensure_dirs()
+    state_data = {}
+    for panel_id, panel in panels.items():
+        state_data[panel_id] = {
+            "level": panel.level,
+            "last_change_ts": panel.last_change_ts,
+        }
+    
+    with open(PANELS_STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(state_data, f, indent=2)
+
+def save_snapshot(s: Snapshot) -> None:
+    """Save snapshot by writing config and state separately."""
+    save_config(s.panels, s.groups)
+    save_state(s.panels)
 
 def append_audit(entry: AuditEntry) -> None:
     _ensure_dirs()
@@ -37,10 +144,12 @@ def append_audit(entry: AuditEntry) -> None:
         f.write(json.dumps(row) + "\n")
 
 def bootstrap_default_if_empty() -> Snapshot:
+    """Bootstrap default panels and groups if config doesn't exist."""
     snap = load_snapshot()
     if snap.panels:
         return snap
-    # seed 18 facade panels and 2 skylights
+    
+    # Default configuration: 18 facade panels and 2 skylights (20 total)
     for i in range(1, 19):
         pid = f"P{i:02d}"
         snap.panels[pid] = Panel(id=pid, name=f"Facade {i}", group_id="G-facade")
@@ -56,6 +165,7 @@ def bootstrap_default_if_empty() -> Snapshot:
         name="Skylights",
         member_ids=["SK1", "SK2"],
     )
+    # Save both config and state (state will be all zeros/defaults)
     save_snapshot(snap)
     return snap
 

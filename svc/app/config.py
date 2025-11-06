@@ -9,7 +9,11 @@ MIN_DWELL_SECONDS = int(os.getenv("SVC_MIN_DWELL_SECONDS", "20"))
 
 # Path for durable state and audit log
 DATA_DIR = os.getenv("SVC_DATA_DIR", "data")
+# Legacy file (for migration)
 PANELS_FILE = os.path.join("svc", DATA_DIR, "panels.json")
+# New separated files
+PANELS_CONFIG_FILE = os.path.join("svc", DATA_DIR, "panels_config.json")
+PANELS_STATE_FILE = os.path.join("svc", DATA_DIR, "panels_state.json")
 AUDIT_FILE = os.path.join("svc", DATA_DIR, "audit.json")
 
 # Halio API configuration (for real mode)

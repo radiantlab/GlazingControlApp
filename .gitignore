@@ -224,4 +224,7 @@ web/dist/
 
 svc/svc/data/audit.json
 svc/svc/data/panels.json
+svc/svc/data/panels_state.json
 svc/svc/data/window_mapping.json
+# Note: panels_config.json is tracked (structural data)
+# panels_state.json is ignored (runtime state)
