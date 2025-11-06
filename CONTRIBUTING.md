@@ -19,7 +19,7 @@ Backend setup
 - uv sync  (creates venv and installs dependencies)
 - copy .env.example to .env  
 - run: uv run python main.py
-- open http 127.0.0.1 8000 docs and test GET health
+- open http://127.0.0.1:8000/docs and test GET health
 
 (Alternative: use pip/venv - see DEV-SETUP.md for legacy instructions)
 
