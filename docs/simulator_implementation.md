@@ -163,7 +163,7 @@ python3 main.py
 3. **Create Window Mapping:**
    - Query Halio API for window UUIDs
    - Update `svc/svc/data/window_mapping.json` with actual UUIDs
-   - Map each panel ID (P01-P20, SK1-SK2) to its Halio window UUID
+   - Map each panel ID (P01-P18, SK1-SK2) to its Halio window UUID
 
 4. **Start Service:**
    ```bash
