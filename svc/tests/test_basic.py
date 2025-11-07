@@ -18,8 +18,8 @@ def test_list_panels_groups():
     assert r2.status_code == 200
     panels = r1.json()
     groups = r2.json()
-    # 22 total: 20 facade and 2 skylights
-    assert len(panels) == 22
+    # 20 total: 18 facade + 2 skylights
+    assert len(panels) == 20
     assert any(g["id"] == "G-facade" for g in groups)
 
 def test_set_and_dwell():

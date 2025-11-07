@@ -15,12 +15,13 @@ Prereqs
 Backend setup  
 - open a terminal  
 - cd svc  
-- python -m venv .venv  
-- activate the venv  
-- pip install -r requirements.txt  
+- install UV: https://github.com/astral-sh/uv
+- uv sync  (creates venv and installs dependencies)
 - copy .env.example to .env  
-- run  python main.py  
-- open http 127.0.0.1 8000 docs and test GET health
+- run: uv run python main.py
+- open http://127.0.0.1:8000/docs and test GET health
+
+(Alternative: use pip/venv - see DEV-SETUP.md for legacy instructions)
 
 Frontend setup  
 - open a new terminal  
@@ -70,8 +71,8 @@ Required tests
   - add unit tests later when the UI is stable  
 
 How to run  
-- svc  pytest -q  
-- web  run the app and make sure it runs properly
+- svc: uv run pytest -q  (or pytest -q if venv is activated)
+- web: run the app and make sure it runs properly
 
 ## Pull Requests and Reviews
 Before you open a PR  

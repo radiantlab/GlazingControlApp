@@ -40,8 +40,8 @@ def bootstrap_default_if_empty() -> Snapshot:
     snap = load_snapshot()
     if snap.panels:
         return snap
-    # seed 20 facade panels and 2 skylights
-    for i in range(1, 21):
+    # seed 18 facade panels and 2 skylights
+    for i in range(1, 19):
         pid = f"P{i:02d}"
         snap.panels[pid] = Panel(id=pid, name=f"Facade {i}", group_id="G-facade")
     snap.panels["SK1"] = Panel(id="SK1", name="Skylight 1", group_id="G-skylights")
@@ -49,7 +49,7 @@ def bootstrap_default_if_empty() -> Snapshot:
     snap.groups["G-facade"] = Group(
         id="G-facade",
         name="Facade",
-        member_ids=[f"P{i:02d}" for i in range(1, 21)],
+        member_ids=[f"P{i:02d}" for i in range(1, 19)],
     )
     snap.groups["G-skylights"] = Group(
         id="G-skylights",
