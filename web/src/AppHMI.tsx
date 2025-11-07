@@ -96,6 +96,8 @@ export default function AppHMI() {
                 controlManager.releaseControl({ type: 'manual', panelId });
             }, TRANSITION_TIME_MS);
         } catch (e) {
+            // Refresh even on error to ensure UI shows actual panel state
+            await refresh();
             showToast(`Error: ${String(e)}`, "error");
         } finally {
             setBusy(null);
@@ -158,6 +160,69 @@ export default function AppHMI() {
         }
     }
 
+    async function clearAll() {
+        const confirmed = window.confirm(
+            "Clear all panels to 0%? Some panels may not clear immediately if they're in dwell time."
+        );
+        if (!confirmed) return;
+
+        setBusy("clear-all");
+        const successful: string[] = [];
+        const failed: Array<{ id: string; reason: string }> = [];
+
+        // Try to set each panel to 0
+        for (const panel of panels) {
+            try {
+                // Take manual control
+                const source: ControlSource = { type: 'manual', panelId: panel.id };
+                controlManager.takeControl(source, true); // Force override any existing control
+
+                if (usingMock) {
+                    await mockApi.setPanelLevel(panel.id, 0);
+                } else {
+                    await api.setPanelLevel(panel.id, 0);
+                }
+                successful.push(panel.id);
+
+                // Start transition indicator
+                setTransitioning(prev => new Set(prev).add(panel.id));
+                setTimeout(() => {
+                    setTransitioning(prev => {
+                        const next = new Set(prev);
+                        next.delete(panel.id);
+                        return next;
+                    });
+                    controlManager.releaseControl(source);
+                }, 5000);
+            } catch (e) {
+                const errorStr = String(e);
+                // Check if it's a dwell time error (429)
+                if (errorStr.includes('429') || errorStr.includes('dwell')) {
+                    failed.push({ id: panel.id, reason: 'dwell time' });
+                } else {
+                    failed.push({ id: panel.id, reason: errorStr });
+                }
+            }
+        }
+
+        await refresh();
+
+        // Show summary toast
+        if (successful.length === panels.length) {
+            showToast(`All ${panels.length} panels cleared to 0%`, "success");
+        } else if (successful.length > 0) {
+            const failedIds = failed.map(f => f.id).join(', ');
+            showToast(
+                `${successful.length} panel(s) cleared. ${failed.length} panel(s) skipped (dwell time): ${failedIds}`,
+                "warning"
+            );
+        } else {
+            showToast(`No panels could be cleared. All are in dwell time.`, "warning");
+        }
+
+        setBusy(null);
+    }
+
     return (
         <>
             <ActiveControllersBar
@@ -202,6 +267,14 @@ export default function AppHMI() {
                             <span className="hmi-status-label">Panels</span>
                             <span className="hmi-status-value">{panels.length}</span>
                         </div>
+                        <button
+                            className="hmi-clear-all-btn"
+                            onClick={clearAll}
+                            disabled={busy === "clear-all" || panels.length === 0}
+                            title="Clear all panels to 0%"
+                        >
+                            {busy === "clear-all" ? "Clearing..." : "Clear All"}
+                        </button>
                         <button
                             className="hmi-manage-btn"
                             onClick={() => setSidePanelOpen(true)}

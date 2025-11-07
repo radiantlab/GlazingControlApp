@@ -10,6 +10,32 @@ type Props = {
     panelControls?: Map<string, ControlSource>;
 };
 
+// Format timestamp as relative time (e.g., "2 minutes ago", "Just now")
+function formatLastUpdated(timestamp: number, currentTime?: number): string {
+    if (!timestamp || timestamp === 0) {
+        return "Never";
+    }
+    
+    const now = currentTime || (Date.now() / 1000); // Use provided currentTime or get current
+    const diff = now - timestamp;
+    
+    if (diff < 5) {
+        return "Just now";
+    } else if (diff < 60) {
+        const seconds = Math.floor(diff);
+        return `${seconds} second${seconds !== 1 ? 's' : ''} ago`;
+    } else if (diff < 3600) {
+        const minutes = Math.floor(diff / 60);
+        return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+    } else if (diff < 86400) {
+        const hours = Math.floor(diff / 3600);
+        return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+    } else {
+        const days = Math.floor(diff / 86400);
+        return `${days} day${days !== 1 ? 's' : ''} ago`;
+    }
+}
+
 // Organize panels by room
 // Room 1: P01-P09 (9 walls) + SK1 (skylight) = 10 panels
 // Room 2: P10-P18 (9 walls) + SK2 (skylight) = 10 panels
@@ -52,12 +78,31 @@ function organizePanels(panels: Panel[]) {
 
 function PanelTile({ panel, onSet, busyId, isTransitioning, controlSource, className }: { panel: Panel; onSet: (id: string, level: number) => Promise<void>; busyId?: string | null; isTransitioning?: boolean; controlSource?: ControlSource | null; className?: string }) {
     const [localLevel, setLocalLevel] = useState(panel.level);
+    const [currentTime, setCurrentTime] = useState(Date.now() / 1000);
     const isSkylight = panel.id.startsWith('SK');
     
     // Sync local level when panel prop updates
     React.useEffect(() => {
         setLocalLevel(panel.level);
     }, [panel.level]);
+
+    // When operation completes (busyId changes from panel.id to null), 
+    // verify localLevel matches actual panel.level and reset if needed
+    React.useEffect(() => {
+        if (busyId !== panel.id && localLevel !== panel.level) {
+            // Operation completed but levels don't match - likely failed due to dwell time
+            setLocalLevel(panel.level);
+        }
+    }, [busyId, panel.id, panel.level, localLevel]);
+
+    // Update timestamp display every 10 seconds for real-time updates
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentTime(Date.now() / 1000);
+        }, 10000); // Update every 10 seconds
+        
+        return () => clearInterval(interval);
+    }, []);
     
     // Color based on tint level (0 = clear, 100 = dark)
     const getTintColor = (level: number) => {
@@ -66,6 +111,12 @@ function PanelTile({ panel, onSet, busyId, isTransitioning, controlSource, class
         if (level < 50) return '#6ba3ff';
         if (level < 75) return '#3d7fd6';
         return '#1e4a8c'; // Dark blue
+    };
+
+    // Determine text color based on tint level for contrast
+    const getTextColor = (level: number) => {
+        // Use dark text for light backgrounds (0-50%), light text for dark backgrounds (50-100%)
+        return level < 50 ? '#1e293b' : '#ffffff';
     };
 
     const isBusy = busyId === panel.id;
@@ -109,13 +160,17 @@ function PanelTile({ panel, onSet, busyId, isTransitioning, controlSource, class
             
             <div className="panel-tile-status">
                 <div className="panel-tile-level-display" style={{ backgroundColor: getTintColor(localLevel) }}>
-                    <span className="panel-tile-level-value">{localLevel}%</span>
+                    <span className="panel-tile-level-value" style={{ color: getTextColor(localLevel) }}>{localLevel}%</span>
                     {isTransitioning && (
                         <div className="panel-tile-transition-indicator">
                             <div className="panel-tile-transition-spinner"></div>
                             <span className="panel-tile-transition-label">Transitioning...</span>
                         </div>
                     )}
+                </div>
+                <div className="panel-tile-timestamp">
+                    <span className="panel-tile-timestamp-label">Updated:</span>
+                    <span className="panel-tile-timestamp-value">{formatLastUpdated(panel.last_change_ts, currentTime)}</span>
                 </div>
             </div>
 
@@ -143,7 +198,12 @@ function PanelTile({ panel, onSet, busyId, isTransitioning, controlSource, class
                             disabled={isBusy}
                             onClick={async () => {
                                 setLocalLevel(v);
-                                await onSet(panel.id, v);
+                                try {
+                                    await onSet(panel.id, v);
+                                } catch (e) {
+                                    // If command fails (e.g., dwell time), reset to actual panel level
+                                    setLocalLevel(panel.level);
+                                }
                             }}
                         >
                             {v}
@@ -154,7 +214,14 @@ function PanelTile({ panel, onSet, busyId, isTransitioning, controlSource, class
                 <button
                     className="panel-tile-apply-btn"
                     disabled={isBusy || localLevel === panel.level}
-                    onClick={async () => await onSet(panel.id, localLevel)}
+                    onClick={async () => {
+                        try {
+                            await onSet(panel.id, localLevel);
+                        } catch (e) {
+                            // If command fails (e.g., dwell time), reset to actual panel level
+                            setLocalLevel(panel.level);
+                        }
+                    }}
                 >
                     {isBusy ? "..." : localLevel === panel.level ? "✓" : "Apply"}
                 </button>

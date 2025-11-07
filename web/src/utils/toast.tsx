@@ -56,9 +56,18 @@ function ToastContainer({ toasts, removeToast }: { toasts: Toast[]; removeToast:
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
     React.useEffect(() => {
-        const timer = setTimeout(onClose, 4000);
+        // Different durations based on toast type
+        // Warnings and errors stay longer since they contain important information
+        const duration = 
+            toast.type === "success" ? 3000 :  // Quick feedback for success
+            toast.type === "info" ? 4000 :      // Standard duration
+            toast.type === "warning" ? 8000 :  // Longer for warnings (like dwell time)
+            toast.type === "error" ? 10000 :   // Longest for errors
+            4000;                               // Default fallback
+        
+        const timer = setTimeout(onClose, duration);
         return () => clearTimeout(timer);
-    }, [onClose]);
+    }, [onClose, toast.type]);
 
     return (
         <div className={`toast toast-${toast.type}`} onClick={onClose}>

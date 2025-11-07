@@ -95,6 +95,18 @@ export const mockApi = {
         if (!panel) {
             throw new Error("panel not found");
         }
+        
+        // Simulate dwell time: if panel was changed less than 20 seconds ago, reject
+        const timeSinceLastChange = Date.now() / 1000 - panel.last_change_ts;
+        const MIN_DWELL_SECONDS = 20;
+        
+        if (timeSinceLastChange < MIN_DWELL_SECONDS && panel.level !== level) {
+            // Simulate 429 error for dwell time
+            const error: any = new Error("429 dwell time not met");
+            error.status = 429;
+            throw error;
+        }
+        
         panel.level = level;
         panel.last_change_ts = Date.now() / 1000;
         return {

@@ -282,6 +282,34 @@ html, body {
     transform: translateY(0);
 }
 
+.hmi-clear-all-btn {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, var(--hmi-warning) 0%, #f97316 100%);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.hmi-clear-all-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.hmi-clear-all-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.hmi-clear-all-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Room Grid Container */
 .room-grid-container {
     width: 100%;
@@ -492,6 +520,9 @@ html, body {
 
 .panel-tile-status {
     margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .panel-tile-level-display {
@@ -506,6 +537,26 @@ html, body {
     transition: background-color 0.3s ease;
     position: relative;
     overflow: hidden;
+}
+
+.panel-tile-timestamp {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--hmi-text-muted);
+}
+
+.panel-tile-timestamp-label {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.panel-tile-timestamp-value {
+    font-weight: 500;
+    color: var(--hmi-text-dim);
 }
 
 .panel-tile-level-value {

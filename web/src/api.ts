@@ -21,7 +21,10 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
     });
     if (!res.ok) {
         const text = await res.text();
-        throw new Error(`${res.status} ${text}`);
+        // Preserve status code in error message for dwell time detection
+        const error = new Error(`${res.status} ${text}`);
+        (error as any).status = res.status;
+        throw error;
     }
     // some endpoints return no body (eg 204) so guard
     const contentType = res.headers.get("content-type") || "";
