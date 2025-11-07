@@ -165,7 +165,7 @@ def bootstrap_default_if_empty() -> Snapshot:
         name="Skylights",
         member_ids=["SK1", "SK2"],
     )
-    # Save both config and state (state will be all zeros/defaults)
+    # Save both config and state (newly created panels default to level=0, last_change_ts=0.0)
     save_snapshot(snap)
     return snap
 
