@@ -67,7 +67,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
         
         const timer = setTimeout(onClose, duration);
         return () => clearTimeout(timer);
-    }, [onClose, toast.type]);
+    }, [toast.id, toast.type]);
 
     return (
         <div className={`toast toast-${toast.type}`} onClick={onClose}>
