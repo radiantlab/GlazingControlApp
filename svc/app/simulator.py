@@ -88,7 +88,7 @@ class Simulator:
         # validate panel ids
         for pid in member_ids:
             if pid not in self.snap.panels:
-                raise KeyError(f"panel id not found  {pid}")
+                raise KeyError(f"panel id not found: {pid}")
         # generate unique group id G-1 G-2 ...
         n = 1
         gid = f"G-{n}"
