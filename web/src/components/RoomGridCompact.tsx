@@ -37,8 +37,8 @@ export default function RoomGridCompact({ panels, transitioning, panelControls =
         return a.id.localeCompare(b.id);
     };
 
-    const room1 = room1Panels.sort(sortPanels);
-    const room2 = room2Panels.sort(sortPanels);
+    const room1 = [...room1Panels].sort(sortPanels);
+    const room2 = [...room2Panels].sort(sortPanels);
 
     const getTintColor = (level: number) => {
         if (level === 0) return '#e8f3ff';
