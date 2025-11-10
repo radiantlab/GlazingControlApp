@@ -112,7 +112,11 @@ export default function AppHMI() {
         } catch (e) {
             // Refresh even on error to ensure UI shows actual panel state
             await refresh();
-            showToast(`Error: ${String(e)}`, "error");
+            if ((e as any)?.status === 429) {
+                showToast("Panel is busy, please wait before sending another command.", "warning");
+            } else {
+                showToast(`Error: ${String(e)}`, "error");
+            }
         } finally {
             setBusy(null);
         }
