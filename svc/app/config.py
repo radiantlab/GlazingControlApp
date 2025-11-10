@@ -8,9 +8,15 @@ MODE = os.getenv("SVC_MODE", "sim").lower()
 MIN_DWELL_SECONDS = int(os.getenv("SVC_MIN_DWELL_SECONDS", "20"))
 
 # Path for durable state and audit log
+# Get the svc directory (parent of app directory where this file lives)
+_SVC_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.getenv("SVC_DATA_DIR", "data")
-PANELS_FILE = os.path.join("svc", DATA_DIR, "panels.json")
-AUDIT_FILE = os.path.join("svc", DATA_DIR, "audit.json")
+# Legacy file (for migration)
+PANELS_FILE = os.path.join(_SVC_DIR, DATA_DIR, "panels.json")
+# New separated files
+PANELS_CONFIG_FILE = os.path.join(_SVC_DIR, DATA_DIR, "panels_config.json")
+PANELS_STATE_FILE = os.path.join(_SVC_DIR, DATA_DIR, "panels_state.json")
+AUDIT_FILE = os.path.join(_SVC_DIR, DATA_DIR, "audit.json")
 
 # Halio API configuration (for real mode)
 HALIO_API_URL = os.getenv("HALIO_API_URL", "https://api.halio.com")
@@ -18,4 +24,4 @@ HALIO_SITE_ID = os.getenv("HALIO_SITE_ID", "")
 HALIO_API_KEY = os.getenv("HALIO_API_KEY", "")
 
 # Panel to Halio Window UUID mapping file
-WINDOW_MAPPING_FILE = os.path.join("svc", DATA_DIR, "window_mapping.json")
+WINDOW_MAPPING_FILE = os.path.join(_SVC_DIR, DATA_DIR, "window_mapping.json")
