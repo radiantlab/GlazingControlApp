@@ -221,9 +221,9 @@ docs/TintSpecificAPIPages.pdf
 web/node_modules/
 web/dist/
 
-svc/data/audit.json
-svc/data/panels.json
-svc/data/panels_state.json
-#svc/data/window_mapping.json
+svc/svc/data/audit.json
+svc/svc/data/panels.json
+svc/svc/data/panels_state.json
+#svc/svc/data/window_mapping.json
 # Note: panels_config.json is tracked (structural data)
 # panels_state.json is ignored (runtime state)
