@@ -40,10 +40,11 @@ class Simulator:
         save_snapshot(self.snap)
 
         # perform the visible change asynchronously after a realistic delay
-        def _commit():
+        def _commit(panel_id=panel_id):
             time.sleep(2.0)  # simulate transition time
-            p.level = int(level)
-            p.last_change_ts = time.time()
+            panel = self.snap.panels[panel_id]
+            panel.level = int(level)
+            panel.last_change_ts = time.time()
             save_snapshot(self.snap)
 
         t = threading.Thread(target=_commit, daemon=True)
