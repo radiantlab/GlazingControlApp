@@ -5,6 +5,7 @@ from typing import Dict, List
 from .models import Panel, Group, TintLevel, Snapshot
 from .state import load_snapshot, save_snapshot
 
+
 class Simulator:
     def __init__(self) -> None:
         # load from disk so levels persist across restarts
@@ -30,10 +31,10 @@ class Simulator:
         p = self.snap.panels[panel_id]
         if not self._can_change(p, min_dwell):
             return False
-        
+
         # Set a realistic transition time (Unconfirmed but works for development)
         time.sleep(2.0)
-        
+
         p.level = int(level)
         p.last_change_ts = time.time()
         save_snapshot(self.snap)

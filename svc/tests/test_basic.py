@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 from main import app
-import os
 
 client = TestClient(app)
+
 
 def test_health():
     r = client.get("/health")
@@ -10,6 +10,7 @@ def test_health():
     assert r.json()["status"] == "ok"
     # Verify we're running in simulator mode for tests
     assert r.json()["mode"] == "sim"
+
 
 def test_list_panels_groups():
     r1 = client.get("/panels")
@@ -22,19 +23,30 @@ def test_list_panels_groups():
     assert len(panels) == 20
     assert any(g["id"] == "G-facade" for g in groups)
 
+
 def test_set_and_dwell():
     # First change should succeed (note: takes ~2s due to simulated transition)
-    r = client.post("/commands/set-level", json={"target_type": "panel", "target_id": "P01", "level": 40})
+    r = client.post(
+        "/commands/set-level",
+        json={"target_type": "panel", "target_id": "P01", "level": 40},
+    )
     assert r.status_code == 200
     # Immediate second change should throttle by dwell guard
-    r2 = client.post("/commands/set-level", json={"target_type": "panel", "target_id": "P01", "level": 70})
+    r2 = client.post(
+        "/commands/set-level",
+        json={"target_type": "panel", "target_id": "P01", "level": 70},
+    )
     assert r2.status_code == 429
+
 
 def test_panel_state_persistence():
     # Set a panel to a specific level
-    r1 = client.post("/commands/set-level", json={"target_type": "panel", "target_id": "P02", "level": 50})
+    r1 = client.post(
+        "/commands/set-level",
+        json={"target_type": "panel", "target_id": "P02", "level": 50},
+    )
     assert r1.status_code == 200
-    
+
     # Verify the level was set
     r2 = client.get("/panels")
     panels = r2.json()
@@ -42,9 +54,13 @@ def test_panel_state_persistence():
     assert p02 is not None
     assert p02["level"] == 50
 
+
 def test_group_tinting():
     # Tint a group should update all members
-    r = client.post("/commands/set-level", json={"target_type": "group", "target_id": "G-skylights", "level": 30})
+    r = client.post(
+        "/commands/set-level",
+        json={"target_type": "group", "target_id": "G-skylights", "level": 30},
+    )
     assert r.status_code == 200
     result = r.json()
     assert result["ok"] is True
