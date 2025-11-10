@@ -21,7 +21,10 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
     });
     if (!res.ok) {
         const text = await res.text();
-        throw new Error(`${res.status} ${text}`);
+        // Preserve status code in error message for dwell time detection
+        const error = new Error(`${res.status} ${text}`);
+        (error as any).status = res.status;
+        throw error;
     }
     // some endpoints return no body (eg 204) so guard
     const contentType = res.headers.get("content-type") || "";
@@ -36,6 +39,11 @@ export const api = {
     health: () => http<{ status: string; mode: string }>("/health"),
     panels: () => http<Panel[]>("/panels"),
     groups: () => http<Group[]>("/groups"),
+    createGroup: (name: string, memberIds: string[]) =>
+        http<Group>("/groups", {
+            method: "POST",
+            body: JSON.stringify({ name, member_ids: memberIds })
+        }),
     setPanelLevel: (panelId: string, level: number) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
