@@ -7,8 +7,7 @@ export default defineConfig({
     build: {
         rollupOptions: {
             input: {
-                main: "./index.html",
-                hmi: "./index-hmi.html"
+                main: "./index.html"
             }
         }
     }
