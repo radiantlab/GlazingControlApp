@@ -76,77 +76,125 @@ function organizePanels(panels: Panel[]) {
     return { room1, room2 };
 }
 
-function PanelTile({ panel, onSet, busyId, isTransitioning, controlSource, className }: { panel: Panel; onSet: (id: string, level: number) => Promise<void>; busyId?: string | null; isTransitioning?: boolean; controlSource?: ControlSource | null; className?: string }) {
-    const [localLevel, setLocalLevel] = useState(panel.level);
-    const [currentTime, setCurrentTime] = useState(Date.now() / 1000);
-    const isSkylight = panel.id.startsWith('SK');
-    
-    // Sync local level when panel prop updates
-    React.useEffect(() => {
-        setLocalLevel(panel.level);
-    }, [panel.level]);
+function PanelTile({
+    panel,
+    onSet,
+    busyId,
+    isTransitioning,
+    controlSource,
+    className
+}: {
+    panel: Panel
+    onSet: (id: string, level: number) => Promise<void>
+    busyId?: string | null
+    isTransitioning?: boolean
+    controlSource?: ControlSource | null
+    className?: string
+}) {
+    const [localLevel, setLocalLevel] = React.useState(panel.level)
+    const [currentTime, setCurrentTime] = React.useState(Date.now() / 1000)
+    const [isInteracting, setIsInteracting] = React.useState(false)
+    const interactionTimeoutRef = React.useRef<number | null>(null)
+    const isSkylight = panel.id.startsWith('SK')
 
-    // When operation completes (busyId changes from panel.id to null), 
+    // sync localLevel when panel prop updates, but only when the user is not interacting
+    React.useEffect(() => {
+        if (!isInteracting) {
+            setLocalLevel(panel.level)
+        }
+    }, [panel.level, isInteracting])
+
+    // When operation completes (busyId changes from panel.id to null),
     // verify localLevel matches actual panel.level and reset if needed
     React.useEffect(() => {
-        if (busyId !== panel.id && localLevel !== panel.level) {
-            // Operation completed but levels don't match - likely failed due to dwell time
-            setLocalLevel(panel.level);
+        if (busyId !== panel.id && localLevel !== panel.level && !isInteracting) {
+            setLocalLevel(panel.level)
         }
-    }, [busyId, panel.id, panel.level, localLevel]);
+    }, [busyId, panel.id, panel.level, localLevel, isInteracting])
 
-    // Update timestamp display every 10 seconds for real-time updates
+    // Update timestamp display every 10 seconds
     React.useEffect(() => {
         const interval = setInterval(() => {
-            setCurrentTime(Date.now() / 1000);
-        }, 10000); // Update every 10 seconds
-        
-        return () => clearInterval(interval);
-    }, []);
-    
-    // Color based on tint level (0 = clear, 100 = dark)
+            setCurrentTime(Date.now() / 1000)
+        }, 10000)
+        return () => clearInterval(interval)
+    }, [])
+
+    // cleanup interaction timeout on unmount
+    React.useEffect(() => {
+        return () => {
+            if (interactionTimeoutRef.current) {
+                window.clearTimeout(interactionTimeoutRef.current)
+                interactionTimeoutRef.current = null
+            }
+        }
+    }, [])
+
     const getTintColor = (level: number) => {
-        if (level === 0) return '#e8f3ff'; // Clear/light blue
-        if (level < 25) return '#9ec5ff';
-        if (level < 50) return '#6ba3ff';
-        if (level < 75) return '#3d7fd6';
-        return '#1e4a8c'; // Dark blue
-    };
+        if (level === 0) return '#e8f3ff'
+        if (level < 25) return '#9ec5ff'
+        if (level < 50) return '#6ba3ff'
+        if (level < 75) return '#3d7fd6'
+        return '#1e4a8c'
+    }
 
-    // Determine text color based on tint level for contrast
     const getTextColor = (level: number) => {
-        // Use dark text for light backgrounds (0-50%), light text for dark backgrounds (50-100%)
-        return level < 50 ? '#1e293b' : '#ffffff';
-    };
+        return level < 50 ? '#1e293b' : '#ffffff'
+    }
 
-    const isBusy = busyId === panel.id;
+    const isBusy = busyId === panel.id
 
     const getControlBadge = () => {
-        // If no control source, show manual (default state)
-        if (!controlSource) {
-            return { label: 'Manual', class: 'control-badge-manual', icon: '✋' };
-        }
-        
+        if (!controlSource) return { label: 'Manual', class: 'control-badge-manual', icon: '✋' }
         switch (controlSource.type) {
             case 'manual':
-                return { label: 'Manual', class: 'control-badge-manual', icon: '✋' };
+                return { label: 'Manual', class: 'control-badge-manual', icon: '✋' }
             case 'group':
-                return { label: 'Group', class: 'control-badge-group', icon: '▣' };
+                return { label: 'Group', class: 'control-badge-group', icon: '▣' }
             case 'routine':
-                return { label: 'Routine', class: 'control-badge-routine', icon: '⚙' };
+                return { label: 'Routine', class: 'control-badge-routine', icon: '⚙' }
         }
-    };
+    }
 
-    const badge = getControlBadge();
+    const badge = getControlBadge()
 
-    // Determine border color based on control source (default to manual)
     const getControlBorderClass = () => {
-        if (!controlSource) return 'panel-controlled-manual';
-        return `panel-controlled-${controlSource.type}`;
-    };
+        if (!controlSource) return 'panel-controlled-manual'
+        return `panel-controlled-${controlSource.type}`
+    }
+
+    // helper to read the current value from the DOM slider
+    const readSliderValue = () => {
+        const el = document.getElementById(`range-${panel.id}`) as HTMLInputElement | null
+        if (!el) return panel.level
+        const v = Number(el.value)
+        return Number.isNaN(v) ? panel.level : Math.max(0, Math.min(100, v))
+    }
+
+    // pointer handlers to mark the user as interacting
+    const startInteraction = () => {
+        if (interactionTimeoutRef.current) {
+            window.clearTimeout(interactionTimeoutRef.current)
+            interactionTimeoutRef.current = null
+        }
+        setIsInteracting(true)
+    }
+
+    const endInteractionDebounced = () => {
+        if (interactionTimeoutRef.current) {
+            window.clearTimeout(interactionTimeoutRef.current)
+        }
+        // small delay after pointer up so quick flicks don't cause immediate re-sync
+        interactionTimeoutRef.current = window.setTimeout(() => {
+            interactionTimeoutRef.current = null
+            setIsInteracting(false)
+        }, 600)
+    }
 
     return (
-        <div className={`panel-tile ${isSkylight ? 'panel-tile-skylight' : ''} ${isBusy ? 'panel-tile-busy' : ''} ${isTransitioning ? 'panel-tile-transitioning' : ''} ${getControlBorderClass()} ${className || ''}`}>
+        <div
+            className={`panel-tile ${isSkylight ? 'panel-tile-skylight' : ''} ${isBusy ? 'panel-tile-busy' : ''} ${isTransitioning ? 'panel-tile-transitioning' : ''} ${getControlBorderClass()} ${className || ''}`}
+        >
             <div className="panel-tile-header">
                 <div className="panel-tile-name">{panel.name}</div>
                 <div className="panel-tile-header-right">
@@ -157,13 +205,13 @@ function PanelTile({ panel, onSet, busyId, isTransitioning, controlSource, class
                     <div className="panel-tile-id">{panel.id}</div>
                 </div>
             </div>
-            
+
             <div className="panel-tile-status">
                 <div className="panel-tile-level-display" style={{ backgroundColor: getTintColor(localLevel) }}>
                     <span className="panel-tile-level-value" style={{ color: getTextColor(localLevel) }}>{localLevel}%</span>
                     {isTransitioning && (
                         <div className="panel-tile-transition-indicator">
-                            <div className="panel-tile-transition-spinner"></div>
+                            <div className="panel-tile-transition-spinner" />
                             <span className="panel-tile-transition-label">Transitioning...</span>
                         </div>
                     )}
@@ -180,11 +228,32 @@ function PanelTile({ panel, onSet, busyId, isTransitioning, controlSource, class
                         type="range"
                         min={0}
                         max={100}
-                        value={localLevel}
+                        defaultValue={panel.level}
+                        id={`range-${panel.id}`}
                         disabled={isBusy}
-                        onChange={(e) => {
-                            const val = Number(e.target.value);
-                            setLocalLevel(val);
+                        onPointerDown={startInteraction}
+                        onMouseDown={startInteraction}
+                        onTouchStart={startInteraction}
+                        onPointerUp={endInteractionDebounced}
+                        onMouseUp={endInteractionDebounced}
+                        onTouchEnd={endInteractionDebounced}
+                        onPointerCancel={() => {
+                            if (interactionTimeoutRef.current) {
+                                window.clearTimeout(interactionTimeoutRef.current)
+                                interactionTimeoutRef.current = null
+                            }
+                            setIsInteracting(false)
+                        }}
+                        onBlur={() => {
+                            if (interactionTimeoutRef.current) {
+                                window.clearTimeout(interactionTimeoutRef.current)
+                                interactionTimeoutRef.current = null
+                            }
+                            setIsInteracting(false)
+                        }}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            const val = Number(e.currentTarget.value)
+                            setLocalLevel(val)
                         }}
                         className="panel-tile-slider"
                     />
@@ -197,12 +266,13 @@ function PanelTile({ panel, onSet, busyId, isTransitioning, controlSource, class
                             className="panel-tile-quick-btn"
                             disabled={isBusy}
                             onClick={async () => {
-                                setLocalLevel(v);
+                                const el = document.getElementById(`range-${panel.id}`) as HTMLInputElement | null
+                                if (el) el.value = String(v)
+                                setLocalLevel(v)
                                 try {
-                                    await onSet(panel.id, v);
+                                    await onSet(panel.id, v)
                                 } catch (e) {
-                                    // If command fails (e.g., dwell time), reset to actual panel level
-                                    setLocalLevel(panel.level);
+                                    setLocalLevel(panel.level)
                                 }
                             }}
                         >
@@ -213,22 +283,23 @@ function PanelTile({ panel, onSet, busyId, isTransitioning, controlSource, class
 
                 <button
                     className="panel-tile-apply-btn"
-                    disabled={isBusy || localLevel === panel.level}
+                    disabled={isBusy || readSliderValue() === panel.level}
                     onClick={async () => {
+                        const val = readSliderValue()
                         try {
-                            await onSet(panel.id, localLevel);
+                            await onSet(panel.id, val)
                         } catch (e) {
-                            // If command fails (e.g., dwell time), reset to actual panel level
-                            setLocalLevel(panel.level);
+                            setLocalLevel(panel.level)
                         }
                     }}
                 >
-                    {isBusy ? "..." : localLevel === panel.level ? "✓" : "Apply"}
+                    {isBusy ? '...' : readSliderValue() === panel.level ? '✓' : 'Apply'}
                 </button>
             </div>
         </div>
-    );
+    )
 }
+
 
 export default function RoomGrid({ panels, onSet, busyId, transitioning = new Set(), panelControls = new Map() }: Props) {
     const { room1, room2 } = organizePanels(panels);
