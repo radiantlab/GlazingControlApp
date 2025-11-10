@@ -122,12 +122,32 @@ export const mockApi = {
         if (!group) {
             throw new Error("group not found");
         }
+        const MIN_DWELL_SECONDS = 20;
+        const now = Date.now() / 1000;
+        // Check dwell time for each panel
+        const blockedPanels: string[] = [];
+        group.member_ids.forEach(id => {
+            const panel = mockPanelState.find(p => p.id === id);
+            if (panel) {
+                const timeSinceLastChange = now - panel.last_change_ts;
+                if (timeSinceLastChange < MIN_DWELL_SECONDS && panel.level !== level) {
+                    blockedPanels.push(id);
+                }
+            }
+        });
+        if (blockedPanels.length > 0) {
+            const error: any = new Error(`429 dwell time not met for panels: ${blockedPanels.join(", ")}`);
+            error.status = 429;
+            error.blocked_panels = blockedPanels;
+            throw error;
+        }
+        // Apply changes
         const applied: string[] = [];
         group.member_ids.forEach(id => {
             const panel = mockPanelState.find(p => p.id === id);
             if (panel) {
                 panel.level = level;
-                panel.last_change_ts = Date.now() / 1000;
+                panel.last_change_ts = now;
                 applied.push(id);
             }
         });
