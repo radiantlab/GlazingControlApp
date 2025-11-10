@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routes import router
 from app.state import bootstrap_default_if_empty
 
+
 def create_app() -> FastAPI:
     bootstrap_default_if_empty()
     app = FastAPI(title="ECG Control Service", version="0.1.0")
@@ -20,6 +21,7 @@ def create_app() -> FastAPI:
 
     app.include_router(router)
     return app
+
 
 app = create_app()
 

@@ -6,6 +6,7 @@ from .adapter import RealAdapter
 from .config import MODE, MIN_DWELL_SECONDS
 from .state import audit
 
+
 class ControlService:
     def __init__(self) -> None:
         self.mode = MODE
@@ -22,7 +23,9 @@ class ControlService:
         return self.backend.list_groups()
 
     # write
-    def set_panel_level(self, panel_id: str, level: TintLevel, actor: str = "api") -> Tuple[bool, List[str], str]:
+    def set_panel_level(
+        self, panel_id: str, level: TintLevel, actor: str = "api"
+    ) -> Tuple[bool, List[str], str]:
         try:
             ok = self.backend.set_panel(panel_id, level, MIN_DWELL_SECONDS)
             if ok:
@@ -36,7 +39,9 @@ class ControlService:
         except KeyError:
             return False, [], "panel not found"
 
-    def set_group_level(self, group_id: str, level: TintLevel, actor: str = "api") -> Tuple[bool, List[str], str]:
+    def set_group_level(
+        self, group_id: str, level: TintLevel, actor: str = "api"
+    ) -> Tuple[bool, List[str], str]:
         try:
             applied = self.backend.set_group(group_id, level, MIN_DWELL_SECONDS)
             ok = len(applied) > 0
