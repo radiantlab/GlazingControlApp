@@ -18,6 +18,8 @@ export default function AppHMI() {
     const [sidePanelOpen, setSidePanelOpen] = useState<boolean>(false);
     const [controlState, setControlState] = useState(controlManager.getActiveControllers());
     const { showToast } = useToast();
+    const [groupId, setGroupId] = useState<string>("");
+    const [groupLevel, setGroupLevel] = useState<number>(50);
 
     async function refresh() {
         try {
@@ -25,6 +27,12 @@ export default function AppHMI() {
             const [p, g, h] = await Promise.all([api.panels(), api.groups(), api.health()]);
             setPanels(p);
             setGroups(g);
+
+            // set default group only once, without stomping user choice
+            if (g.length) {
+                setGroupId(prev => prev || g[0].id);
+            }
+
             setHealth(`${h.status} • ${h.mode}`);
             setUsingMock(false);
         } catch (err) {
@@ -33,14 +41,20 @@ export default function AppHMI() {
                 const [p, g, h] = await Promise.all([mockApi.panels(), mockApi.groups(), mockApi.health()]);
                 setPanels(p);
                 setGroups(g);
+
+                if (g.length) {
+                    setGroupId(prev => prev || g[0].id);
+                }
+
                 setHealth(`${h.status} • ${h.mode} (mock)`);
                 setUsingMock(true);
             } catch (mockErr) {
-                setHealth(`error • ${String(err)}`);
+                setHealth(`error • ${String(mockErr)}`);
                 setUsingMock(false);
             }
         }
     }
+
 
     useEffect(() => {
         refresh();
@@ -263,10 +277,12 @@ export default function AppHMI() {
                                 </span>
                             )}
                         </div>
+
                         <div className="hmi-status-item">
                             <span className="hmi-status-label">Panels</span>
                             <span className="hmi-status-value">{panels.length}</span>
                         </div>
+
                         <button
                             className="hmi-clear-all-btn"
                             onClick={clearAll}
@@ -275,6 +291,7 @@ export default function AppHMI() {
                         >
                             {busy === "clear-all" ? "Clearing..." : "Clear All"}
                         </button>
+
                         <button
                             className="hmi-manage-btn"
                             onClick={() => setSidePanelOpen(true)}
@@ -287,18 +304,83 @@ export default function AppHMI() {
             </header>
 
             <main className={`hmi-main ${sidePanelOpen ? 'with-side-panel' : ''}`}>
+                {/* group control card, same visual treatment as a room section */}
+                <div className="room-section group-card">
+                    <div className="room-header">
+                        <h2 className="room-title">Group control</h2>
+                        <div className="room-stats">
+                            <span>{groups.length} groups</span>
+                        </div>
+                    </div>
+
+                    <div className="room-panels-grid" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <label htmlFor="hmi-group-select" className="hmi-status-label" style={{ minWidth: 56 }}>Group</label>
+
+                        <select
+                            id="hmi-group-select"
+                            value={groupId}
+                            onChange={e => setGroupId(e.target.value)}
+                            style={{ padding: '6px 10px' }}
+                        >
+                            <option value="">Select a group</option>
+                            {groups.map(g => (
+                                <option key={g.id} value={g.id}>{g.name}</option>
+                            ))}
+                        </select>
+
+                        <label htmlFor="hmi-group-level" className="hmi-status-label" style={{ marginLeft: 8 }}>Level</label>
+                        <input
+                            id="hmi-group-level"
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={groupLevel}
+                            onChange={e => setGroupLevel(Math.max(0, Math.min(100, Number(e.target.value))))}
+                            style={{ width: 80, padding: '6px 8px' }}
+                        />
+
+                        <button
+                            className="hmi-manage-btn"
+                            onClick={() => groupId && setGroup(groupId, groupLevel)}
+                            disabled={!groupId || busy === groupId}
+                            title="Set selected group level"
+                        >
+                            {busy === groupId ? 'Setting…' : 'Set Group'}
+                        </button>
+
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto' }}>
+                            {[0, 25, 50, 75, 100].map(v => (
+                                <button
+                                    key={v}
+                                    className="hmi-manage-btn"
+                                    onClick={() => {
+                                        setGroupLevel(v)
+                                        if (groupId) setGroup(groupId, v)
+                                    }}
+                                    disabled={!groupId || busy === groupId}
+                                    title={`Set ${v}%`}
+                                >
+                                    {v}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* room grids */}
                 {sidePanelOpen ? (
                     <RoomGridCompact panels={panels} transitioning={transitioning} panelControls={controlState.panelControls} />
                 ) : (
-                    <RoomGrid 
-                        panels={panels} 
-                        onSet={setPanel} 
-                        busyId={busy} 
+                    <RoomGrid
+                        panels={panels}
+                        onSet={setPanel}
+                        busyId={busy}
                         transitioning={transitioning}
                         panelControls={controlState.panelControls}
                     />
                 )}
             </main>
+
 
             <SidePanel
                 isOpen={sidePanelOpen}

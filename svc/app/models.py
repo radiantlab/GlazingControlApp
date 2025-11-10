@@ -38,3 +38,8 @@ class AuditEntry(BaseModel):
     level: int
     applied_to: List[str]
     result: str
+
+class GroupCreate(BaseModel):
+    name: str
+    member_ids: List[str]
+

@@ -871,7 +871,6 @@ html, body {
 .form-group input[type="text"],
 .form-group input[type="number"],
 .form-group select {
-    width: 100%;
     padding: 10px 12px;
     background: var(--hmi-bg-alt);
     border: 1px solid var(--hmi-border);
@@ -888,6 +887,114 @@ html, body {
     border-color: var(--hmi-primary);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
+
+
+/* form controls unified HMI styling */
+input[type="text"],
+input[type="number"],
+input[type="password"],
+textarea,
+select {
+    padding: 10px 12px;
+    background: var(--hmi-bg-alt);
+    color: var(--hmi-text);
+    border: 1px solid var(--hmi-border);
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.3;
+    outline: none;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    box-shadow: none;
+}
+
+.side-panel .form-group input,
+.side-panel .form-group select,
+.side-panel .form-group textarea {
+    background: var(--hmi-bg-alt);
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: var(--hmi-text-muted);
+    opacity: 1;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    border-color: var(--hmi-primary);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+    background: rgba(255,255,255,0.02);
+    color: var(--hmi-text-dim);
+    border-color: var(--hmi-border);
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+    padding-right: 10px; 
+}
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+select {
+    background-image: linear-gradient(45deg, transparent 50%, var(--hmi-text) 50%), linear-gradient(135deg, var(--hmi-text) 50%, transparent 50%), linear-gradient(var(--hmi-surface), var(--hmi-surface));
+    background-position: calc(100% - 18px) calc(1em + 2px), calc(100% - 12px) calc(1em + 2px), 0 0;
+    background-size: 6px 6px, 6px 6px, 100% 100%;
+    background-repeat: no-repeat;
+    padding-right: 40px;
+}
+
+    select::-ms-expand {
+        display: none;
+    }
+
+.hmi-control-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hmi-control-sm {
+    padding: 6px 8px;
+    font-size: 13px;
+    border-radius: 6px;
+}
+
+.panel-tile .form-group input,
+.panel-tile .form-group select,
+.panel-tile .form-group textarea {
+    background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.02));
+    border-color: var(--hmi-border);
+}
+
+:focus {
+    outline: none;
+}
+
+.input-error {
+    border-color: var(--hmi-danger) !important;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.06) !important;
+}
+
+select option[disabled] {
+    color: var(--hmi-text-muted);
+}
+
+
 
 .panel-selector {
     max-height: 300px;
@@ -1366,6 +1473,27 @@ html, body {
     background: rgba(14, 165, 233, 0.2);
     color: var(--hmi-accent);
 }
+
+/* group control card styling, matches room section look */
+.group-card {
+    margin-bottom: 16px;
+    padding: 0;
+}
+
+    .group-card .room-header {
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--hmi-border);
+    }
+
+    .group-card .room-panels-grid {
+        padding-top: 12px;
+        padding-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
 
 @keyframes toast-slide-in {
     from {

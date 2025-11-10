@@ -1,9 +1,10 @@
 from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
-from .models import Panel, Group, CommandRequest, CommandResult
+from .models import Panel, Group, CommandRequest, CommandResult, GroupCreate
 from .service import ControlService
 from .config import MODE
+
 
 router = APIRouter()
 svc: ControlService | None = None
@@ -41,3 +42,13 @@ def set_level(body: CommandRequest, service: ControlService = Depends(get_servic
         raise HTTPException(status_code=500, detail=msg)
 
     return CommandResult(ok=True, applied_to=applied, message=msg)
+
+@router.post("/groups", response_model=Group)
+def create_group(body: GroupCreate, service: ControlService = Depends(get_service)) -> Group:
+    try:
+        return service.create_group(body.name, body.member_ids)
+    except KeyError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+
