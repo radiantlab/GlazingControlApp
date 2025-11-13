@@ -1,7 +1,7 @@
 from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Depends
+from .models import Panel, Group, CommandRequest, CommandResult, GroupCreate, GroupUpdate
 from typing import List
-from .models import Panel, Group, CommandRequest, CommandResult, GroupCreate
 from .service import ControlService
 from .config import MODE
 
@@ -50,6 +50,7 @@ def set_level(
 
     return CommandResult(ok=True, applied_to=applied, message=msg)
 
+
 @router.post("/groups", response_model=Group)
 def create_group(body: GroupCreate, service: ControlService = Depends(get_service)) -> Group:
     try:
@@ -59,3 +60,32 @@ def create_group(body: GroupCreate, service: ControlService = Depends(get_servic
     except NotImplementedError as e:
         raise HTTPException(status_code=501, detail=str(e))
 
+
+@router.post("/groups", response_model=Group, status_code=201)
+def create_group(body: GroupCreate, service: ControlService = Depends(get_service)) -> Group:
+    try:
+        return service.create_group(body.name, body.member_ids)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/groups/{group_id}", response_model=Group)
+def update_group(
+    group_id: str,
+    body: GroupUpdate,
+    service: ControlService = Depends(get_service),
+) -> Group:
+    try:
+        return service.update_group(group_id, body.name, body.member_ids)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="group not found")
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/groups/{group_id}")
+def delete_group(group_id: str, service: ControlService = Depends(get_service)) -> dict:
+    ok = service.delete_group(group_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="group not found")
+    return {"ok": True}

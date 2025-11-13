@@ -156,6 +156,33 @@ export const mockApi = {
             applied_to: applied,
             message: `Group ${groupId} set to ${level}%`
         };
+    },
+
+
+    async updateGroup(id: string, name?: string, memberIds?: string[]): Promise<Group> {
+        await delay(300);
+        const g = mockGroups.find(gr => gr.id === id);
+        if (!g) throw new Error("group not found");
+
+        if (name !== undefined) g.name = name;
+        if (memberIds !== undefined) {
+            const valid = memberIds.filter(pid => mockPanelState.some(p => p.id === pid));
+            g.member_ids = [...valid];
+        }
+        return { ...g };
+    },
+
+    async deleteGroup(id: string): Promise<void> {
+        await delay(200);
+        const idx = mockGroups.findIndex(gr => gr.id === id);
+        if (idx === -1) throw new Error("group not found");
+
+        const removed = mockGroups.splice(idx, 1)[0];
+
+        // clear group_id from panels
+        mockPanelState = mockPanelState.map(p =>
+            p.group_id === removed.id ? { ...p, group_id: null } : p
+        );
     }
 };
 
