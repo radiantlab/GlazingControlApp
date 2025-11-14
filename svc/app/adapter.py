@@ -43,7 +43,7 @@ class RealAdapter:
         self.site_id = HALIO_SITE_ID
         self.headers = {
             "Authorization": f"Bearer {HALIO_API_KEY}",
-            "Content-Type": "application/json",
+            "Content-Type": "application/json"
         }
 
         # Load panel ID to Halio window UUID mapping

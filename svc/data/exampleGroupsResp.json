@@ -1,0 +1,39 @@
+{
+    "message": "Retrieved Groups",
+    "results": [
+        {
+            "createdAt": "2025-05-22T19:41:00.000Z",
+            "id": "33726a16-26c5-4b01-90fb-6ca7673b3bc8",
+            "identifier": 4,
+            "name": "SKYLIGHT",
+            "organizationId": null,
+            "updatedAt": "2025-05-22T19:41:00.000Z"
+        },
+        {
+            "createdAt": "2025-05-20T23:28:06.000Z",
+            "id": "aa735ffe-ce09-4ae6-a4e8-0e01cda98ad2",
+            "identifier": 2,
+            "name": "LEFT 2.1-9",
+            "organizationId": null,
+            "updatedAt": "2025-05-20T23:28:06.000Z"
+        },
+        {
+            "createdAt": "2024-03-13T20:05:50.000Z",
+            "id": "aaa2f218-b6ed-4042-bb1b-a0d5c793abae",
+            "identifier": 1,
+            "name": "All",
+            "organizationId": null,
+            "updatedAt": "2024-03-13T20:05:50.000Z"
+        },
+        {
+            "createdAt": "2025-05-22T18:13:53.000Z",
+            "id": "aab8431b-b7d2-4680-9e0e-87f10a5d9527",
+            "identifier": 3,
+            "name": "RIGHT 2.1-9",
+            "organizationId": null,
+            "updatedAt": "2025-05-22T18:13:53.000Z"
+        }
+    ],
+    "statusCode": 200,
+    "success": true
+}% 
