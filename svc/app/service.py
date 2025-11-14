@@ -57,3 +57,17 @@ class ControlService:
             raise NotImplementedError("group creation not supported in real mode")
         return self.backend.create_group(name, member_ids)
 
+    def create_group(self, name: str, member_ids: List[str]):
+        if not hasattr(self.backend, "create_group"):
+            raise RuntimeError("group create not supported in this mode")
+        return self.backend.create_group(name, member_ids)
+
+    def update_group(self, group_id: str, name: str | None, member_ids: List[str] | None):
+        if not hasattr(self.backend, "update_group"):
+            raise RuntimeError("group update not supported in this mode")
+        return self.backend.update_group(group_id, name, member_ids)
+
+    def delete_group(self, group_id: str) -> bool:
+        if not hasattr(self.backend, "delete_group"):
+            raise RuntimeError("group delete not supported in this mode")
+        return self.backend.delete_group(group_id)
