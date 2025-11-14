@@ -86,23 +86,6 @@ class Simulator:
         return applied
 
     def create_group(self, name: str, member_ids: List[str]) -> Group:
-        # validate panel ids
-        for pid in member_ids:
-            if pid not in self.snap.panels:
-                raise KeyError(f"panel id not found: {pid}")
-        # generate unique group id G-1 G-2 ...
-        n = 1
-        gid = f"G-{n}"
-        while gid in self.snap.groups:
-            n += 1
-            gid = f"G-{n}"
-        g = Group(id=gid, name=name, member_ids=list(member_ids))
-        self.snap.groups[gid] = g
-        save_snapshot(self.snap)
-        return g
-
-
-    def create_group(self, name: str, member_ids: List[str]) -> Group:
         # generate a simple id like G-1 G-2 ...
         existing_ids = set(self.snap.groups.keys())
         n = 1

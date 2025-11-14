@@ -51,12 +51,6 @@ class ControlService:
         except KeyError:
             return False, [], "group not found"
 
-    def create_group(self, name: str, member_ids: List[str]) -> Group:
-        if self.mode == "real":
-            # not implemented against Halio in real mode
-            raise NotImplementedError("group creation not supported in real mode")
-        return self.backend.create_group(name, member_ids)
-
     def create_group(self, name: str, member_ids: List[str]):
         if not hasattr(self.backend, "create_group"):
             raise RuntimeError("group create not supported in this mode")
