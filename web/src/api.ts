@@ -44,11 +44,24 @@ export const api = {
             method: "POST",
             body: JSON.stringify({ name, member_ids: memberIds })
         }),
+
+    updateGroup: (groupId: string, name: string, memberIds: string[]) =>
+        http<Group>(`/groups/${groupId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ name, member_ids: memberIds })
+        }),
+
+    deleteGroup: (groupId: string) =>
+        http<unknown>(`/groups/${groupId}`, {
+            method: "DELETE"
+        }),
+
     setPanelLevel: (panelId: string, level: number) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
             body: JSON.stringify({ target_type: "panel", target_id: panelId, level })
         }),
+
     setGroupLevel: (groupId: string, level: number) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",

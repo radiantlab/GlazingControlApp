@@ -49,3 +49,12 @@ class GroupCreate(BaseModel):
     name: str
     member_ids: List[str]
 
+class GroupCreate(BaseModel):
+    name: str
+    member_ids: List[str] = Field(default_factory=list)
+
+
+class GroupUpdate(BaseModel):
+    name: Optional[str] = None
+    member_ids: Optional[List[str]] = None
+

@@ -101,3 +101,77 @@ class Simulator:
         save_snapshot(self.snap)
         return g
 
+
+    def create_group(self, name: str, member_ids: List[str]) -> Group:
+        # generate a simple id like G-1 G-2 ...
+        existing_ids = set(self.snap.groups.keys())
+        n = 1
+        while f"G-{n}" in existing_ids:
+            n += 1
+        gid = f"G-{n}"
+
+        # filter to only valid panel ids
+        valid_ids = [pid for pid in member_ids if pid in self.snap.panels]
+
+        group = Group(id=gid, name=name, member_ids=valid_ids)
+        self.snap.groups[gid] = group
+
+        # update panels to point at this group if you care about Panel.group_id
+        for pid in valid_ids:
+            p = self.snap.panels[pid]
+            p.group_id = gid
+
+        save_snapshot(self.snap)
+        return group
+
+    def update_group(
+        self,
+        group_id: str,
+        name: str | None,
+        member_ids: List[str] | None,
+    ) -> Group:
+        if group_id not in self.snap.groups:
+            raise KeyError(group_id)
+
+        g = self.snap.groups[group_id]
+
+        if name is not None:
+            g.name = name
+
+        if member_ids is not None:
+            # normalize to only existing panels
+            new_ids = [pid for pid in member_ids if pid in self.snap.panels]
+            old_set = set(g.member_ids)
+            new_set = set(new_ids)
+
+            # clear group_id from panels leaving this group
+            for pid in old_set - new_set:
+                p = self.snap.panels.get(pid)
+                if p and p.group_id == group_id:
+                    p.group_id = None
+
+            # assign group_id to new members
+            for pid in new_set:
+                p = self.snap.panels.get(pid)
+                if p:
+                    p.group_id = group_id
+
+            g.member_ids = list(new_set)
+
+        save_snapshot(self.snap)
+        return g
+
+    def delete_group(self, group_id: str) -> bool:
+        if group_id not in self.snap.groups:
+            return False
+
+        # clear group_id from member panels
+        member_ids = list(self.snap.groups[group_id].member_ids)
+        for pid in member_ids:
+            p = self.snap.panels.get(pid)
+            if p and p.group_id == group_id:
+                p.group_id = None
+
+        del self.snap.groups[group_id]
+        save_snapshot(self.snap)
+        return True

@@ -162,6 +162,46 @@ export default function AppHMI() {
         }
     }
 
+    async function updateGroup(groupId: string, name: string, memberIds: string[]) {
+        try {
+            if (usingMock) {
+                // simple mock behavior  update in mockApi if you want
+                await mockApi.createGroup(name, memberIds);
+            } else {
+                await api.updateGroup(groupId, name, memberIds);
+            }
+            await refresh();
+            showToast(`Group "${name}" updated`, "success");
+        } catch (e) {
+            const msg = `Failed to update group: ${String(e)}`;
+            showToast(msg, "error");
+            throw new Error(msg);
+        }
+    }
+
+    async function deleteGroup(groupId: string) {
+        const group = groups.find(g => g.id === groupId);
+        const label = group ? `${group.name} (${group.id})` : groupId;
+        const confirmed = window.confirm(`Delete group ${label}? This cannot be undone`);
+        if (!confirmed) return;
+
+        try {
+            if (usingMock) {
+                // remove from mockGroups and mockPanelState manually if you want
+                await api.deleteGroup(groupId); // or make a mockApi.deleteGroup
+            } else {
+                await api.deleteGroup(groupId);
+            }
+            await refresh();
+            showToast(`Group ${label} deleted`, "success");
+        } catch (e) {
+            const msg = `Failed to delete group: ${String(e)}`;
+            showToast(msg, "error");
+            throw new Error(msg);
+        }
+    }
+
+
     async function createGroup(name: string, memberIds: string[]) {
         try {
             if (usingMock) {
@@ -392,7 +432,10 @@ export default function AppHMI() {
                 panels={panels}
                 groups={groups}
                 onGroupCreate={createGroup}
+                onGroupUpdate={updateGroup}
+                onGroupDelete={deleteGroup}
             />
+
         </>
     );
 }
