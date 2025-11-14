@@ -42,7 +42,7 @@ class RealAdapter:
         self.base_url = HALIO_API_URL
         self.site_id = HALIO_SITE_ID
         self.headers = {
-            "Authorization": f"Bearer {HALIO_API_KEY}",
+            "X-API-Key": HALIO_API_KEY,
             "Content-Type": "application/json"
         }
 
@@ -93,8 +93,17 @@ class RealAdapter:
 
             if response.status_code == 200:
                 data = response.json()
+                # Handle wrapped response structure
+                if isinstance(data, dict) and "results" in data:
+                    data = data["results"]
+                # If data is still a dict (single result), extract tint value
+                if isinstance(data, dict):
+                    current_tint = data.get("currentTint", data.get("current_tint", 0))
+                else:
+                    current_tint = 0
+                
                 self._state_cache[window_id] = {
-                    "current_tint": data.get("currentTint", 0),
+                    "current_tint": current_tint,
                     "last_updated": time.time(),
                 }
                 return self._state_cache[window_id]
@@ -134,11 +143,28 @@ class RealAdapter:
                 logger.error(f"Failed to list windows: {response.status_code}")
                 return []
 
-            windows = response.json()
+            response_data = response.json()
+            # Extract results array from wrapped response
+            if isinstance(response_data, dict) and "results" in response_data:
+                windows = response_data["results"]
+            elif isinstance(response_data, list):
+                windows = response_data
+            else:
+                logger.error(f"Unexpected response format: {type(response_data)}")
+                return []
+
             panels = []
 
             for window in windows:
+                if not isinstance(window, dict):
+                    logger.warning(f"Skipping invalid window entry: {window}")
+                    continue
+                    
                 window_id = window.get("id")
+                if not window_id:
+                    logger.warning(f"Window entry missing id: {window}")
+                    continue
+                    
                 panel_id = self.window_to_panel.get(window_id, window_id)
 
                 # Get live tint data for each window
@@ -171,21 +197,32 @@ class RealAdapter:
                 logger.error(f"Failed to list groups: {response.status_code}")
                 return []
 
-            halio_groups = response.json()
+            response_data = response.json()
+            # Extract results array from wrapped response
+            if isinstance(response_data, dict) and "results" in response_data:
+                halio_groups = response_data["results"]
+            elif isinstance(response_data, list):
+                halio_groups = response_data
+            else:
+                logger.error(f"Unexpected response format: {type(response_data)}")
+                return []
+
             groups = []
 
             for hg in halio_groups:
+                if not isinstance(hg, dict):
+                    logger.warning(f"Skipping invalid group entry: {hg}")
+                    continue
+                    
                 group_id = hg.get("id")
-                # Get member windows and convert to panel IDs
-                member_window_ids = hg.get("members", [])
-                member_panel_ids = [
-                    self.window_to_panel.get(wid, wid) for wid in member_window_ids
-                ]
+                if not group_id:
+                    logger.warning(f"Group entry missing id: {hg}")
+                    continue
 
                 group = Group(
                     id=group_id,
                     name=hg.get("name", f"Group {group_id}"),
-                    member_ids=member_panel_ids,
+                    member_ids=[],  # Groups API doesn't provide member windows
                 )
                 groups.append(group)
 

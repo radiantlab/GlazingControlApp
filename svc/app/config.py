@@ -19,7 +19,7 @@ PANELS_STATE_FILE = os.path.join(_SVC_DIR, DATA_DIR, "panels_state.json")
 AUDIT_FILE = os.path.join(_SVC_DIR, DATA_DIR, "audit.json")
 
 # Halio API configuration (for real mode)
-HALIO_API_URL = os.getenv("HALIO_API_URL", "https://api.halio.com")
+HALIO_API_URL = os.getenv("HALIO_API_URL", "http://192.168.2.200:8084/api")
 HALIO_SITE_ID = os.getenv("HALIO_SITE_ID", "")
 HALIO_API_KEY = os.getenv("HALIO_API_KEY", "")
 
