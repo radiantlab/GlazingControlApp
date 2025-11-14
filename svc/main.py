@@ -1,4 +1,7 @@
 from __future__ import annotations
+from dotenv import load_dotenv
+load_dotenv()  # Load .env file before importing app modules
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

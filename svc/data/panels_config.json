@@ -3,17 +3,17 @@
     "P01": {
       "id": "P01",
       "name": "Facade 1",
-      "group_id": "G-1"
+      "group_id": null
     },
     "P02": {
       "id": "P02",
       "name": "Facade 2",
-      "group_id": "G-1"
+      "group_id": "G-2"
     },
     "P03": {
       "id": "P03",
       "name": "Facade 3",
-      "group_id": "G-1"
+      "group_id": "G-2"
     },
     "P04": {
       "id": "P04",
@@ -134,20 +134,13 @@
         "SK2"
       ]
     },
-    "G-1": {
-      "id": "G-1",
-      "name": "gre",
-      "member_ids": [
-        "P01",
-        "P02",
-        "P03"
-      ]
-    },
     "G-2": {
       "id": "G-2",
       "name": "Test",
       "member_ids": [
-        "P04"
+        "P04",
+        "P03",
+        "P02"
       ]
     }
   }
