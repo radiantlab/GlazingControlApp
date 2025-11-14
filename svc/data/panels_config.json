@@ -18,7 +18,7 @@
     "P04": {
       "id": "P04",
       "name": "Facade 4",
-      "group_id": "G-facade"
+      "group_id": "G-2"
     },
     "P05": {
       "id": "P05",
@@ -141,6 +141,13 @@
         "P01",
         "P02",
         "P03"
+      ]
+    },
+    "G-2": {
+      "id": "G-2",
+      "name": "Test",
+      "member_ids": [
+        "P04"
       ]
     }
   }
