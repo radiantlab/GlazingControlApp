@@ -94,12 +94,16 @@ class RealAdapter:
             if response.status_code == 200:
                 data = response.json()
                 # Handle wrapped response structure
+                # API returns: {"statusCode": 200, "success": true, "results": {"level": 0, ...}}
                 if isinstance(data, dict) and "results" in data:
-                    data = data["results"]
-                # If data is still a dict (single result), extract tint value
-                if isinstance(data, dict):
-                    current_tint = data.get("currentTint", data.get("current_tint", 0))
+                    results = data["results"]
+                    if isinstance(results, dict):
+                        # Extract level from results object
+                        current_tint = results.get("level", 0)
+                    else:
+                        current_tint = 0
                 else:
+                    # No results field (shouldn't happen for 200, but handle gracefully)
                     current_tint = 0
                 
                 self._state_cache[window_id] = {
@@ -107,11 +111,16 @@ class RealAdapter:
                     "last_updated": time.time(),
                 }
                 return self._state_cache[window_id]
+            elif response.status_code == 206:
+                # No Tint Data - API returns: {"statusCode": 200, "message": "No Tint Data", "success": true}
+                logger.debug(f"No tint data available for window {window_id}")
+                # Return None to indicate no data available
+                return None
             elif response.status_code == 404:
                 logger.error(f"Window {window_id} not found")
                 return None
             else:
-                logger.error(f"Failed to get window state: {response.status_code}")
+                logger.error(f"Failed to get window state: {response.status_code} - {response.text}")
                 return None
         except Exception as e:
             logger.error(f"Error querying window state: {e}")
