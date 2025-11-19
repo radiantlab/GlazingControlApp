@@ -26,13 +26,12 @@ Primary: Discord private server channel Team 76
 Secondary: email to partner or instructor
 
 ## Getting Started
-
-This repo is a scaffolding. Code will be added after API validation.
+An overview of the file structure:
 - `docs/` for design notes and meeting minutes
 - `sim/` for an API simulator used off site
-- `web/` for the researcher UI
-- `svc/` for the control service and queue
+- `web/` for the researcher UI (Contains a README specific  to the web interface)
+- `svc/` for the control service and queue (Contains a README specific to the backend service)
 
 ## License
 
-MIT pending partner confirmation. See LICENSE.
+GPL 3.0 License. See LICENSE.

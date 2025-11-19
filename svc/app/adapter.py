@@ -42,7 +42,7 @@ class RealAdapter:
         self.base_url = HALIO_API_URL
         self.site_id = HALIO_SITE_ID
         self.headers = {
-            "Authorization": f"Bearer {HALIO_API_KEY}",
+            "X-API-Key": HALIO_API_KEY,
             "Content-Type": "application/json"
         }
 
@@ -93,16 +93,34 @@ class RealAdapter:
 
             if response.status_code == 200:
                 data = response.json()
+                # Handle wrapped response structure
+                # API returns: {"statusCode": 200, "success": true, "results": {"level": 0, ...}}
+                if isinstance(data, dict) and "results" in data:
+                    results = data["results"]
+                    if isinstance(results, dict):
+                        # Extract level from results object
+                        current_tint = results.get("level", 0)
+                    else:
+                        current_tint = 0
+                else:
+                    # No results field (shouldn't happen for 200, but handle gracefully)
+                    current_tint = 0
+                
                 self._state_cache[window_id] = {
-                    "current_tint": data.get("currentTint", 0),
+                    "current_tint": current_tint,
                     "last_updated": time.time(),
                 }
                 return self._state_cache[window_id]
+            elif response.status_code == 206:
+                # No Tint Data - API returns: {"statusCode": 200, "message": "No Tint Data", "success": true}
+                logger.debug(f"No tint data available for window {window_id}")
+                # Return None to indicate no data available
+                return None
             elif response.status_code == 404:
                 logger.error(f"Window {window_id} not found")
                 return None
             else:
-                logger.error(f"Failed to get window state: {response.status_code}")
+                logger.error(f"Failed to get window state: {response.status_code} - {response.text}")
                 return None
         except Exception as e:
             logger.error(f"Error querying window state: {e}")
@@ -134,11 +152,28 @@ class RealAdapter:
                 logger.error(f"Failed to list windows: {response.status_code}")
                 return []
 
-            windows = response.json()
+            response_data = response.json()
+            # Extract results array from wrapped response
+            if isinstance(response_data, dict) and "results" in response_data:
+                windows = response_data["results"]
+            elif isinstance(response_data, list):
+                windows = response_data
+            else:
+                logger.error(f"Unexpected response format: {type(response_data)}")
+                return []
+
             panels = []
 
             for window in windows:
+                if not isinstance(window, dict):
+                    logger.warning(f"Skipping invalid window entry: {window}")
+                    continue
+                    
                 window_id = window.get("id")
+                if not window_id:
+                    logger.warning(f"Window entry missing id: {window}")
+                    continue
+                    
                 panel_id = self.window_to_panel.get(window_id, window_id)
 
                 # Get live tint data for each window
@@ -171,21 +206,32 @@ class RealAdapter:
                 logger.error(f"Failed to list groups: {response.status_code}")
                 return []
 
-            halio_groups = response.json()
+            response_data = response.json()
+            # Extract results array from wrapped response
+            if isinstance(response_data, dict) and "results" in response_data:
+                halio_groups = response_data["results"]
+            elif isinstance(response_data, list):
+                halio_groups = response_data
+            else:
+                logger.error(f"Unexpected response format: {type(response_data)}")
+                return []
+
             groups = []
 
             for hg in halio_groups:
+                if not isinstance(hg, dict):
+                    logger.warning(f"Skipping invalid group entry: {hg}")
+                    continue
+                    
                 group_id = hg.get("id")
-                # Get member windows and convert to panel IDs
-                member_window_ids = hg.get("members", [])
-                member_panel_ids = [
-                    self.window_to_panel.get(wid, wid) for wid in member_window_ids
-                ]
+                if not group_id:
+                    logger.warning(f"Group entry missing id: {hg}")
+                    continue
 
                 group = Group(
                     id=group_id,
                     name=hg.get("name", f"Group {group_id}"),
-                    member_ids=member_panel_ids,
+                    member_ids=[],  # Groups API doesn't provide member windows
                 )
                 groups.append(group)
 
