@@ -1,10 +1,13 @@
 from __future__ import annotations
+import logging
 from typing import List, Tuple
 from .models import TintLevel
 from .simulator import Simulator
 from .adapter import RealAdapter
 from .config import MODE, MIN_DWELL_SECONDS
 from .state import audit
+
+logger = logging.getLogger(__name__)
 
 
 class ControlService:
@@ -26,17 +29,24 @@ class ControlService:
     def set_panel_level(
         self, panel_id: str, level: TintLevel, actor: str = "api"
     ) -> Tuple[bool, List[str], str]:
+        logger.info(
+            f"Service.set_panel_level called: panel={panel_id} level={level} "
+            f"mode={self.mode} actor={actor}"
+        )
         try:
             ok = self.backend.set_panel(panel_id, level, MIN_DWELL_SECONDS)
             if ok:
                 applied = [panel_id]
                 msg = "panel updated"
+                logger.info(f"✓ Panel {panel_id} update SUCCESS")
             else:
                 applied = []
                 msg = "dwell time not met"
+                logger.warning(f"⚠ Panel {panel_id} update FAILED: {msg}")
             audit(actor, "panel", panel_id, int(level), applied, msg)
             return ok, applied, msg
-        except KeyError:
+        except KeyError as e:
+            logger.error(f"✗ Panel {panel_id} update FAILED: panel not found - {e}")
             return False, [], "panel not found"
 
     def set_group_level(

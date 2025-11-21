@@ -1,0 +1,555 @@
+NFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:52260 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.029s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.509s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:52260 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.022s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52258 - "OPTIONS /groups HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:52260 - "OPTIONS /health HTTP/1.1" 400 Bad Request
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.431s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52259 - "OPTIONS /panels HTTP/1.1" 400 Bad Request
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:52260 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.021s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.526s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52259 - "OPTIONS /panels HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:52258 - "OPTIONS /groups HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:52260 - "OPTIONS /health HTTP/1.1" 400 Bad Request
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:52260 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.000s
+INFO:     127.0.0.1:52260 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.020s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.095s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.543s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.548s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52259 - "OPTIONS /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P03', 'level': 75}
+INFO: app.service: Service.set_panel_level called: panel=P03 level=75 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P03 window=8bb7c072-4594-48f0-88be-ff0bf8214c90 level=75 payload={'level': 75} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/8bb7c072-4594-48f0-88be-ff0bf8214c90/tint
+INFO: app.adapter: Halio API response for panel P03: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/8bb7c072-4594-48f0-88be-ff0bf8214c90/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:19:52 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"f1a99a2b-0814-464b-8bac-f39a971a65d3"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P03 → level 75 (window 8bb7c072-4594-48f0-88be-ff0bf8214c90) ✓✓✓
+INFO: app.adapter:   Queue ID: f1a99a2b-0814-464b-8bac-f39a971a65d3
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P03 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.043s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:52260 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.035s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.002s
+INFO:     127.0.0.1:52260 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.040s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.555s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.547s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: app.adapter:  Verifying tint change for panel P03 (window 8bb7c072-4594-48f0-88be-ff0bf8214c90)...
+WARNING: app.adapter: ⚠️  MISMATCH: Panel P03 expected level 75 but actual level is 0
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.002s
+INFO:     127.0.0.1:52592 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.024s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.535s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.002s
+INFO:     127.0.0.1:52652 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.028s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.529s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.002s
+INFO:     127.0.0.1:52717 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.024s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.379s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.002s
+INFO:     127.0.0.1:52769 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.150s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 2.184s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.003s
+INFO:     127.0.0.1:52769 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.067s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 1.002s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:52876 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.028s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.452s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:52876 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.037s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.588s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.002s
+INFO:     127.0.0.1:52876 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.029s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.424s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:53034 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.023s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.393s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'SK1', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=SK1 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=SK1 window=076f6469-8612-41f8-9f98-7a0dc9530296 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/076f6469-8612-41f8-9f98-7a0dc9530296/tint
+INFO: app.adapter: Halio API response for panel SK1: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/076f6469-8612-41f8-9f98-7a0dc9530296/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"5c31c012-ccaa-4dc6-a5ef-d122292935af"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel SK1 → level 0 (window 076f6469-8612-41f8-9f98-7a0dc9530296) ✓✓✓
+INFO: app.adapter:   Queue ID: 5c31c012-ccaa-4dc6-a5ef-d122292935af
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel SK1 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.037s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P18', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P18 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P18 window=1082c0c5-eb3c-47f8-9da4-2e4677f3cc5a level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/1082c0c5-eb3c-47f8-9da4-2e4677f3cc5a/tint
+INFO: app.adapter: Halio API response for panel P18: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/1082c0c5-eb3c-47f8-9da4-2e4677f3cc5a/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"10be4865-062e-4e29-91d8-afa860a0d4e3"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P18 → level 0 (window 1082c0c5-eb3c-47f8-9da4-2e4677f3cc5a) ✓✓✓
+INFO: app.adapter:   Queue ID: 10be4865-062e-4e29-91d8-afa860a0d4e3
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P18 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.025s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P01', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P01 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P01 window=2974220d-1f66-41d1-95b3-42346a74a515 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/2974220d-1f66-41d1-95b3-42346a74a515/tint
+INFO: app.adapter: Halio API response for panel P01: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/2974220d-1f66-41d1-95b3-42346a74a515/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"d41616ab-01c9-4de4-8c4b-cab6e90fbba6"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P01 → level 0 (window 2974220d-1f66-41d1-95b3-42346a74a515) ✓✓✓
+INFO: app.adapter:   Queue ID: d41616ab-01c9-4de4-8c4b-cab6e90fbba6
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P01 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.022s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P11', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P11 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P11 window=3f8c0b43-0a6b-4074-9d8b-bb8b4983bcc5 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/3f8c0b43-0a6b-4074-9d8b-bb8b4983bcc5/tint
+INFO: app.adapter: Halio API response for panel P11: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/3f8c0b43-0a6b-4074-9d8b-bb8b4983bcc5/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"fe57d814-2cac-48f8-a170-23912951bb50"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P11 → level 0 (window 3f8c0b43-0a6b-4074-9d8b-bb8b4983bcc5) ✓✓✓
+INFO: app.adapter:   Queue ID: fe57d814-2cac-48f8-a170-23912951bb50
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P11 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.025s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P07', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P07 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P07 window=40e77fda-1635-4eac-b1dd-433b3a376101 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/40e77fda-1635-4eac-b1dd-433b3a376101/tint
+INFO: app.adapter: Halio API response for panel P07: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/40e77fda-1635-4eac-b1dd-433b3a376101/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"afae1815-fef2-4355-b290-45f88b1507bb"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P07 → level 0 (window 40e77fda-1635-4eac-b1dd-433b3a376101) ✓✓✓
+INFO: app.adapter:   Queue ID: afae1815-fef2-4355-b290-45f88b1507bb
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P07 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.021s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P16', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P16 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P16 window=4c19c221-b4b6-4f83-8718-6b1296c39299 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/4c19c221-b4b6-4f83-8718-6b1296c39299/tint
+INFO: app.adapter: Halio API response for panel P16: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/4c19c221-b4b6-4f83-8718-6b1296c39299/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"ca2098d1-7591-42c1-9600-fb48c1bc0ecb"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P16 → level 0 (window 4c19c221-b4b6-4f83-8718-6b1296c39299) ✓✓✓
+INFO: app.adapter:   Queue ID: ca2098d1-7591-42c1-9600-fb48c1bc0ecb
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P16 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.022s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P15', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P15 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P15 window=6073d723-8279-41a3-b6b1-cea79b13fc04 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/6073d723-8279-41a3-b6b1-cea79b13fc04/tint
+INFO: app.adapter: Halio API response for panel P15: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/6073d723-8279-41a3-b6b1-cea79b13fc04/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"6c1568ad-43c3-4794-9f7f-6bea01cb947f"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P15 → level 0 (window 6073d723-8279-41a3-b6b1-cea79b13fc04) ✓✓✓
+INFO: app.adapter:   Queue ID: 6c1568ad-43c3-4794-9f7f-6bea01cb947f
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P15 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.021s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P10', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P10 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P10 window=780c37dc-8de5-49a2-ada5-5e9883853d47 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/780c37dc-8de5-49a2-ada5-5e9883853d47/tint
+INFO: app.adapter: Halio API response for panel P10: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/780c37dc-8de5-49a2-ada5-5e9883853d47/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"cbaebe79-28d1-4931-b3b1-ee1021794a7e"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P10 → level 0 (window 780c37dc-8de5-49a2-ada5-5e9883853d47) ✓✓✓
+INFO: app.adapter:   Queue ID: cbaebe79-28d1-4931-b3b1-ee1021794a7e
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P10 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.024s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P05', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P05 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P05 window=7823b993-3e7b-412b-a722-0deb73b4c0f5 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/7823b993-3e7b-412b-a722-0deb73b4c0f5/tint
+INFO: app.adapter: Halio API response for panel P05: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/7823b993-3e7b-412b-a722-0deb73b4c0f5/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"6009214d-2b29-42e9-bf51-89c03096104f"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P05 → level 0 (window 7823b993-3e7b-412b-a722-0deb73b4c0f5) ✓✓✓
+INFO: app.adapter:   Queue ID: 6009214d-2b29-42e9-bf51-89c03096104f
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P05 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.025s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'SK2', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=SK2 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=SK2 window=7b545fab-8317-4eeb-afd4-037c1e866191 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/7b545fab-8317-4eeb-afd4-037c1e866191/tint
+INFO: app.adapter: Halio API response for panel SK2: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/7b545fab-8317-4eeb-afd4-037c1e866191/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"620dd3a7-806e-4041-a6ab-d27b0b09e91c"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel SK2 → level 0 (window 7b545fab-8317-4eeb-afd4-037c1e866191) ✓✓✓
+INFO: app.adapter:   Queue ID: 620dd3a7-806e-4041-a6ab-d27b0b09e91c
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel SK2 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.033s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P08', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P08 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P08 window=7bb07eab-d042-4d20-b893-81d277aca281 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/7bb07eab-d042-4d20-b893-81d277aca281/tint
+INFO: app.adapter: Halio API response for panel P08: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/7bb07eab-d042-4d20-b893-81d277aca281/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"4150d1ab-77d7-410f-b57a-f32486908810"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P08 → level 0 (window 7bb07eab-d042-4d20-b893-81d277aca281) ✓✓✓
+INFO: app.adapter:   Queue ID: 4150d1ab-77d7-410f-b57a-f32486908810
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P08 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.028s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P03', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P03 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P03 window=8bb7c072-4594-48f0-88be-ff0bf8214c90 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/8bb7c072-4594-48f0-88be-ff0bf8214c90/tint
+INFO: app.adapter: Halio API response for panel P03: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/8bb7c072-4594-48f0-88be-ff0bf8214c90/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"174f727c-508b-4a15-81a3-68942f36701d"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P03 → level 0 (window 8bb7c072-4594-48f0-88be-ff0bf8214c90) ✓✓✓
+INFO: app.adapter:   Queue ID: 174f727c-508b-4a15-81a3-68942f36701d
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P03 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.020s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P12', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P12 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P12 window=9df3c14c-df11-4497-b510-baecbf032bcf level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/9df3c14c-df11-4497-b510-baecbf032bcf/tint
+INFO: app.adapter: Halio API response for panel P12: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/9df3c14c-df11-4497-b510-baecbf032bcf/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"fa46bc53-e2aa-4c9e-94eb-44764b70705a"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P12 → level 0 (window 9df3c14c-df11-4497-b510-baecbf032bcf) ✓✓✓
+INFO: app.adapter:   Queue ID: fa46bc53-e2aa-4c9e-94eb-44764b70705a
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P12 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.020s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P06', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P06 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P06 window=9e04faf5-a7cb-4374-9664-1bb28fa22ce2 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/9e04faf5-a7cb-4374-9664-1bb28fa22ce2/tint
+INFO: app.adapter: Halio API response for panel P06: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/9e04faf5-a7cb-4374-9664-1bb28fa22ce2/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:41 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"fa357558-320a-46c3-8443-900b125497fe"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P06 → level 0 (window 9e04faf5-a7cb-4374-9664-1bb28fa22ce2) ✓✓✓
+INFO: app.adapter:   Queue ID: fa357558-320a-46c3-8443-900b125497fe
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P06 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.021s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P02', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P02 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P02 window=a845e392-18c8-4864-8659-8a857825b0b7 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/a845e392-18c8-4864-8659-8a857825b0b7/tint
+INFO: app.adapter: Halio API response for panel P02: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/a845e392-18c8-4864-8659-8a857825b0b7/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:42 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"e47c6a2a-84cc-4aa4-8f05-a665a8458323"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P02 → level 0 (window a845e392-18c8-4864-8659-8a857825b0b7) ✓✓✓
+INFO: app.adapter:   Queue ID: e47c6a2a-84cc-4aa4-8f05-a665a8458323
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P02 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.023s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P17', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P17 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P17 window=c35707eb-c879-4e06-a22c-c8bf54c8dea9 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/c35707eb-c879-4e06-a22c-c8bf54c8dea9/tint
+INFO: app.adapter: Halio API response for panel P17: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/c35707eb-c879-4e06-a22c-c8bf54c8dea9/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:42 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"58d99b79-3079-4a78-9e7b-cb440a572ff5"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P17 → level 0 (window c35707eb-c879-4e06-a22c-c8bf54c8dea9) ✓✓✓
+INFO: app.adapter:   Queue ID: 58d99b79-3079-4a78-9e7b-cb440a572ff5
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P17 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.019s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P04', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P04 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P04 window=c849bebc-48da-4db9-9e10-861479cc6d28 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/c849bebc-48da-4db9-9e10-861479cc6d28/tint
+INFO: app.adapter: Halio API response for panel P04: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/c849bebc-48da-4db9-9e10-861479cc6d28/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:42 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"07eeceed-5c70-42b6-88ea-0e8e770405ad"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P04 → level 0 (window c849bebc-48da-4db9-9e10-861479cc6d28) ✓✓✓
+INFO: app.adapter:   Queue ID: 07eeceed-5c70-42b6-88ea-0e8e770405ad
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P04 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.023s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P09', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P09 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P09 window=e4adaf7a-c158-4823-9b2d-42859bc00952 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/e4adaf7a-c158-4823-9b2d-42859bc00952/tint
+INFO: app.adapter: Halio API response for panel P09: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/e4adaf7a-c158-4823-9b2d-42859bc00952/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:42 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"5d5b1b99-327d-4199-a0f7-ce64809b26ed"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P09 → level 0 (window e4adaf7a-c158-4823-9b2d-42859bc00952) ✓✓✓
+INFO: app.adapter:   Queue ID: 5d5b1b99-327d-4199-a0f7-ce64809b26ed
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P09 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.022s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P13', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P13 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P13 window=eb6452de-49d7-4c0f-8879-42d45bd02435 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/eb6452de-49d7-4c0f-8879-42d45bd02435/tint
+INFO: app.adapter: Halio API response for panel P13: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/eb6452de-49d7-4c0f-8879-42d45bd02435/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:42 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"e0546420-7f9d-4b5b-a683-5610bbf9e0f2"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P13 → level 0 (window eb6452de-49d7-4c0f-8879-42d45bd02435) ✓✓✓
+INFO: app.adapter:   Queue ID: e0546420-7f9d-4b5b-a683-5610bbf9e0f2
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P13 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.022s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P14', 'level': 0}
+INFO: app.service: Service.set_panel_level called: panel=P14 level=0 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P14 window=f2b6ecfb-2afa-40ee-b6b6-6d1b1bd49ef2 level=0 payload={'level': 0} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/f2b6ecfb-2afa-40ee-b6b6-6d1b1bd49ef2/tint
+INFO: app.adapter: Halio API response for panel P14: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/f2b6ecfb-2afa-40ee-b6b6-6d1b1bd49ef2/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:20:42 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"2e2c498c-5215-4e45-8d91-7571369e1f64"}
+INFO: app.adapter: ✓✓✓ Tint command ACCEPTED for panel P14 → level 0 (window f2b6ecfb-2afa-40ee-b6b6-6d1b1bd49ef2) ✓✓✓
+INFO: app.adapter:   Queue ID: 2e2c498c-5215-4e45-8d91-7571369e1f64
+INFO: app.adapter:   Message: Window Tinted
+INFO: app.service: ✓ Panel P14 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.026s
+INFO:     127.0.0.1:52259 - "POST /commands/set-level HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:53034 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.016s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.002s
+INFO:     127.0.0.1:53034 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.016s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.390s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.421s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: app.adapter:  Verifying tint change for panel SK1 (window 076f6469-8612-41f8-9f98-7a0dc9530296)...
+INFO: app.adapter:  VERIFIED: Panel SK1 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P18 (window 1082c0c5-eb3c-47f8-9da4-2e4677f3cc5a)...
+INFO: app.adapter:  VERIFIED: Panel P18 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P01 (window 2974220d-1f66-41d1-95b3-42346a74a515)...
+INFO: app.adapter:  VERIFIED: Panel P01 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P11 (window 3f8c0b43-0a6b-4074-9d8b-bb8b4983bcc5)...
+INFO: app.adapter:  VERIFIED: Panel P11 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P07 (window 40e77fda-1635-4eac-b1dd-433b3a376101)...
+INFO: app.adapter:  VERIFIED: Panel P07 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P16 (window 4c19c221-b4b6-4f83-8718-6b1296c39299)...
+INFO: app.adapter:  VERIFIED: Panel P16 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P15 (window 6073d723-8279-41a3-b6b1-cea79b13fc04)...
+INFO: app.adapter:  VERIFIED: Panel P15 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P10 (window 780c37dc-8de5-49a2-ada5-5e9883853d47)...
+INFO: app.adapter:  VERIFIED: Panel P10 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P05 (window 7823b993-3e7b-412b-a722-0deb73b4c0f5)...
+INFO: app.adapter:  VERIFIED: Panel P05 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel SK2 (window 7b545fab-8317-4eeb-afd4-037c1e866191)...
+INFO: app.adapter:  VERIFIED: Panel SK2 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P08 (window 7bb07eab-d042-4d20-b893-81d277aca281)...
+INFO: app.adapter:  VERIFIED: Panel P08 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P03 (window 8bb7c072-4594-48f0-88be-ff0bf8214c90)...
+INFO: app.adapter:  VERIFIED: Panel P03 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P12 (window 9df3c14c-df11-4497-b510-baecbf032bcf)...
+INFO: app.adapter:  VERIFIED: Panel P12 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P06 (window 9e04faf5-a7cb-4374-9664-1bb28fa22ce2)...
+INFO: app.adapter:  VERIFIED: Panel P06 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P02 (window a845e392-18c8-4864-8659-8a857825b0b7)...
+INFO: app.adapter:  Verifying tint change for panel P17 (window c35707eb-c879-4e06-a22c-c8bf54c8dea9)...
+INFO: app.adapter:  VERIFIED: Panel P02 is now at level 0 (as expected)
+INFO: app.adapter:  VERIFIED: Panel P17 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P04 (window c849bebc-48da-4db9-9e10-861479cc6d28)...
+INFO: app.adapter:  VERIFIED: Panel P04 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P09 (window e4adaf7a-c158-4823-9b2d-42859bc00952)...
+INFO: app.adapter:  VERIFIED: Panel P09 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P13 (window eb6452de-49d7-4c0f-8879-42d45bd02435)...
+INFO: app.adapter:  VERIFIED: Panel P13 is now at level 0 (as expected)
+INFO: app.adapter:  Verifying tint change for panel P14 (window f2b6ecfb-2afa-40ee-b6b6-6d1b1bd49ef2)...
+INFO: app.adapter: VERIFIED: Panel P14 is now at level 0 (as expected)
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:53202 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.029s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.451s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.004s
+INFO:     127.0.0.1:53254 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.027s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.401s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:53254 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.027s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.415s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.002s
+INFO:     127.0.0.1:53361 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.026s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.385s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:53361 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.031s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.422s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:53361 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.023s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.409s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.002s
+INFO:     127.0.0.1:53507 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.027s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.390s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.003s
+INFO:     127.0.0.1:53565 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.030s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.434s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.000s
+INFO:     127.0.0.1:53565 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.018s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.381s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.002s
+INFO:     127.0.0.1:53663 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.028s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.402s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:53663 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.021s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.364s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.002s
+INFO:     127.0.0.1:53764 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.024s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.666s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.001s
+INFO:     127.0.0.1:53764 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.025s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.424s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.003s
+INFO:     127.0.0.1:53870 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.028s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+INFO: main: Response: GET /panels | Status: 200 | Time: 0.403s
+INFO:     127.0.0.1:52259 - "GET /panels HTTP/1.1" 200 OK
+INFO: main: Request: GET /panels | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /groups | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Request: GET /health | IP: 127.0.0.1 | Query: None | Body: N/A
+INFO: main: Response: GET /health | Status: 200 | Time: 0.002s
+INFO:     127.0.0.1:53917 - "GET /health HTTP/1.1" 200 OK
+INFO: main: Response: GET /groups | Status: 200 | Time: 0.035s
+INFO:     127.0.0.1:52258 - "GET /groups HTTP/1.1" 200 OK
+^Z

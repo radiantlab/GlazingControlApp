@@ -1,0 +1,8 @@
+INFO: main: Request: POST /commands/set-level | IP: 127.0.0.1 | Query: None | Body: {'target_type': 'panel', 'target_id': 'P03', 'level': 25}
+INFO: app.service: Service.set_panel_level called: panel=P03 level=25 mode=real actor=api
+INFO: app.adapter: Sending tint command to Halio: panel=P03 window=8bb7c072-4594-48f0-88be-ff0bf8214c90 level=25 payload={'level': 25} url=http://192.168.2.200:8084/api/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/8bb7c072-4594-48f0-88be-ff0bf8214c90/tint
+INFO: app.adapter: Halio API response for panel P03: status=202 headers={'x-middleware-rewrite': 'http://192.168.2.200:8081/sites/8638b496-cb1d-4797-8bba-b8e7a34d8a96/windows/8bb7c072-4594-48f0-88be-ff0bf8214c90/tint', 'x-powered-by': 'Express', 'Vary': 'Origin, Accept-Encoding', 'access-control-allow-credentials': 'true', 'content-type': 'application/json; charset=utf-8', 'content-length': '108', 'date': 'Tue, 18 Nov 2025 22:14:43 GMT', 'connection': 'close'} body={"statusCode":202,"success":true,"message":"Window Tinted","queueId":"0edeae88-91fa-47b1-855a-cf7c5f5486d5"}
+INFO: app.adapter: ✓ Tint command ACCEPTED for panel P03 → level 25 (window 8bb7c072-4594-48f0-88be-ff0bf8214c90)
+INFO: app.adapter:   Queue ID: 0edeae88-91fa-47b1-855a-cf7c5f5486d5
+INFO: app.service: ✓ Panel P03 update SUCCESS
+INFO: main: Response: POST /commands/set-level | Status: 200 | Time: 0.044s

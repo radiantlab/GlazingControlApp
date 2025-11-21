@@ -2,6 +2,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import threading
 import logging
 from typing import List, Dict, Optional
 from .models import Panel, Group, TintLevel
@@ -106,10 +107,21 @@ class RealAdapter:
                     # No results field (shouldn't happen for 200, but handle gracefully)
                     current_tint = 0
                 
-                self._state_cache[window_id] = {
-                    "current_tint": current_tint,
-                    "last_updated": time.time(),
-                }
+                # Only update cache if we don't have it, or if the tint level changed
+                # Don't update last_updated timestamp - that should only change when WE send a command
+                if window_id not in self._state_cache:
+                    self._state_cache[window_id] = {
+                        "current_tint": current_tint,
+                        "last_updated": 0,  # Initialize to 0 so first change is always allowed
+                    }
+                elif self._state_cache[window_id].get("current_tint") != current_tint:
+                    # Tint level changed externally - reset timestamp to allow changes
+                    self._state_cache[window_id]["current_tint"] = current_tint
+                    self._state_cache[window_id]["last_updated"] = 0
+                else:
+                    # Just update the current tint, keep the last_updated timestamp
+                    self._state_cache[window_id]["current_tint"] = current_tint
+                
                 return self._state_cache[window_id]
             elif response.status_code == 206:
                 # No Tint Data - API returns: {"statusCode": 200, "message": "No Tint Data", "success": true}
@@ -261,32 +273,83 @@ class RealAdapter:
         try:
             # POST to Halio API
             url = f"{self.base_url}/sites/{self.site_id}/windows/{window_id}/tint"
-            payload = {"tintLevel": int(level)}
+            payload = {"level": int(level)}  # Halio API expects "level", not "tintLevel"
+            
+            logger.info(
+                f"Sending tint command to Halio: panel={panel_id} window={window_id} "
+                f"level={level} payload={payload} url={url}"
+            )
 
             response = requests.post(
                 url, headers=self.headers, json=payload, timeout=10
+            )
+            
+            # Log full response details at INFO level
+            logger.info(
+                f"Halio API response for panel {panel_id}: "
+                f"status={response.status_code} "
+                f"headers={dict(response.headers)} "
+                f"body={response.text[:500]}"  # Limit body to 500 chars
             )
 
             # Halio returns 202 Accepted for async commands
             if response.status_code == 202:
                 logger.info(
-                    f"Tint command accepted for panel {panel_id} → level {level}"
+                    f"✓✓✓ Tint command ACCEPTED for panel {panel_id} → level {level} "
+                    f"(window {window_id}) ✓✓✓"
                 )
+                # Parse response to get queue ID if available
+                try:
+                    response_data = response.json()
+                    queue_id = response_data.get("queueId", "N/A")
+                    message = response_data.get("message", "N/A")
+                    logger.info(f"  Queue ID: {queue_id}")
+                    logger.info(f"  Message: {message}")
+                except Exception:
+                    pass
                 # Update cache
                 self._state_cache[window_id] = {
                     "current_tint": int(level),
                     "last_updated": time.time(),
                 }
+                
+                # Verify the command actually executed after a delay
+                # Halio commands are async, so check after a few seconds
+                def verify_tint_change():
+                    time.sleep(5)  # Wait 5 seconds for command to execute
+                    logger.info(f"Verifying tint change for panel {panel_id} (window {window_id})...")
+                    state = self._get_window_state(window_id)
+                    if state:
+                        actual_level = state.get("current_tint", "unknown")
+                        expected_level = int(level)
+                        if actual_level == expected_level:
+                            logger.info(f"VERIFIED: Panel {panel_id} is now at level {actual_level} (as expected)")
+                        else:
+                            logger.warning(
+                                f"X - MISMATCH: Panel {panel_id} expected level {expected_level} "
+                                f"but actual level is {actual_level}"
+                            )
+                    else:
+                        logger.warning(f"! - Could not verify tint change for panel {panel_id}")
+                
+                # Start verification in background thread
+                verify_thread = threading.Thread(target=verify_tint_change, daemon=True)
+                verify_thread.start()
+                
                 return True
             elif response.status_code == 404:
-                logger.error(f"Window {window_id} not found")
+                logger.error(f"✗ Window {window_id} not found on Halio API")
                 raise KeyError(f"Window {window_id} not found on Halio")
             elif response.status_code == 400:
-                logger.error(f"Invalid tint command: {response.text}")
+                logger.error(
+                    f"✗ Invalid tint command for panel {panel_id}: "
+                    f"status={response.status_code} body={response.text}"
+                )
                 return False
             else:
                 logger.error(
-                    f"Halio API error: {response.status_code} - {response.text}"
+                    f"✗ Halio API error for panel {panel_id}: "
+                    f"status={response.status_code} body={response.text}"
                 )
                 return False
 
@@ -306,20 +369,39 @@ class RealAdapter:
         try:
             # Halio supports group tinting directly
             url = f"{self.base_url}/sites/{self.site_id}/groups/{group_id}/tint"
-            payload = {"tintLevel": int(level)}
+            payload = {"level": int(level)}  # Halio API expects "level", not "tintLevel"
+            
+            logger.info(
+                f"Sending tint command to Halio for group: group={group_id} "
+                f"level={level} payload={payload} url={url}"
+            )
 
             response = requests.post(
                 url, headers=self.headers, json=payload, timeout=10
             )
+            
+            # Log full response details at INFO level
+            logger.info(
+                f"Halio API response for group {group_id}: "
+                f"status={response.status_code} "
+                f"body={response.text[:500]}"  # Limit body to 500 chars
+            )
 
             if response.status_code == 202:
+                logger.info(
+                    f"✓ Tint command ACCEPTED for group {group_id} → level {level}"
+                )
+                # Parse response to get queue ID if available
+                try:
+                    response_data = response.json()
+                    queue_id = response_data.get("queueId", "N/A")
+                    logger.info(f"  Queue ID: {queue_id}")
+                except Exception:
+                    pass
                 # Get group members
                 groups = self.list_groups()
                 for g in groups:
                     if g.id == group_id:
-                        logger.info(
-                            f"Tint command accepted for group {group_id} → level {level}"
-                        )
                         # Update cache for all members
                         for panel_id in g.member_ids:
                             window_id = self.panel_to_window.get(panel_id)
@@ -328,14 +410,17 @@ class RealAdapter:
                                     "current_tint": int(level),
                                     "last_updated": time.time(),
                                 }
+                        logger.info(f"  Applied to {len(g.member_ids)} panels: {g.member_ids}")
                         return g.member_ids
+                logger.warning(f"Group {group_id} accepted but members not found")
                 return []
             elif response.status_code == 404:
-                logger.error(f"Group {group_id} not found")
+                logger.error(f"✗ Group {group_id} not found on Halio API")
                 raise KeyError(f"Group {group_id} not found on Halio")
             else:
                 logger.error(
-                    f"Halio API error: {response.status_code} - {response.text}"
+                    f"✗ Halio API error for group {group_id}: "
+                    f"status={response.status_code} body={response.text}"
                 )
                 return []
 
