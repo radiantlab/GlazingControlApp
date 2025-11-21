@@ -17,6 +17,7 @@ PANELS_FILE = os.path.join(_SVC_DIR, DATA_DIR, "panels.json")
 PANELS_CONFIG_FILE = os.path.join(_SVC_DIR, DATA_DIR, "panels_config.json")
 PANELS_STATE_FILE = os.path.join(_SVC_DIR, DATA_DIR, "panels_state.json")
 AUDIT_FILE = os.path.join(_SVC_DIR, DATA_DIR, "audit.json")
+AUDIT_DB_FILE = os.path.join(_SVC_DIR, DATA_DIR, "audit.db")
 
 # Halio API configuration (for real mode)
 # NOTE: The previous default ("http://192.168.2.200:8084/api") was trailer-specific.
