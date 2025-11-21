@@ -1,9 +1,11 @@
 from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Depends
-from .models import Panel, Group, CommandRequest, CommandResult, GroupCreate, GroupUpdate
+from .models import Panel, Group, CommandRequest, CommandResult, GroupCreate, GroupUpdate, AuditEntry
 from typing import List
 from .service import ControlService
 from .config import MODE
+from .state import fetch_audit_entries
+
 
 
 router = APIRouter()
@@ -80,3 +82,9 @@ def delete_group(group_id: str, service: ControlService = Depends(get_service)) 
     if not ok:
         raise HTTPException(status_code=404, detail="group not found")
     return {"ok": True}
+
+
+@router.get("/logs/audit", response_model=List[AuditEntry])
+def get_audit_logs(limit: int = 500, offset: int = 0) -> List[AuditEntry]:
+    rows = fetch_audit_entries(limit=limit, offset=offset)
+    return [AuditEntry(**row) for row in rows]

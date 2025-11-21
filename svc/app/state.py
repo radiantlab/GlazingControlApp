@@ -3,7 +3,7 @@ import json
 import os
 import time
 import sqlite3
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 from .models import Panel, Group, Snapshot, AuditEntry
 from .config import PANELS_FILE, PANELS_CONFIG_FILE, PANELS_STATE_FILE, AUDIT_FILE, AUDIT_DB_FILE
 
@@ -203,6 +203,38 @@ def append_audit(entry: AuditEntry) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+def fetch_audit_entries(limit: int = 500, offset: int = 0) -> List[Dict[str, Any]]:
+    """Fetch audit entries from SQLite ordered newest first."""
+    _ensure_audit_db()
+    conn = sqlite3.connect(AUDIT_DB_FILE)
+    try:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT ts, actor, target_type, target_id, level, applied_to, result
+            FROM audit_log
+            ORDER BY ts DESC
+            LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        )
+        rows = cur.fetchall()
+        result: List[Dict[str, Any]] = []
+        for r in rows:
+            row_dict = dict(r)
+            # applied_to is stored as JSON text
+            try:
+                row_dict["applied_to"] = json.loads(row_dict.get("applied_to") or "[]")
+            except Exception:
+                row_dict["applied_to"] = []
+            result.append(row_dict)
+        return result
+    finally:
+        conn.close()
+
 
 
 def bootstrap_default_if_empty() -> Snapshot:
