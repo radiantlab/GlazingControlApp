@@ -5,7 +5,7 @@ from .models import TintLevel
 from .simulator import Simulator
 from .adapter import RealAdapter
 from .config import MODE, MIN_DWELL_SECONDS
-from .state import audit
+from .state import audit, update_panel_state
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,13 @@ class ControlService:
                 applied = [panel_id]
                 msg = "panel updated"
                 logger.info(f"✓ Panel {panel_id} update SUCCESS")
+                # Update panel state in database when command is successful
+                # This keeps displayed tint level accurate based on successful API responses
+                try:
+                    update_panel_state(panel_id, int(level))
+                    logger.debug(f"Updated panel state for {panel_id} to level {level}")
+                except Exception as e:
+                    logger.warning(f"Failed to update panel state for {panel_id}: {e}")
             else:
                 applied = []
                 msg = "dwell time not met"
@@ -56,6 +63,14 @@ class ControlService:
             applied = self.backend.set_group(group_id, level, MIN_DWELL_SECONDS)
             ok = len(applied) > 0
             msg = "group updated" if ok else "no panels updated due to dwell time"
+            if ok:
+                # Update panel states for all panels that were successfully updated
+                for panel_id in applied:
+                    try:
+                        update_panel_state(panel_id, int(level))
+                        logger.debug(f"Updated panel state for {panel_id} to level {level}")
+                    except Exception as e:
+                        logger.warning(f"Failed to update panel state for {panel_id}: {e}")
             audit(actor, "group", group_id, int(level), applied, msg)
             return ok, applied, msg
         except KeyError:

@@ -16,11 +16,11 @@ def _ensure_dirs() -> None:
 
 
 def _migrate_from_legacy_panels_json() -> None:
-    """Migrate old panels.json to new separated config and state files."""
+    """Migrate old panels.json to new separated config file and SQLite database."""
     if not os.path.exists(PANELS_FILE):
         return
 
-    if os.path.exists(PANELS_CONFIG_FILE) and os.path.exists(PANELS_STATE_FILE):
+    if os.path.exists(PANELS_CONFIG_FILE):
         # Already migrated, skip
         return
 
@@ -42,6 +42,10 @@ def _migrate_from_legacy_panels_json() -> None:
         "groups": data.get("groups", {}),
     }
 
+    # Write config file
+    with open(PANELS_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config_data, f, indent=2)
+
     # Extract state (runtime values)
     state_data = {}
     for panel_id, panel_data in data.get("panels", {}).items():
@@ -49,11 +53,29 @@ def _migrate_from_legacy_panels_json() -> None:
             "level": panel_data.get("level", 0),
             "last_change_ts": panel_data.get("last_change_ts", 0.0),
         }
-
-    # Write new files
-    with open(PANELS_CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(config_data, f, indent=2)
-
+    
+    # Write state to both SQLite database and JSON file
+    _ensure_panel_state_db()
+    conn = sqlite3.connect(AUDIT_DB_FILE)
+    try:
+        cur = conn.cursor()
+        for panel_id, state in state_data.items():
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
+                VALUES (?, ?, ?)
+                """,
+                (
+                    panel_id,
+                    state.get("level", 0),
+                    state.get("last_change_ts", 0.0),
+                ),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+    
+    # Also write JSON file for backward compatibility
     with open(PANELS_STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state_data, f, indent=2)
 
@@ -73,15 +95,29 @@ def load_config() -> Tuple[Dict[str, Dict], Dict[str, Dict]]:
 
 
 def load_state() -> Dict[str, Dict]:
-    """Load panel runtime state (level, last_change_ts)."""
+    """Load panel runtime state (level, last_change_ts) from SQLite database."""
     _ensure_dirs()
     _migrate_from_legacy_panels_json()
+    _ensure_panel_state_db()
+    _migrate_json_state_to_db()
 
-    if not os.path.exists(PANELS_STATE_FILE):
-        return {}
-
-    with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    conn = sqlite3.connect(AUDIT_DB_FILE)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT panel_id, level, last_change_ts FROM panel_state")
+        rows = cur.fetchall()
+        
+        state_data = {}
+        for row in rows:
+            panel_id, level, last_change_ts = row
+            state_data[panel_id] = {
+                "level": level,
+                "last_change_ts": last_change_ts,
+            }
+        
+        return state_data
+    finally:
+        conn.close()
 
 
 def load_snapshot() -> Snapshot:
@@ -128,15 +164,73 @@ def save_config(panels: Dict[str, Panel], groups: Dict[str, Group]) -> None:
 
 
 def save_state(panels: Dict[str, Panel]) -> None:
-    """Save panel runtime state (level, last_change_ts only)."""
+    """Save panel runtime state (level, last_change_ts) to both SQLite database and JSON file."""
     _ensure_dirs()
+    _ensure_panel_state_db()
+    
+    # Prepare state data
     state_data = {}
     for panel_id, panel in panels.items():
         state_data[panel_id] = {
             "level": panel.level,
             "last_change_ts": panel.last_change_ts,
         }
+    
+    # Write to SQLite database
+    conn = sqlite3.connect(AUDIT_DB_FILE)
+    try:
+        cur = conn.cursor()
+        for panel_id, panel in panels.items():
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
+                VALUES (?, ?, ?)
+                """,
+                (panel_id, panel.level, panel.last_change_ts),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+    
+    # Also write to JSON file for backward compatibility during transition
+    with open(PANELS_STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(state_data, f, indent=2)
 
+
+def update_panel_state(panel_id: str, level: int) -> None:
+    """
+    Update a single panel's state (level and last_change_ts) in both SQLite database 
+    and JSON file when a successful command is received.
+    This keeps the displayed tint level accurate based on successful API responses.
+    """
+    _ensure_dirs()
+    _migrate_from_legacy_panels_json()
+    _ensure_panel_state_db()
+    _migrate_json_state_to_db()
+    
+    last_change_ts = time.time()
+    
+    # Update SQLite database
+    conn = sqlite3.connect(AUDIT_DB_FILE)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
+            VALUES (?, ?, ?)
+            """,
+            (panel_id, level, last_change_ts),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    
+    # Also update JSON file for backward compatibility during transition
+    state_data = load_state()
+    state_data[panel_id] = {
+        "level": level,
+        "last_change_ts": last_change_ts,
+    }
     with open(PANELS_STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state_data, f, indent=2)
 
@@ -167,6 +261,67 @@ def _ensure_audit_db() -> None:
             )
             """
         )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _ensure_panel_state_db() -> None:
+    """Create the SQLite table for panel states if it does not exist."""
+    _ensure_dirs()
+    conn = sqlite3.connect(AUDIT_DB_FILE)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS panel_state (
+                panel_id TEXT PRIMARY KEY,
+                level INTEGER NOT NULL DEFAULT 0,
+                last_change_ts REAL NOT NULL DEFAULT 0.0
+            )
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _migrate_json_state_to_db() -> None:
+    """Migrate panel state from JSON file to SQLite database if JSON exists and DB is empty."""
+    _ensure_panel_state_db()
+    
+    # Check if JSON file exists
+    if not os.path.exists(PANELS_STATE_FILE):
+        return
+    
+    conn = sqlite3.connect(AUDIT_DB_FILE)
+    try:
+        cur = conn.cursor()
+        # Check if DB already has panel states
+        cur.execute("SELECT COUNT(*) FROM panel_state")
+        count = cur.fetchone()[0]
+        if count > 0:
+            # Already migrated, skip
+            return
+        
+        # Load JSON state
+        with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
+            state_data = json.load(f)
+        
+        # Insert into database
+        for panel_id, state in state_data.items():
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
+                VALUES (?, ?, ?)
+                """,
+                (
+                    panel_id,
+                    state.get("level", 0),
+                    state.get("last_change_ts", 0.0),
+                ),
+            )
+        
         conn.commit()
     finally:
         conn.close()
