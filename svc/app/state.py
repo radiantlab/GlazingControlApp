@@ -301,32 +301,40 @@ def _migrate_json_state_to_db() -> None:
     conn = sqlite3.connect(AUDIT_DB_FILE)
     try:
         cur = conn.cursor()
-        # Check if DB already has panel states
-        cur.execute("SELECT COUNT(*) FROM panel_state")
-        count = cur.fetchone()[0]
-        if count > 0:
-            # Already migrated, skip
+        try:
+            # Acquire an exclusive lock to ensure atomic migration
+            cur.execute("BEGIN IMMEDIATE")
+            # Check if DB already has panel states
+            cur.execute("SELECT COUNT(*) FROM panel_state")
+            count = cur.fetchone()[0]
+            if count > 0:
+                # Already migrated, skip
+                conn.rollback()
+                return
+
+            # Load JSON state
+            with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
+                state_data = json.load(f)
+
+            # Insert into database
+            for panel_id, state in state_data.items():
+                cur.execute(
+                    """
+                    INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
+                    VALUES (?, ?, ?)
+                    """,
+                    (
+                        panel_id,
+                        state.get("level", 0),
+                        state.get("last_change_ts", 0.0),
+                    ),
+                )
+
+            conn.commit()
+        except sqlite3.OperationalError:
+            # Another process is already migrating or DB is locked
+            conn.rollback()
             return
-        
-        # Load JSON state
-        with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
-            state_data = json.load(f)
-        
-        # Insert into database
-        for panel_id, state in state_data.items():
-            cur.execute(
-                """
-                INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
-                VALUES (?, ?, ?)
-                """,
-                (
-                    panel_id,
-                    state.get("level", 0),
-                    state.get("last_change_ts", 0.0),
-                ),
-            )
-        
-        conn.commit()
     finally:
         conn.close()
 
