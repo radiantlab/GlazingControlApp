@@ -180,13 +180,13 @@ def save_state(panels: Dict[str, Panel]) -> None:
     conn = sqlite3.connect(AUDIT_DB_FILE)
     try:
         cur = conn.cursor()
-        for panel_id, panel in panels.items():
+        for panel_id, state in state_data.items():
             cur.execute(
                 """
                 INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
                 VALUES (?, ?, ?)
                 """,
-                (panel_id, panel.level, panel.last_change_ts),
+                (panel_id, state["level"], state["last_change_ts"]),
             )
         conn.commit()
     finally:
