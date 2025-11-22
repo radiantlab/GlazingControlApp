@@ -12,6 +12,17 @@ export type Group = {
     member_ids: string[];
 };
 
+export type AuditLogEntry = {
+    ts: number
+    actor: string
+    target_type: "panel" | "group"
+    target_id: string
+    level: number
+    applied_to: string[]
+    result: string
+};
+
+
 const API_BASE = (import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000").replace(/\/$/, "");
 
 async function http<T>(path: string, options?: RequestInit): Promise<T> {
@@ -66,5 +77,10 @@ export const api = {
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
             body: JSON.stringify({ target_type: "group", target_id: groupId, level })
-        })
+        }),
+
+    auditLogs: (limit = 500) =>
+        http<AuditLogEntry[]>(`/logs/audit?limit=${encodeURIComponent(limit)}`)
 };
+
+

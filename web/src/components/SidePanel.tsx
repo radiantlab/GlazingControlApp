@@ -215,7 +215,7 @@ export default function SidePanel({
     return (
         <>
             <div className="side-panel-overlay" onClick={onClose} />
-            <div className="side-panel">
+            <div className="side-panel" onClick={(e) => e.stopPropagation()}>
                 <div className="side-panel-header">
                     <h2>Manage</h2>
                     <button className="side-panel-close" onClick={onClose} aria-label="Close panel">

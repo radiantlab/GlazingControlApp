@@ -38,6 +38,7 @@ html, body {
     margin: 0;
     padding: 0;
     height: 100%;
+    width: 100%;
     overflow-x: hidden;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
     background: var(--hmi-bg);
@@ -46,9 +47,16 @@ html, body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+body {
+    max-width: 100vw;
+}
+
 #root {
     margin: 0;
     padding: 0;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
 }
 
 /* Active Controllers Bar */
@@ -167,6 +175,57 @@ html, body {
     justify-content: space-between;
     align-items: center;
     gap: 24px;
+    width: 100%;
+    box-sizing: border-box;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 1440px) {
+    .hmi-header-inner {
+        padding: 16px 20px;
+        gap: 16px;
+    }
+    
+    .hmi-main {
+        padding: 20px;
+    }
+    
+    .active-controllers-bar {
+        padding: 12px 20px;
+    }
+    
+    .rooms-layout {
+        gap: 20px;
+    }
+}
+
+@media (max-width: 1400px) {
+    .hmi-main.with-side-panel {
+        margin-right: 420px;
+    }
+    
+    .side-panel {
+        width: 420px;
+    }
+}
+
+@media (max-width: 1280px) {
+    .hmi-header-inner {
+        padding: 14px 16px;
+        gap: 12px;
+    }
+    
+    .hmi-main {
+        padding: 16px;
+    }
+    
+    .hmi-status {
+        gap: 16px;
+    }
+    
+    .active-controllers-bar {
+        padding: 10px 16px;
+    }
 }
 
 .hmi-brand {
@@ -210,6 +269,7 @@ html, body {
     display: flex;
     gap: 24px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .hmi-status-item {
@@ -253,6 +313,8 @@ html, body {
     margin: 0 auto;
     padding: 24px;
     transition: margin-right 0.3s ease;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .hmi-main.with-side-panel {
@@ -317,14 +379,16 @@ html, body {
 
 .rooms-layout {
     display: grid;
-    grid-template-columns: auto auto;
+    grid-template-columns: 1fr 1fr;
     gap: 24px;
-    justify-content: center;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
     .rooms-layout {
         grid-template-columns: 1fr;
+        gap: 20px;
     }
 }
 
@@ -335,6 +399,15 @@ html, body {
     border-radius: 12px;
     padding: 20px;
     box-shadow: var(--hmi-shadow);
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+@media (max-width: 1400px) {
+    .room-section {
+        padding: 16px;
+    }
 }
 
 .room-header {
@@ -361,13 +434,21 @@ html, body {
 /* Panels Grid */
 .room-panels-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(260px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (max-width: 1400px) {
+    .room-panels-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 768px) {
     .room-panels-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -470,7 +551,14 @@ html, body {
     justify-self: center;
     max-width: 420px; /* Slightly wider to accommodate header elements */
     margin: 0 auto; /* Center horizontally */
-    min-width: 320px; /* Ensure minimum width for proper spacing */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (max-width: 1400px) {
+    .panel-tile-skylight-featured {
+        max-width: 100%;
+    }
 }
 
 .panel-tile-skylight::before {
@@ -1204,6 +1292,15 @@ select option[disabled] {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (max-width: 1400px) {
+    .room-grid-compact {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
 }
 
 .room-compact-section {
@@ -1211,6 +1308,9 @@ select option[disabled] {
     border: 2px solid var(--hmi-border);
     border-radius: 12px;
     padding: 16px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .room-compact-header {
@@ -1238,6 +1338,14 @@ select option[disabled] {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (max-width: 1400px) {
+    .room-compact-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
 }
 
 .room-compact-skylight-featured {
@@ -1342,6 +1450,24 @@ select option[disabled] {
     .room-compact-grid {
         grid-template-columns: repeat(4, 1fr);
     }
+    
+    .hmi-header-inner {
+        padding: 12px 16px;
+        gap: 12px;
+    }
+    
+    .hmi-main {
+        padding: 16px;
+    }
+    
+    .hmi-status {
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    .hmi-status-item {
+        flex-shrink: 0;
+    }
 }
 
 @media (max-width: 900px) {
@@ -1356,6 +1482,28 @@ select option[disabled] {
     
     .room-grid-compact {
         grid-template-columns: 1fr;
+    }
+    
+    .hmi-header-inner {
+        padding: 12px 16px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .hmi-main {
+        padding: 12px;
+    }
+    
+    .hmi-status {
+        gap: 8px;
+    }
+    
+    .hmi-brand {
+        gap: 12px;
+    }
+    
+    .hmi-brand-text h1 {
+        font-size: 18px;
     }
 }
 
@@ -1493,6 +1641,281 @@ select option[disabled] {
         gap: 12px;
         flex-wrap: wrap;
     }
+
+
+/* Logs panel styling */
+
+.logs-panel {
+    background: var(--hmi-surface);
+}
+
+.logs-panel-content {
+    padding-top: 16px;
+    padding-bottom: 24px;
+}
+
+.logs-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.logs-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    flex: 1;
+}
+
+.logs-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.logs-refresh-btn {
+    max-width: 140px;
+}
+
+.logs-warning {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--hmi-warning);
+    background: linear-gradient( 135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.02) );
+    color: var(--hmi-text);
+    font-size: 13px;
+}
+
+.logs-error {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--hmi-danger);
+    background: linear-gradient( 135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02) );
+    color: var(--hmi-text);
+    font-size: 13px;
+}
+
+.logs-table-wrapper {
+    border-radius: 10px;
+    border: 1px solid var(--hmi-border);
+    background: var(--hmi-bg-alt);
+    overflow: hidden;
+    box-shadow: var(--hmi-shadow);
+}
+
+.logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+    .logs-table thead {
+        background: linear-gradient(180deg, var(--hmi-surface) 0%, var(--hmi-bg-alt) 100%);
+    }
+
+    .logs-table th,
+    .logs-table td {
+        padding: 8px 10px;
+        text-align: left;
+        border-bottom: 1px solid var(--hmi-border);
+    }
+
+    .logs-table th {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--hmi-text-muted);
+        user-select: none;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+        .logs-table th span {
+            vertical-align: middle;
+        }
+
+.logs-sort-indicator {
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 10px;
+    color: var(--hmi-text-dim);
+}
+
+.logs-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.logs-table tbody tr:hover {
+    background: var(--hmi-surface);
+}
+
+.logs-empty {
+    text-align: center;
+    padding: 20px 10px;
+    font-size: 13px;
+    color: var(--hmi-text-muted);
+}
+
+.logs-cell-time {
+    white-space: nowrap;
+}
+
+.logs-cell-applied {
+    max-width: 160px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.logs-cell-result {
+    max-width: 260px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.logs-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.logs-pill-panel {
+    background: rgba(37, 99, 235, 0.18);
+    color: var(--hmi-primary);
+    border: 1px solid rgba(37, 99, 235, 0.5);
+}
+
+.logs-pill-group {
+    background: rgba(245, 158, 11, 0.16);
+    color: var(--hmi-warning);
+    border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+.logs-sensors-placeholder {
+    font-size: 13px;
+    color: var(--hmi-text-muted);
+    line-height: 1.5;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--hmi-bg-alt);
+    border: 1px dashed var(--hmi-border);
+}
+
+/* Centered logs modal */
+
+.logs-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1100;
+    width: 1500px;
+    height: 1000px;
+    max-width: 95vw;
+    max-height: 90vh;
+    background: var(--hmi-surface);
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+
+
+.logs-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--hmi-border);
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.14), rgba(15, 23, 42, 0.9));
+    color: #f9fafb;
+}
+
+    .logs-modal-header h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+.logs-modal-close {
+    border: none;
+    background: transparent;
+    color: #e5e7eb;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 999px;
+}
+
+    .logs-modal-close:hover {
+        background: rgba(15, 23, 42, 0.45);
+    }
+
+
+.logs-modal-tabs {
+    background: var(--hmi-bg-alt);
+    border-bottom: 2px solid var(--hmi-border);
+}
+
+.logs-modal-tab {
+    border: none;
+    background: transparent;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--hmi-text-muted);
+    cursor: pointer;
+}
+
+    .logs-modal-tab.active {
+        background: rgba(37, 99, 235, 0.18);
+        color: var(--hmi-primary);
+    }
+
+
+.logs-panel-content {
+    padding: 16px 18px 24px 18px;
+    flex: 1;
+    overflow: auto;
+}
+
+
+.logs-section h3 {
+    margin-top: 0;
+}
+
+
+@media (max-width: 900px) {
+    .logs-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .logs-actions {
+        justify-content: flex-start;
+    }
+
+    .logs-cell-applied,
+    .logs-cell-result {
+        max-width: none;
+        white-space: normal;
+    }
+}
 
 
 @keyframes toast-slide-in {

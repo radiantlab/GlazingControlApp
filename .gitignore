@@ -229,3 +229,5 @@ svc/data/panels_config.json
 # Note: panels_config.json is tracked (structural data)
 # panels_state.json is ignored (runtime state)
 
+svc/data/audit.db
+# audit.db is a SQLite database for the audit log, changes on run time, so ignore it for now

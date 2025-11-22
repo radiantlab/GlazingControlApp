@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { api, type Panel, type Group } from "./api";
+import React, { useEffect, useState, useCallback } from "react"
+import { api, type Panel, type Group, type AuditLogEntry } from "./api";
 import { mockApi } from "./mockData";
 import RoomGrid from "./components/RoomGrid";
 import RoomGridCompact from "./components/RoomGridCompact";
@@ -7,6 +7,8 @@ import SidePanel from "./components/SidePanel";
 import ActiveControllersBar from "./components/ActiveControllersBar";
 import { controlManager, type ControlSource } from "./utils/controlManager";
 import { useToast } from "./utils/toast";
+import LogsPanel from "./components/LogsPanel";
+
 
 export default function AppHMI() {
     const [health, setHealth] = useState<string>("checking");
@@ -20,6 +22,11 @@ export default function AppHMI() {
     const { showToast } = useToast();
     const [groupId, setGroupId] = useState<string>("");
     const [groupLevel, setGroupLevel] = useState<number>(50);
+    const [logsPanelOpen, setLogsPanelOpen] = useState<boolean>(false);
+    const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+    const [logsLoading, setLogsLoading] = useState<boolean>(false);
+    const [logsError, setLogsError] = useState<string | null>(null);
+
 
     async function refresh() {
         try {
@@ -281,6 +288,26 @@ export default function AppHMI() {
         setBusy(null);
     }
 
+    async function loadAuditLogs() {
+        if (usingMock) {
+            setAuditLogs([]);
+            setLogsError("Logs are not available in mock mode");
+            return;
+        }
+
+        try {
+            setLogsLoading(true);
+            setLogsError(null);
+            const rows = await api.auditLogs(500);
+            setAuditLogs(rows);
+        } catch (e) {
+            setLogsError(`Failed to load logs ${String(e)}`);
+        } finally {
+            setLogsLoading(false);
+        }
+    }
+
+
     return (
         <>
             <ActiveControllersBar
@@ -334,6 +361,19 @@ export default function AppHMI() {
                             title="Clear all panels to 0%"
                         >
                             {busy === "clear-all" ? "Clearing..." : "Clear All"}
+                        </button>
+
+
+                        <button
+                            className="hmi-manage-btn"
+                            onClick={async () => {
+                                setLogsPanelOpen(true);
+                                setSidePanelOpen(false);
+                                await loadAuditLogs();
+                            }}
+                            title="View system logs"
+                        >
+                            Logs
                         </button>
 
                         <button
@@ -434,6 +474,16 @@ export default function AppHMI() {
                 onGroupCreate={createGroup}
                 onGroupUpdate={updateGroup}
                 onGroupDelete={deleteGroup}
+            />
+
+            <LogsPanel
+                isOpen={logsPanelOpen}
+                onClose={() => setLogsPanelOpen(false)}
+                auditLogs={auditLogs}
+                loading={logsLoading}
+                error={logsError}
+                onRefresh={loadAuditLogs}
+                isMock={usingMock}
             />
 
         </>

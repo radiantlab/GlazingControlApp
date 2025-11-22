@@ -2,15 +2,17 @@ from __future__ import annotations
 import json
 import os
 import time
-from typing import Dict, List, Tuple
+import sqlite3
+from typing import Dict, List, Tuple, Any
 from .models import Panel, Group, Snapshot, AuditEntry
-from .config import PANELS_FILE, PANELS_CONFIG_FILE, PANELS_STATE_FILE, AUDIT_FILE
+from .config import PANELS_FILE, PANELS_CONFIG_FILE, PANELS_STATE_FILE, AUDIT_FILE, AUDIT_DB_FILE
 
 
 def _ensure_dirs() -> None:
     os.makedirs(os.path.dirname(PANELS_CONFIG_FILE), exist_ok=True)
     os.makedirs(os.path.dirname(PANELS_STATE_FILE), exist_ok=True)
     os.makedirs(os.path.dirname(AUDIT_FILE), exist_ok=True)
+    # AUDIT_DB_FILE lives in the same directory as AUDIT_FILE so no extra work needed
 
 
 def _migrate_from_legacy_panels_json() -> None:
@@ -145,12 +147,94 @@ def save_snapshot(s: Snapshot) -> None:
     save_state(s.panels)
 
 
+def _ensure_audit_db() -> None:
+    """Create the SQLite database and table for audit logs if they do not exist."""
+    _ensure_dirs()
+    conn = sqlite3.connect(AUDIT_DB_FILE)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts REAL NOT NULL,
+                actor TEXT NOT NULL,
+                target_type TEXT NOT NULL,
+                target_id TEXT NOT NULL,
+                level INTEGER NOT NULL,
+                applied_to TEXT NOT NULL,
+                result TEXT NOT NULL
+            )
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def append_audit(entry: AuditEntry) -> None:
+    """Append audit entry to JSON file and SQLite database."""
     _ensure_dirs()
     row = entry.model_dump()
     # write one JSON per line for easy tailing
     with open(AUDIT_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(row) + "\n")
+
+    # also mirror into SQLite
+    _ensure_audit_db()
+    conn = sqlite3.connect(AUDIT_DB_FILE)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO audit_log (ts, actor, target_type, target_id, level, applied_to, result)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                row["ts"],
+                row["actor"],
+                row["target_type"],
+                row["target_id"],
+                row["level"],
+                json.dumps(row["applied_to"]),
+                row["result"],
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def fetch_audit_entries(limit: int = 500, offset: int = 0) -> List[Dict[str, Any]]:
+    """Fetch audit entries from SQLite ordered newest first."""
+    _ensure_audit_db()
+    conn = sqlite3.connect(AUDIT_DB_FILE)
+    try:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT ts, actor, target_type, target_id, level, applied_to, result
+            FROM audit_log
+            ORDER BY ts DESC
+            LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        )
+        rows = cur.fetchall()
+        result: List[Dict[str, Any]] = []
+        for r in rows:
+            row_dict = dict(r)
+            # applied_to is stored as JSON text
+            try:
+                row_dict["applied_to"] = json.loads(row_dict.get("applied_to") or "[]")
+            except Exception:
+                row_dict["applied_to"] = []
+            result.append(row_dict)
+        return result
+    finally:
+        conn.close()
+
 
 
 def bootstrap_default_if_empty() -> Snapshot:
