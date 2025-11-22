@@ -226,7 +226,11 @@ def update_panel_state(panel_id: str, level: int) -> None:
         conn.close()
     
     # Also update JSON file for backward compatibility during transition
-    state_data = load_state()
+    if os.path.exists(PANELS_STATE_FILE):
+        with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
+            state_data = json.load(f)
+    else:
+        state_data = {}
     state_data[panel_id] = {
         "level": level,
         "last_change_ts": last_change_ts,
