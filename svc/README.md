@@ -4,7 +4,7 @@ What this gives you today
 - Lists panels and groups
 - Sets tint level for a single panel or a group
 - Enforces dwell time per panel
-- Writes an audit log to `svc/data/audit.json`
+- Writes an audit log to SQLite database `svc/data/audit.db`
 - Simulator for development (default)
 - Halio API integration for real hardware
 

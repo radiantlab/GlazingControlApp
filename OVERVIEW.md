@@ -66,7 +66,7 @@ Python FastAPI backend that simulates panels today and can talk to a real traile
   - Low-level persistence helpers  
   - Load and save snapshot JSON (panels + groups)  
   - Bootstraps default panels and groups when no state file exists  
-  - Appends a single audit log JSON line per change to the audit log file  
+  - Appends audit entries to SQLite database for each command  
 
 - **svc/app/simulator.py**  
   - In-memory simulator for the whole system  
@@ -76,7 +76,7 @@ Python FastAPI backend that simulates panels today and can talk to a real traile
 
 - **svc/app/service.py**  
   - Core business logic layer  
-  - Fronts the simulator in “sim” mode and can later be swapped to real trailer calls  
+  - Fronts the simulator in "sim" mode and can later be swapped to real trailer calls  
   - Enforces dwell time and any safety rules for level changes  
   - Writes audit entries for each successful or failed command  
   - Exposes functions used by `routes.py` for:  
@@ -126,7 +126,7 @@ React + Vite front-end with an HMI-style control screen.
 
 - **web/.env.development**  
   - Points the web app at the Python service:  
-    - `VITE_API_BASE=http://127.0.0.1:8000` (or whatever you’re running)
+    - `VITE_API_BASE=http://127.0.0.1:8000` (or whatever you're running)
 
 - **web/src/env.d.ts**  
   - Type definitions for `import.meta.env` so TS knows about `VITE_API_BASE`, etc.
@@ -170,14 +170,14 @@ React + Vite front-end with an HMI-style control screen.
 
 - **web/src/mockData.ts**  
   - In-browser mock implementation mirroring `api.ts`  
-  - Used when the backend is down or in “demo” mode  
+  - Used when the backend is down or in "demo" mode  
   - Serves fake panels, groups, and health for quick UI development  
-  - No real audit logs (Logs UI shows a “not available in mock mode” message)
+  - No real audit logs (Logs UI shows a "not available in mock mode" message)
 
 ### Components – HMI layout
 
 - **web/src/components/RoomGrid.tsx**  
-  - Main “room” layout for the full view  
+  - Main "room" layout for the full view  
   - Groups panels into sections and renders a grid of interactive tiles  
   - Each tile shows:  
     - Panel name + id  
@@ -196,7 +196,7 @@ React + Vite front-end with an HMI-style control screen.
   - Good for tracking the whole trailer at a glance while editing groups/routines
 
 - **web/src/components/SidePanel.tsx**  
-  - Right-hand slide-in “Manage” panel  
+  - Right-hand slide-in "Manage" panel  
   - Tabs that mirror the HMI style tab bar  
   - Group management:  
     - List existing groups with their members  
@@ -209,7 +209,7 @@ React + Vite front-end with an HMI-style control screen.
   - Sticky bar at the very top of the app  
   - Shows all active routines and group controllers coming from `controlManager`  
   - Each chip: controller type, name, and count of panels it controls  
-  - “Cancel” button for each item to release that control
+  - "Cancel" button for each item to release that control
 
 - **web/src/components/LogsPanel.tsx**  
   - Centered modal dialog for logs (not a side panel)  
@@ -225,7 +225,7 @@ React + Vite front-end with an HMI-style control screen.
   - Features:  
     - Filters by type (panel/group), target id, and result text  
     - Sortable columns (time, actor, type, target, level) with ▲/▼ indicator  
-    - Nicely styled pills for target type, truncated “applied_to” and result columns  
+    - Nicely styled pills for target type, truncated "applied_to" and result columns  
   - `AppHMI` can also trigger auto-refresh polling while this modal is open
 
 - **(Optional / legacy) web/src/components/PanelGrid.tsx**  
@@ -235,7 +235,7 @@ React + Vite front-end with an HMI-style control screen.
 ### Utilities
 
 - **web/src/utils/controlManager.ts**  
-  - Central authority for “who controls which panel right now”  
+  - Central authority for "who controls which panel right now"  
   - Tracks sources like:  
     - `manual` (single panel knob twist)  
     - `group` (group-wide commands)  
@@ -273,4 +273,3 @@ React + Vite front-end with an HMI-style control screen.
   - Older/global styles; can be trimmed down as the app fully transitions to `styles-hmi.css`  
 
 ---
-

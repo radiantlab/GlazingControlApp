@@ -6,29 +6,33 @@ TintLevel = conint(ge=0, le=100)
 
 
 class Panel(BaseModel):
-    id: str
-    name: str
-    group_id: Optional[str] = None
-    level: TintLevel = 0
-    last_change_ts: float = 0.0
+    """Panel represents a single electrochromic panel."""
+    id: str = Field(description="Panel identifier (e.g., P01, SK1)")
+    name: str = Field(description="Human-readable panel name")
+    group_id: Optional[str] = Field(default=None, description="ID of the group this panel belongs to")
+    level: TintLevel = Field(default=0, description="Current tint level (0-100)")
+    last_change_ts: float = Field(default=0.0, description="Unix timestamp of last level change")
 
 
 class Group(BaseModel):
-    id: str
-    name: str
-    member_ids: List[str] = Field(default_factory=list)
+    """Group represents a collection of panels that can be controlled together."""
+    id: str = Field(description="Group identifier (e.g., G-facade, G-1)")
+    name: str = Field(description="Human-readable group name")
+    member_ids: List[str] = Field(default_factory=list, description="List of panel IDs in this group")
 
 
 class CommandRequest(BaseModel):
-    target_type: Literal["panel", "group"]
-    target_id: str
-    level: TintLevel
+    """Request to set tint level for a panel or group."""
+    target_type: Literal["panel", "group"] = Field(description="Type of target to control")
+    target_id: str = Field(description="Panel ID (e.g., P01) or Group ID (e.g., G-facade)")
+    level: TintLevel = Field(description="Tint level to set (0-100)")
 
 
 class CommandResult(BaseModel):
-    ok: bool
-    applied_to: List[str]
-    message: str = ""
+    """Result of a tint level command."""
+    ok: bool = Field(description="Whether the command was accepted")
+    applied_to: List[str] = Field(description="List of panel IDs that were updated")
+    message: str = Field(default="", description="Status message describing the result")
 
 
 class Snapshot(BaseModel):
@@ -37,24 +41,39 @@ class Snapshot(BaseModel):
 
 
 class AuditEntry(BaseModel):
-    ts: float
-    actor: str
-    target_type: str
-    target_id: str
-    level: int
-    applied_to: List[str]
-    result: str
+    """Audit log entry recording a control action."""
+    ts: float = Field(description="Unix timestamp when the action occurred")
+    actor: str = Field(description="Who/what initiated the action (e.g., 'api', 'user', 'schedule')")
+    target_type: str = Field(description="Type of target: 'panel' or 'group'")
+    target_id: str = Field(description="ID of the panel or group that was targeted")
+    level: int = Field(description="Tint level that was requested (0-100)")
+    applied_to: List[str] = Field(description="Panel IDs that were actually updated")
+    result: str = Field(description="Result message (e.g., 'panel updated', 'dwell time not met')")
+
+class HealthResponse(BaseModel):
+    """Health check response."""
+    status: str = Field(description="Service status (always 'ok' if service is running)")
+    mode: str = Field(description="Current operation mode: 'sim' (simulator) or 'real' (Halio API)")
+
 
 class GroupCreate(BaseModel):
-    name: str
-    member_ids: List[str]
-
-class GroupCreate(BaseModel):
-    name: str
-    member_ids: List[str] = Field(default_factory=list)
+    """Request to create a new group."""
+    name: str = Field(description="Name for the new group")
+    member_ids: List[str] = Field(default_factory=list, description="Panel IDs to include in the group")
 
 
 class GroupUpdate(BaseModel):
-    name: Optional[str] = None
-    member_ids: Optional[List[str]] = None
+    """Request to update an existing group."""
+    name: Optional[str] = Field(default=None, description="New name for the group (optional)")
+    member_ids: Optional[List[str]] = Field(default=None, description="New list of panel IDs (optional)")
+
+
+class DeleteGroupResponse(BaseModel):
+    """Response from deleting a group."""
+    ok: bool = Field(description="Whether the deletion was successful")
+
+
+class ErrorResponse(BaseModel):
+    """Standard error response format."""
+    detail: str = Field(description="Error message describing what went wrong")
 

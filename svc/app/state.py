@@ -3,16 +3,43 @@ import json
 import os
 import time
 import sqlite3
-from typing import Dict, List, Tuple, Any
+from contextlib import contextmanager
+from typing import Dict, List, Tuple, Any, Iterator, Optional, Callable
 from .models import Panel, Group, Snapshot, AuditEntry
-from .config import PANELS_FILE, PANELS_CONFIG_FILE, PANELS_STATE_FILE, AUDIT_FILE, AUDIT_DB_FILE
+from .config import PANELS_FILE, PANELS_CONFIG_FILE, PANELS_STATE_FILE, AUDIT_DB_FILE
 
 
 def _ensure_dirs() -> None:
     os.makedirs(os.path.dirname(PANELS_CONFIG_FILE), exist_ok=True)
     os.makedirs(os.path.dirname(PANELS_STATE_FILE), exist_ok=True)
-    os.makedirs(os.path.dirname(AUDIT_FILE), exist_ok=True)
-    # AUDIT_DB_FILE lives in the same directory as AUDIT_FILE so no extra work needed
+    os.makedirs(os.path.dirname(AUDIT_DB_FILE), exist_ok=True)
+
+
+@contextmanager
+def _db_connection(row_factory: Optional[Callable[[sqlite3.Cursor, tuple], Any]] = None) -> Iterator[sqlite3.Connection]:
+    """
+    Context manager for database connections.
+    
+    Automatically handles:
+    - Connection creation and cleanup
+    - Transaction commit on success
+    - Transaction rollback on error
+    
+    Args:
+        row_factory: Optional row factory (e.g., sqlite3.Row) to set on connection
+    """
+    _ensure_dirs()
+    conn = sqlite3.connect(AUDIT_DB_FILE)
+    if row_factory:
+        conn.row_factory = row_factory
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def _migrate_from_legacy_panels_json() -> None:
@@ -56,11 +83,9 @@ def _migrate_from_legacy_panels_json() -> None:
     
     # Write state to both SQLite database and JSON file
     _ensure_panel_state_db()
-    conn = sqlite3.connect(AUDIT_DB_FILE)
-    try:
-        cur = conn.cursor()
+    with _db_connection() as conn:
         for panel_id, state in state_data.items():
-            cur.execute(
+            conn.execute(
                 """
                 INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
                 VALUES (?, ?, ?)
@@ -71,9 +96,6 @@ def _migrate_from_legacy_panels_json() -> None:
                     state.get("last_change_ts", 0.0),
                 ),
             )
-        conn.commit()
-    finally:
-        conn.close()
     
     # Also write JSON file for backward compatibility
     with open(PANELS_STATE_FILE, "w", encoding="utf-8") as f:
@@ -101,11 +123,8 @@ def load_state() -> Dict[str, Dict]:
     _ensure_panel_state_db()
     _migrate_json_state_to_db()
 
-    conn = sqlite3.connect(AUDIT_DB_FILE)
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT panel_id, level, last_change_ts FROM panel_state")
-        rows = cur.fetchall()
+    with _db_connection() as conn:
+        rows = conn.execute("SELECT panel_id, level, last_change_ts FROM panel_state").fetchall()
         
         state_data = {}
         for row in rows:
@@ -116,8 +135,6 @@ def load_state() -> Dict[str, Dict]:
             }
         
         return state_data
-    finally:
-        conn.close()
 
 
 def load_snapshot() -> Snapshot:
@@ -177,20 +194,15 @@ def save_state(panels: Dict[str, Panel]) -> None:
         }
     
     # Write to SQLite database
-    conn = sqlite3.connect(AUDIT_DB_FILE)
-    try:
-        cur = conn.cursor()
+    with _db_connection() as conn:
         for panel_id, state in state_data.items():
-            cur.execute(
+            conn.execute(
                 """
                 INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
                 VALUES (?, ?, ?)
                 """,
                 (panel_id, state["level"], state["last_change_ts"]),
             )
-        conn.commit()
-    finally:
-        conn.close()
     
     # Also write to JSON file for backward compatibility during transition
     with open(PANELS_STATE_FILE, "w", encoding="utf-8") as f:
@@ -211,19 +223,14 @@ def update_panel_state(panel_id: str, level: int) -> None:
     last_change_ts = time.time()
     
     # Update SQLite database
-    conn = sqlite3.connect(AUDIT_DB_FILE)
-    try:
-        cur = conn.cursor()
-        cur.execute(
+    with _db_connection() as conn:
+        conn.execute(
             """
             INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
             VALUES (?, ?, ?)
             """,
             (panel_id, level, last_change_ts),
         )
-        conn.commit()
-    finally:
-        conn.close()
     
     # Also update JSON file for backward compatibility during transition
     if os.path.exists(PANELS_STATE_FILE):
@@ -247,11 +254,8 @@ def save_snapshot(s: Snapshot) -> None:
 
 def _ensure_audit_db() -> None:
     """Create the SQLite database and table for audit logs if they do not exist."""
-    _ensure_dirs()
-    conn = sqlite3.connect(AUDIT_DB_FILE)
-    try:
-        cur = conn.cursor()
-        cur.execute(
+    with _db_connection() as conn:
+        conn.execute(
             """
             CREATE TABLE IF NOT EXISTS audit_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -265,18 +269,12 @@ def _ensure_audit_db() -> None:
             )
             """
         )
-        conn.commit()
-    finally:
-        conn.close()
 
 
 def _ensure_panel_state_db() -> None:
     """Create the SQLite table for panel states if it does not exist."""
-    _ensure_dirs()
-    conn = sqlite3.connect(AUDIT_DB_FILE)
-    try:
-        cur = conn.cursor()
-        cur.execute(
+    with _db_connection() as conn:
+        conn.execute(
             """
             CREATE TABLE IF NOT EXISTS panel_state (
                 panel_id TEXT PRIMARY KEY,
@@ -285,9 +283,6 @@ def _ensure_panel_state_db() -> None:
             )
             """
         )
-        conn.commit()
-    finally:
-        conn.close()
 
 
 def _migrate_json_state_to_db() -> None:
@@ -298,61 +293,48 @@ def _migrate_json_state_to_db() -> None:
     if not os.path.exists(PANELS_STATE_FILE):
         return
     
+    # Use manual transaction handling for this special case that needs explicit rollback
     conn = sqlite3.connect(AUDIT_DB_FILE)
     try:
-        cur = conn.cursor()
-        try:
-            # Acquire an exclusive lock to ensure atomic migration
-            cur.execute("BEGIN IMMEDIATE")
-            # Check if DB already has panel states
-            cur.execute("SELECT COUNT(*) FROM panel_state")
-            count = cur.fetchone()[0]
-            if count > 0:
-                # Already migrated, skip
-                conn.rollback()
-                return
-
-            # Load JSON state
-            with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
-                state_data = json.load(f)
-
-            # Insert into database
-            for panel_id, state in state_data.items():
-                cur.execute(
-                    """
-                    INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
-                    VALUES (?, ?, ?)
-                    """,
-                    (
-                        panel_id,
-                        state.get("level", 0),
-                        state.get("last_change_ts", 0.0),
-                    ),
-                )
-
-            conn.commit()
-        except sqlite3.OperationalError:
-            # Another process is already migrating or DB is locked
+        conn.execute("BEGIN IMMEDIATE")
+        # Check if DB already has panel states
+        count = conn.execute("SELECT COUNT(*) FROM panel_state").fetchone()[0]
+        if count > 0:
+            # Already migrated, skip
             conn.rollback()
             return
+
+        # Load JSON state
+        with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
+            state_data = json.load(f)
+
+        # Insert into database
+        for panel_id, state in state_data.items():
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
+                VALUES (?, ?, ?)
+                """,
+                (
+                    panel_id,
+                    state.get("level", 0),
+                    state.get("last_change_ts", 0.0),
+                ),
+            )
+        conn.commit()
+    except sqlite3.OperationalError:
+        # Another process is already migrating or DB is locked
+        conn.rollback()
     finally:
         conn.close()
 
 
 def append_audit(entry: AuditEntry) -> None:
-    """Append audit entry to JSON file and SQLite database."""
-    _ensure_dirs()
+    """Append audit entry to SQLite database."""
     row = entry.model_dump()
-    # write one JSON per line for easy tailing
-    with open(AUDIT_FILE, "a", encoding="utf-8") as f:
-        f.write(json.dumps(row) + "\n")
-
-    # also mirror into SQLite
     _ensure_audit_db()
-    conn = sqlite3.connect(AUDIT_DB_FILE)
-    try:
-        cur = conn.cursor()
-        cur.execute(
+    with _db_connection() as conn:
+        conn.execute(
             """
             INSERT INTO audit_log (ts, actor, target_type, target_id, level, applied_to, result)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -367,19 +349,13 @@ def append_audit(entry: AuditEntry) -> None:
                 row["result"],
             ),
         )
-        conn.commit()
-    finally:
-        conn.close()
 
 
 def fetch_audit_entries(limit: int = 500, offset: int = 0) -> List[Dict[str, Any]]:
     """Fetch audit entries from SQLite ordered newest first."""
     _ensure_audit_db()
-    conn = sqlite3.connect(AUDIT_DB_FILE)
-    try:
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute(
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        rows = conn.execute(
             """
             SELECT ts, actor, target_type, target_id, level, applied_to, result
             FROM audit_log
@@ -387,8 +363,8 @@ def fetch_audit_entries(limit: int = 500, offset: int = 0) -> List[Dict[str, Any
             LIMIT ? OFFSET ?
             """,
             (limit, offset),
-        )
-        rows = cur.fetchall()
+        ).fetchall()
+        
         result: List[Dict[str, Any]] = []
         for r in rows:
             row_dict = dict(r)
@@ -399,8 +375,6 @@ def fetch_audit_entries(limit: int = 500, offset: int = 0) -> List[Dict[str, Any
                 row_dict["applied_to"] = []
             result.append(row_dict)
         return result
-    finally:
-        conn.close()
 
 
 
