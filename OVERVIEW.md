@@ -44,14 +44,14 @@ Python FastAPI backend that simulates panels today and can talk to a real traile
 
 - **svc/.env.example**  
   - Example env file to copy to `.env`  
-  - Holds things like mode (`SIM` vs `REAL`), file paths for snapshot/audit logs, and any API keys / base URLs
+  - Holds things like mode (`SIM` vs `REAL`), file paths for snapshot, audit database path, and any API keys / base URLs
 
 - **svc/app/__init__.py**  
   - Empty marker so Python treats `app` as a package
 
 - **svc/app/config.py**  
   - Central config object  
-  - Reads environment variables (mode, snapshot path, audit log path, dwell timings, real API base URL, etc.)  
+  - Reads environment variables (mode, snapshot path, audit database path, dwell timings, real API base URL, etc.)  
   - Used by `service.py`, `state.py`, and anything that needs config
 
 - **svc/app/models.py**  
@@ -66,7 +66,7 @@ Python FastAPI backend that simulates panels today and can talk to a real traile
   - Low-level persistence helpers  
   - Load and save snapshot JSON (panels + groups)  
   - Bootstraps default panels and groups when no state file exists  
-  - Appends audit entries to SQLite database for each command  
+  - Appends audit entries to SQLite database (audit.db) for all control actions
 
 - **svc/app/simulator.py**  
   - In-memory simulator for the whole system  
