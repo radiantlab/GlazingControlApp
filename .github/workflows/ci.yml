@@ -24,3 +24,7 @@ jobs:
       - name: Install dependencies
         working-directory: ./svc
         run: uv sync
+      
+      - name: Run tests
+        working-directory: ./svc
+        run: uv run pytest tests/ -v
