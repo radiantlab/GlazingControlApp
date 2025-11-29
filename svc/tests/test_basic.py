@@ -1,3 +1,4 @@
+import time
 from fastapi.testclient import TestClient
 from main import app
 
@@ -46,6 +47,9 @@ def test_panel_state_persistence():
         json={"target_type": "panel", "target_id": "P02", "level": 50},
     )
     assert r1.status_code == 200
+
+    # Wait for simulator's async transition to complete (2 seconds)
+    time.sleep(2.5)
 
     # Verify the level was set
     r2 = client.get("/panels")
