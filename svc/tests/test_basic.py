@@ -2,7 +2,7 @@ import time
 import os
 from fastapi.testclient import TestClient
 from main import app
-from app.state import _ensure_panel_state_db, _db_connection, load_snapshot
+from app.state import reset_default_panel_timestamps, load_snapshot
 from app.routes import get_service
 
 client = TestClient(app)
@@ -10,19 +10,8 @@ client = TestClient(app)
 
 def reset_panel_timestamps():
     """Reset all panel timestamps to 0.0 for tests to avoid dwell time issues."""
-    _ensure_panel_state_db()
-    with _db_connection() as conn:
-        # Reset all default panel timestamps to 0.0
-        default_panel_ids = [f"P{i:02d}" for i in range(1, 19)] + ["SK1", "SK2"]
-        for panel_id in default_panel_ids:
-            # Update existing panels to reset timestamp, or create new ones
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
-                VALUES (?, COALESCE((SELECT level FROM panel_state WHERE panel_id = ?), 0), 0.0)
-                """,
-                (panel_id, panel_id),
-            )
+    # Use shared utility function, preserving existing levels
+    reset_default_panel_timestamps(preserve_levels=True)
     
     # Reload simulator's snapshot to pick up the reset timestamps
     service = get_service()

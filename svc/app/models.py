@@ -9,7 +9,6 @@ class Panel(BaseModel):
     """Panel represents a single electrochromic panel."""
     id: str = Field(description="Panel identifier (e.g., P01, SK1)")
     name: str = Field(description="Human-readable panel name")
-    group_id: Optional[str] = Field(default=None, description="ID of the group this panel belongs to")
     level: TintLevel = Field(default=0, description="Current tint level (0-100)")
     last_change_ts: float = Field(default=0.0, description="Unix timestamp of last level change")
 
