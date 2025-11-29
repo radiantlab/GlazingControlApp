@@ -404,9 +404,16 @@ def _migrate_json_state_to_db() -> None:
             conn.rollback()
             return
 
-        # Load JSON state
-        with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
-            state_data = json.load(f)
+        # Load JSON state before starting DB transaction to avoid holding locks for I/O, and to fail early on file errors
+        try:
+            with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
+                state_data = json.load(f)
+        except (json.JSONDecodeError, IOError, OSError) as e:
+            # Log error and skip migration if file cannot be read
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to load panel state JSON for migration: {e}")
+            conn.rollback()
+            return
 
         # Insert into database
         for panel_id, state in state_data.items():
