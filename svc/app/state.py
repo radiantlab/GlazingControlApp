@@ -138,6 +138,7 @@ def _migrate_from_legacy_panels_json() -> None:
 def load_config() -> Dict[str, Dict]:
     """Load panel configuration (structure only). Groups are now in database."""
     # Note: Legacy migration should be done at app startup via initialize_database()
+    _ensure_dirs()
 
     if not os.path.exists(PANELS_CONFIG_FILE):
         return {}
