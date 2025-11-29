@@ -425,11 +425,16 @@ def _migrate_json_state_to_db() -> None:
     except sqlite3.OperationalError:
         # Another process is already migrating or DB is locked
         conn.rollback()
-    except (json.JSONDecodeError, IOError, OSError, Exception) as e:
+    except (json.JSONDecodeError, IOError, OSError) as e:
         # Log error and rollback for any error during migration
         import logging
         logging.getLogger(__name__).warning(f"Failed to migrate panel state from JSON: {e}")
         conn.rollback()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Unexpected error during panel state migration: {e}", exc_info=True)
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
