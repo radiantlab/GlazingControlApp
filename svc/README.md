@@ -4,7 +4,7 @@ What this gives you today
 - Lists panels and groups
 - Sets tint level for a single panel or a group
 - Enforces dwell time per panel
-- Writes an audit log to `svc/data/audit.json`
+- Writes an audit log to SQLite database `svc/data/audit.db`
 - Simulator for development (default)
 - Halio API integration for real hardware
 
@@ -102,7 +102,7 @@ The adapter automatically:
 |----------|---------|-------------|
 | `SVC_MODE` | `sim` | Mode: `sim` or `real` |
 | `SVC_MIN_DWELL_SECONDS` | `20` | Minimum seconds between tint changes |
-| `SVC_DATA_DIR` | `data` | Directory for state and audit files |
+| `SVC_DATA_DIR` | `data` | Directory for state/log database and config files |
 | `HALIO_API_URL` | - | Halio API base URL (real mode only) |
 | `HALIO_SITE_ID` | - | Your Halio site UUID (real mode only) |
 | `HALIO_API_KEY` | - | Your Halio API key (real mode only) |

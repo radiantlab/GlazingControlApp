@@ -2,146 +2,83 @@
   "panels": {
     "P01": {
       "id": "P01",
-      "name": "Facade 1",
-      "group_id": null
+      "name": "Facade 1"
     },
     "P02": {
       "id": "P02",
-      "name": "Facade 2",
-      "group_id": "G-2"
+      "name": "Facade 2"
     },
     "P03": {
       "id": "P03",
-      "name": "Facade 3",
-      "group_id": "G-2"
+      "name": "Facade 3"
     },
     "P04": {
       "id": "P04",
-      "name": "Facade 4",
-      "group_id": "G-2"
+      "name": "Facade 4"
     },
     "P05": {
       "id": "P05",
-      "name": "Facade 5",
-      "group_id": "G-facade"
+      "name": "Facade 5"
     },
     "P06": {
       "id": "P06",
-      "name": "Facade 6",
-      "group_id": "G-facade"
+      "name": "Facade 6"
     },
     "P07": {
       "id": "P07",
-      "name": "Facade 7",
-      "group_id": "G-facade"
+      "name": "Facade 7"
     },
     "P08": {
       "id": "P08",
-      "name": "Facade 8",
-      "group_id": "G-facade"
+      "name": "Facade 8"
     },
     "P09": {
       "id": "P09",
-      "name": "Facade 9",
-      "group_id": "G-facade"
+      "name": "Facade 9"
     },
     "P10": {
       "id": "P10",
-      "name": "Facade 10",
-      "group_id": "G-facade"
+      "name": "Facade 10"
     },
     "P11": {
       "id": "P11",
-      "name": "Facade 11",
-      "group_id": "G-facade"
+      "name": "Facade 11"
     },
     "P12": {
       "id": "P12",
-      "name": "Facade 12",
-      "group_id": "G-facade"
+      "name": "Facade 12"
     },
     "P13": {
       "id": "P13",
-      "name": "Facade 13",
-      "group_id": "G-facade"
+      "name": "Facade 13"
     },
     "P14": {
       "id": "P14",
-      "name": "Facade 14",
-      "group_id": "G-facade"
+      "name": "Facade 14"
     },
     "P15": {
       "id": "P15",
-      "name": "Facade 15",
-      "group_id": "G-facade"
+      "name": "Facade 15"
     },
     "P16": {
       "id": "P16",
-      "name": "Facade 16",
-      "group_id": "G-facade"
+      "name": "Facade 16"
     },
     "P17": {
       "id": "P17",
-      "name": "Facade 17",
-      "group_id": "G-facade"
+      "name": "Facade 17"
     },
     "P18": {
       "id": "P18",
-      "name": "Facade 18",
-      "group_id": "G-facade"
+      "name": "Facade 18"
     },
     "SK1": {
       "id": "SK1",
-      "name": "Skylight 1",
-      "group_id": "G-skylights"
+      "name": "Skylight 1"
     },
     "SK2": {
       "id": "SK2",
-      "name": "Skylight 2",
-      "group_id": "G-skylights"
-    }
-  },
-  "groups": {
-    "G-facade": {
-      "id": "G-facade",
-      "name": "Facade",
-      "member_ids": [
-        "P01",
-        "P02",
-        "P03",
-        "P04",
-        "P05",
-        "P06",
-        "P07",
-        "P08",
-        "P09",
-        "P10",
-        "P11",
-        "P12",
-        "P13",
-        "P14",
-        "P15",
-        "P16",
-        "P17",
-        "P18"
-      ]
-    },
-    "G-skylights": {
-      "id": "G-skylights",
-      "name": "Skylights",
-      "member_ids": [
-        "SK1",
-        "SK2"
-      ]
-    },
-    "G-2": {
-      "id": "G-2",
-      "name": "Test",
-      "member_ids": [
-        "P04",
-        "P03",
-        "P02"
-      ]
+      "name": "Skylight 2"
     }
   }
 }
