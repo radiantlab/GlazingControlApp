@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.routes import router
-from app.state import bootstrap_default_if_empty
+from app.state import bootstrap_default_if_empty, initialize_database
 
 # Configure logging to show all INFO level logs from our modules
 logging.basicConfig(
@@ -92,7 +92,11 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
 
 def create_app() -> FastAPI:
+    # Initialize database and run migrations once at startup
+    initialize_database()
+    # Bootstrap default panels/groups if needed
     bootstrap_default_if_empty()
+    
     app = FastAPI(title="ECG Control Service", version="0.1.0")
 
     # Request logging middleware (add first so it wraps everything)

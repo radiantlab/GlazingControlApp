@@ -42,6 +42,25 @@ def _db_connection(row_factory: Optional[Callable[[sqlite3.Cursor, tuple], Any]]
         conn.close()
 
 
+def initialize_database() -> None:
+    """
+    Initialize database and run all migrations once at application startup.
+    
+    This function should be called once when the application starts, not during
+    runtime operations. It ensures:
+    - Directories exist
+    - Legacy JSON files are migrated
+    - Database tables are created
+    - JSON data is migrated to database (one-time)
+    """
+    _ensure_dirs()
+    _migrate_from_legacy_panels_json()
+    _ensure_panel_state_db()
+    _ensure_groups_db()
+    _migrate_json_state_to_db()
+    _migrate_groups_json_to_db()
+
+
 def _migrate_from_legacy_panels_json() -> None:
     """Migrate old panels.json to new separated config file and SQLite database."""
     if not os.path.exists(PANELS_FILE):
@@ -118,8 +137,7 @@ def _migrate_from_legacy_panels_json() -> None:
 
 def load_config() -> Dict[str, Dict]:
     """Load panel configuration (structure only). Groups are now in database."""
-    _ensure_dirs()
-    _migrate_from_legacy_panels_json()
+    # Note: Legacy migration should be done at app startup via initialize_database()
 
     if not os.path.exists(PANELS_CONFIG_FILE):
         return {}
@@ -132,10 +150,7 @@ def load_config() -> Dict[str, Dict]:
 
 def load_state() -> Dict[str, Dict]:
     """Load panel runtime state (level, last_change_ts) from SQLite database."""
-    _ensure_dirs()
-    _migrate_from_legacy_panels_json()
-    _ensure_panel_state_db()
-    _migrate_json_state_to_db()
+    _ensure_panel_state_db()  # Only ensure table exists, no migration
 
     with _db_connection() as conn:
         rows = conn.execute("SELECT panel_id, level, last_change_ts FROM panel_state").fetchall()
@@ -153,10 +168,7 @@ def load_state() -> Dict[str, Dict]:
 
 def load_groups() -> Dict[str, Group]:
     """Load groups from SQLite database."""
-    _ensure_dirs()
-    _migrate_from_legacy_panels_json()  # Migrate legacy groups too
-    _ensure_groups_db()
-    _migrate_groups_json_to_db()
+    _ensure_groups_db()  # Only ensure table exists, no migration
 
     with _db_connection() as conn:
         rows = conn.execute("SELECT id, name, member_ids FROM groups").fetchall()
@@ -259,11 +271,10 @@ def update_panel_state(panel_id: str, level: int) -> None:
     Update a single panel's state (level and last_change_ts) in SQLite database 
     when a successful command is received.
     This keeps the displayed tint level accurate based on successful API responses.
+    
+    Note: Database initialization/migration should be done at app startup via initialize_database().
     """
-    _ensure_dirs()
-    _migrate_from_legacy_panels_json()
-    _ensure_panel_state_db()
-    _migrate_json_state_to_db()
+    _ensure_panel_state_db()  # Only ensure table exists, no migration
     
     last_change_ts = time.time()
     
@@ -372,6 +383,11 @@ def _migrate_json_state_to_db() -> None:
     except sqlite3.OperationalError:
         # Another process is already migrating or DB is locked
         conn.rollback()
+    except (json.JSONDecodeError, IOError, OSError, Exception) as e:
+        # Log error and rollback for any error during migration
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to migrate panel state from JSON: {e}")
+        conn.rollback()
     finally:
         conn.close()
 
@@ -422,8 +438,8 @@ def _migrate_groups_json_to_db() -> None:
     except sqlite3.OperationalError:
         # Another process is already migrating or DB is locked
         conn.rollback()
-    except Exception as e:
-        # Log error but don't fail
+    except (json.JSONDecodeError, IOError, OSError, Exception) as e:
+        # Log error and rollback for any error during migration
         import logging
         logging.getLogger(__name__).warning(f"Failed to migrate groups from JSON: {e}")
         conn.rollback()
@@ -481,15 +497,22 @@ def fetch_audit_entries(limit: int = 500, offset: int = 0) -> List[Dict[str, Any
 
 
 def bootstrap_default_if_empty() -> Snapshot:
-    """Bootstrap default panels and groups if config doesn't exist."""
+    """
+    Bootstrap default panels and groups if config doesn't exist.
+    
+    Only resets last_change_ts to 0.0 when actually creating new panels (initial bootstrap).
+    On subsequent app starts, preserves existing timestamps to maintain dwell time protection.
+    """
     snap = load_snapshot()
+    created_new_panels = False
     needs_bootstrap = False
     
     # Check if we need to bootstrap panels
     if not snap.panels:
+        created_new_panels = True
         needs_bootstrap = True
         # Default configuration: 18 facade panels and 2 skylights (20 total)
-        # Set last_change_ts to 0.0 so panels can be changed immediately (dwell time already met)
+        # Set last_change_ts to 0.0 for newly created panels (initial bootstrap)
         for i in range(1, 19):
             pid = f"P{i:02d}"
             snap.panels[pid] = Panel(id=pid, name=f"Facade {i}", group_id="G-facade", last_change_ts=0.0)
@@ -517,22 +540,20 @@ def bootstrap_default_if_empty() -> Snapshot:
     if needs_bootstrap:
         save_snapshot(snap)
     
-    # Always ensure default panels have last_change_ts=0.0 in database
-    # This ensures tests can run immediately without dwell time issues
-    # Only reset if we're using default panels (P01-P18, SK1, SK2)
-    default_panel_ids = [f"P{i:02d}" for i in range(1, 19)] + ["SK1", "SK2"]
-    _ensure_panel_state_db()
-    with _db_connection() as conn:
-        for panel_id in default_panel_ids:
-            if panel_id in snap.panels:
-                # Reset last_change_ts to 0.0 for default panels
-                # This allows immediate changes in tests
+    # Only reset timestamps if we actually created new panels (initial bootstrap)
+    # This preserves dwell time protection on subsequent app starts
+    if created_new_panels:
+        default_panel_ids = [f"P{i:02d}" for i in range(1, 19)] + ["SK1", "SK2"]
+        _ensure_panel_state_db()
+        with _db_connection() as conn:
+            for panel_id in default_panel_ids:
+                # Reset last_change_ts to 0.0 only for newly created panels
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
-                    SELECT ?, COALESCE((SELECT level FROM panel_state WHERE panel_id = ?), 0), 0.0
+                    VALUES (?, 0, 0.0)
                     """,
-                    (panel_id, panel_id),
+                    (panel_id,),
                 )
     
     return snap
