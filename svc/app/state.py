@@ -351,45 +351,43 @@ def _migrate_json_state_to_db() -> None:
     if not os.path.exists(PANELS_STATE_FILE):
         return
     
-    # Use manual transaction handling for this special case that needs explicit rollback
-    conn = sqlite3.connect(AUDIT_DB_FILE)
-    try:
-        conn.execute("BEGIN IMMEDIATE")
-        # Check if DB already has panel states
-        count = conn.execute("SELECT COUNT(*) FROM panel_state").fetchone()[0]
-        if count > 0:
-            # Already migrated, skip
+    # Use the standard DB connection context manager for consistency
+    with _db_connection() as conn:
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            # Check if DB already has panel states
+            count = conn.execute("SELECT COUNT(*) FROM panel_state").fetchone()[0]
+            if count > 0:
+                # Already migrated, skip
+                conn.rollback()
+                return
+
+            # Load JSON state
+            with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
+                state_data = json.load(f)
+
+            # Insert into database
+            for panel_id, state in state_data.items():
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
+                    VALUES (?, ?, ?)
+                    """,
+                    (
+                        panel_id,
+                        state.get("level", 0),
+                        state.get("last_change_ts", 0.0),
+                    ),
+                )
+            conn.commit()
+        except sqlite3.OperationalError:
+            # Another process is already migrating or DB is locked
             conn.rollback()
-            return
-
-        # Load JSON state
-        with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
-            state_data = json.load(f)
-
-        # Insert into database
-        for panel_id, state in state_data.items():
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
-                VALUES (?, ?, ?)
-                """,
-                (
-                    panel_id,
-                    state.get("level", 0),
-                    state.get("last_change_ts", 0.0),
-                ),
-            )
-        conn.commit()
-    except sqlite3.OperationalError:
-        # Another process is already migrating or DB is locked
-        conn.rollback()
-    except (json.JSONDecodeError, IOError, OSError, Exception) as e:
-        # Log error and rollback for any error during migration
-        import logging
-        logging.getLogger(__name__).warning(f"Failed to migrate panel state from JSON: {e}")
-        conn.rollback()
-    finally:
-        conn.close()
+        except (json.JSONDecodeError, IOError, OSError, Exception) as e:
+            # Log error and rollback for any error during migration
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to migrate panel state from JSON: {e}")
+            conn.rollback()
 
 
 def _migrate_groups_json_to_db() -> None:
