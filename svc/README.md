@@ -102,7 +102,7 @@ The adapter automatically:
 |----------|---------|-------------|
 | `SVC_MODE` | `sim` | Mode: `sim` or `real` |
 | `SVC_MIN_DWELL_SECONDS` | `20` | Minimum seconds between tint changes |
-| `SVC_DATA_DIR` | `data` | Directory for state and audit files |
+| `SVC_DATA_DIR` | `data` | Directory for state/log database and config files |
 | `HALIO_API_URL` | - | Halio API base URL (real mode only) |
 | `HALIO_SITE_ID` | - | Your Halio site UUID (real mode only) |
 | `HALIO_API_KEY` | - | Your Halio API key (real mode only) |

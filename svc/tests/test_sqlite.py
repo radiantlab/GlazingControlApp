@@ -5,6 +5,7 @@ Tests cover:
 - Database context manager
 - Audit log operations (append, fetch, pagination)
 - Panel state operations (save, load, update)
+- Group operations (save, load, migration)
 - Database initialization
 - Migration from JSON to SQLite
 """
@@ -18,17 +19,21 @@ from typing import Dict
 
 import pytest
 
-from app.models import AuditEntry, Panel
+from app.models import AuditEntry, Panel, Group
 from app.state import (
     _db_connection,
     _ensure_audit_db,
     _ensure_panel_state_db,
+    _ensure_groups_db,
     _migrate_json_state_to_db,
+    _migrate_groups_json_to_db,
     append_audit,
     fetch_audit_entries,
     load_state,
     save_state,
     update_panel_state,
+    load_groups,
+    save_groups,
 )
 
 
@@ -378,6 +383,80 @@ class TestPanelStateOperations:
         assert state_data["P99"]["level"] == 50
 
 
+class TestGroupOperations:
+    """Tests for group database operations."""
+    
+    def test_save_groups_creates_groups(self, temp_db):
+        """save_groups should create group entries."""
+        groups = {
+            "G-1": Group(id="G-1", name="Group 1", member_ids=["P01", "P02"]),
+            "G-2": Group(id="G-2", name="Group 2", member_ids=["P03", "P04"]),
+        }
+        
+        save_groups(groups)
+        
+        # Verify groups were saved
+        loaded_groups = load_groups()
+        assert len(loaded_groups) == 2
+        assert loaded_groups["G-1"].name == "Group 1"
+        assert loaded_groups["G-1"].member_ids == ["P01", "P02"]
+        assert loaded_groups["G-2"].name == "Group 2"
+        assert loaded_groups["G-2"].member_ids == ["P03", "P04"]
+    
+    def test_save_groups_replaces_all_groups(self, temp_db):
+        """save_groups should replace all existing groups."""
+        # Create initial groups
+        groups1 = {
+            "G-1": Group(id="G-1", name="Group 1", member_ids=["P01"]),
+        }
+        save_groups(groups1)
+        
+        # Replace with new groups
+        groups2 = {
+            "G-2": Group(id="G-2", name="Group 2", member_ids=["P02"]),
+            "G-3": Group(id="G-3", name="Group 3", member_ids=["P03"]),
+        }
+        save_groups(groups2)
+        
+        # Verify replacement
+        loaded_groups = load_groups()
+        assert len(loaded_groups) == 2
+        assert "G-1" not in loaded_groups
+        assert "G-2" in loaded_groups
+        assert "G-3" in loaded_groups
+    
+    def test_load_groups_returns_empty_dict_when_no_data(self, temp_db, temp_state_file):
+        """load_groups should return empty dict when no groups exist."""
+        groups = load_groups()
+        assert isinstance(groups, dict)
+        assert len(groups) == 0
+    
+    def test_load_groups_handles_empty_member_ids(self, temp_db):
+        """load_groups should handle groups with empty member_ids."""
+        groups = {
+            "G-empty": Group(id="G-empty", name="Empty Group", member_ids=[]),
+        }
+        save_groups(groups)
+        
+        loaded_groups = load_groups()
+        assert loaded_groups["G-empty"].member_ids == []
+    
+    def test_load_groups_handles_invalid_json(self, temp_db):
+        """load_groups should handle invalid JSON in member_ids gracefully."""
+        # Manually insert group with invalid JSON
+        _ensure_groups_db()
+        with _db_connection() as conn:
+            conn.execute(
+                "INSERT INTO groups (id, name, member_ids) VALUES (?, ?, ?)",
+                ("G-invalid", "Invalid Group", "invalid json"),
+            )
+        
+        groups = load_groups()
+        assert len(groups) == 1
+        # Should default to empty list on JSON parse error
+        assert groups["G-invalid"].member_ids == []
+
+
 class TestDatabaseInitialization:
     """Tests for database initialization functions."""
     
@@ -445,10 +524,112 @@ class TestDatabaseInitialization:
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='panel_state'"
             )
             assert cursor.fetchone() is not None
+    
+    def test_ensure_groups_db_creates_table(self, temp_db):
+        """_ensure_groups_db should create groups table."""
+        _ensure_groups_db()
+        
+        # Verify table exists and has correct schema
+        with _db_connection() as conn:
+            cursor = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='groups'"
+            )
+            assert cursor.fetchone() is not None
+            
+            # Verify schema
+            cursor = conn.execute("PRAGMA table_info(groups)")
+            columns = {row[1]: row[2] for row in cursor.fetchall()}
+            assert "id" in columns
+            assert "name" in columns
+            assert "member_ids" in columns
+    
+    def test_ensure_groups_db_is_idempotent(self, temp_db):
+        """_ensure_groups_db should be safe to call multiple times."""
+        _ensure_groups_db()
+        _ensure_groups_db()  # Call again
+        
+        # Should not error and table should still exist
+        with _db_connection() as conn:
+            cursor = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='groups'"
+            )
+            assert cursor.fetchone() is not None
 
 
 class TestMigration:
-    """Tests for JSON to SQLite migration."""
+    """Tests for one-time JSON to SQLite migration (for upgrading from old versions)."""
+    
+    def test_migrate_groups_json_to_db_migrates_data(self, temp_db, temp_state_file, monkeypatch):
+        """_migrate_groups_json_to_db should migrate groups from JSON to SQLite."""
+        # Create JSON config file with groups
+        config_file = Path(temp_state_file).parent / "panels_config.json"
+        config_data = {
+            "panels": {
+                "P01": {"id": "P01", "name": "Panel 1"},
+            },
+            "groups": {
+                "G-1": {"id": "G-1", "name": "Group 1", "member_ids": ["P01", "P02"]},
+                "G-2": {"id": "G-2", "name": "Group 2", "member_ids": ["P03"]},
+            },
+        }
+        with open(config_file, "w") as f:
+            json.dump(config_data, f)
+        
+        # Patch the config file path
+        monkeypatch.setattr("app.state.PANELS_CONFIG_FILE", str(config_file))
+        monkeypatch.setattr("app.config.PANELS_CONFIG_FILE", str(config_file))
+        
+        # Migrate
+        _migrate_groups_json_to_db()
+        
+        # Verify data was migrated
+        groups = load_groups()
+        assert len(groups) == 2
+        assert groups["G-1"].name == "Group 1"
+        assert groups["G-1"].member_ids == ["P01", "P02"]
+        assert groups["G-2"].name == "Group 2"
+        assert groups["G-2"].member_ids == ["P03"]
+    
+    def test_migrate_groups_json_to_db_skips_if_no_json_file(self, temp_db, temp_state_file):
+        """_migrate_groups_json_to_db should skip if JSON file doesn't exist."""
+        # Config file doesn't exist (temp_state_file fixture doesn't create it)
+        # Should not error
+        _migrate_groups_json_to_db()
+        
+        # Database should be empty
+        groups = load_groups()
+        assert len(groups) == 0
+    
+    def test_migrate_groups_json_to_db_skips_if_db_has_data(self, temp_db, temp_state_file, monkeypatch):
+        """_migrate_groups_json_to_db should skip if database already has groups."""
+        # Create initial groups in database
+        groups1 = {
+            "G-1": Group(id="G-1", name="Group 1", member_ids=["P01"]),
+        }
+        save_groups(groups1)
+        
+        # Create JSON file with different groups
+        config_file = Path(temp_state_file).parent / "panels_config.json"
+        config_data = {
+            "panels": {},
+            "groups": {
+                "G-2": {"id": "G-2", "name": "Group 2", "member_ids": ["P02"]},
+            },
+        }
+        with open(config_file, "w") as f:
+            json.dump(config_data, f)
+        
+        # Patch the config file path
+        monkeypatch.setattr("app.state.PANELS_CONFIG_FILE", str(config_file))
+        monkeypatch.setattr("app.config.PANELS_CONFIG_FILE", str(config_file))
+        
+        # Migrate should skip
+        _migrate_groups_json_to_db()
+        
+        # Original data should still be there, new data should not be migrated
+        groups = load_groups()
+        assert "G-1" in groups
+        assert "G-2" not in groups
     
     def test_migrate_json_state_to_db_migrates_data(self, temp_db, temp_state_file):
         """_migrate_json_state_to_db should migrate JSON data to SQLite."""

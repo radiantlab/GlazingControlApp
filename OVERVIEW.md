@@ -64,8 +64,10 @@ Python FastAPI backend that simulates panels today and can talk to a real traile
 
 - **svc/app/state.py**  
   - Low-level persistence helpers  
-  - Load and save snapshot JSON (panels + groups)  
-  - Bootstraps default panels and groups when no state file exists  
+  - Load and save panel configuration from JSON (panels structure only)  
+  - Load and save groups from SQLite database  
+  - Load and save panel state from SQLite database  
+  - Bootstraps default panels and groups when no config exists  
   - Appends audit entries to SQLite database (audit.db) for all control actions
 
 - **svc/app/simulator.py**  

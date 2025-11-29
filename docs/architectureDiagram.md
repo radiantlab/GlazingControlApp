@@ -30,10 +30,9 @@ graph TB
 
     subgraph "Data Layer"
         STATE[state.py<br/>State Management]
-        CONFIG_FILE[panels_config.json<br/>Structure Data]
-        STATE_FILE[panels_state.json<br/>Runtime State]
-        AUDIT_DB[audit.db<br/>SQLite Audit Log]
-        MAPPING[window_mapping.json<br/>Panel → UUID Mapping]
+        CONFIG_FILE[panels_config.json<br/>Panel Structure Only<br/>Read-Only]
+        AUDIT_DB[audit.db<br/>SQLite Database<br/>Audit Logs, Panel State, Groups]
+        MAPPING[window_mapping.json<br/>Panel → UUID Mapping<br/>Read-Only]
     end
 
     subgraph "External Systems"
@@ -63,7 +62,6 @@ graph TB
     SERVICE --> STATE
     SIM --> STATE
     STATE --> CONFIG_FILE
-    STATE --> STATE_FILE
     STATE --> AUDIT_DB
     ADAPTER --> MAPPING
 
@@ -82,7 +80,7 @@ graph TB
     class MAIN,ROUTES,HEALTH,PANELS,GROUPS,COMMANDS,AUDIT api
     class SERVICE,CONFIG service
     class SIM,ADAPTER backend
-    class STATE,CONFIG_FILE,STATE_FILE,AUDIT_DB,MAPPING data
+    class STATE,CONFIG_FILE,AUDIT_DB,MAPPING data
     class HALIO_API external
 ```
 
@@ -100,16 +98,18 @@ User Action → React Component → API Client → FastAPI Route
 - **Real Mode**: `SVC_MODE=real` → Uses `RealAdapter` → Makes HTTP requests to Halio API
 
 ### Data Flow
-- **Config Data** (panels_config.json): Panel/Group structure, names, relationships
-- **State Data** (panels_state.json): Current tint levels, timestamps
-- **Audit Log** (audit.db): SQLite database storing all control actions with actor, timestamp, result
-- **Window Mapping** (window_mapping.json): Maps panel IDs (P01, P02) to Halio UUIDs
+- **Config Data** (panels_config.json): Panel structure only (id, name, group_id assignment) - Read-only
+- **Runtime Data** (audit.db): SQLite database storing:
+  - Audit logs: All control actions with actor, timestamp, result
+  - Panel state: Current tint levels and timestamps
+  - Groups: Group definitions (id, name, member_ids)
+- **Window Mapping** (window_mapping.json): Maps panel IDs (P01, P02) to Halio UUIDs - Read-only
 
 ## Key Design Decisions
 
 1. **Service Layer Abstraction**: `ControlService` provides a stable interface regardless of backend
 2. **Mode Switching**: Zero code changes needed when switching between sim/real modes
-3. **State Separation**: Config (structure) vs State (runtime values) separated for clarity and ease of repo use
+3. **State Separation**: Config (static structure in JSON) vs Runtime data (dynamic state in SQLite) separated for clarity. All JSON files are read-only; SQLite handles all writes.
 4. **Error Handling**: All layers handle errors gracefully, returning empty arrays/None on failure
 5. **Audit Trail**: All control actions logged with actor, timestamp, and result
 

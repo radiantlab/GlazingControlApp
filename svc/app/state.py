@@ -66,12 +66,30 @@ def _migrate_from_legacy_panels_json() -> None:
 
     config_data = {
         "panels": config_panels,
-        "groups": data.get("groups", {}),
     }
 
-    # Write config file
+    # Write config file (panels only, groups go to DB)
     with open(PANELS_CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(config_data, f, indent=2)
+    
+    # Migrate groups to database
+    groups_data = data.get("groups", {})
+    if groups_data:
+        _ensure_groups_db()
+        with _db_connection() as conn:
+            for group_id, group_data in groups_data.items():
+                if isinstance(group_data, dict):
+                    conn.execute(
+                        """
+                        INSERT INTO groups (id, name, member_ids)
+                        VALUES (?, ?, ?)
+                        """,
+                        (
+                            group_id,
+                            group_data.get("name", f"Group {group_id}"),
+                            json.dumps(group_data.get("member_ids", [])),
+                        ),
+                    )
 
     # Extract state (runtime values)
     state_data = {}
@@ -81,7 +99,7 @@ def _migrate_from_legacy_panels_json() -> None:
             "last_change_ts": panel_data.get("last_change_ts", 0.0),
         }
     
-    # Write state to both SQLite database and JSON file
+    # Write state to SQLite database
     _ensure_panel_state_db()
     with _db_connection() as conn:
         for panel_id, state in state_data.items():
@@ -96,24 +114,20 @@ def _migrate_from_legacy_panels_json() -> None:
                     state.get("last_change_ts", 0.0),
                 ),
             )
-    
-    # Also write JSON file for backward compatibility
-    with open(PANELS_STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(state_data, f, indent=2)
 
 
-def load_config() -> Tuple[Dict[str, Dict], Dict[str, Dict]]:
-    """Load panel and group configuration (structure only)."""
+def load_config() -> Dict[str, Dict]:
+    """Load panel configuration (structure only). Groups are now in database."""
     _ensure_dirs()
     _migrate_from_legacy_panels_json()
 
     if not os.path.exists(PANELS_CONFIG_FILE):
-        return {}, {}
+        return {}
 
     with open(PANELS_CONFIG_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    return data.get("panels", {}), data.get("groups", {})
+    return data.get("panels", {})
 
 
 def load_state() -> Dict[str, Dict]:
@@ -137,10 +151,57 @@ def load_state() -> Dict[str, Dict]:
         return state_data
 
 
+def load_groups() -> Dict[str, Group]:
+    """Load groups from SQLite database."""
+    _ensure_dirs()
+    _migrate_from_legacy_panels_json()  # Migrate legacy groups too
+    _ensure_groups_db()
+    _migrate_groups_json_to_db()
+
+    with _db_connection() as conn:
+        rows = conn.execute("SELECT id, name, member_ids FROM groups").fetchall()
+        
+        groups = {}
+        for row in rows:
+            group_id, name, member_ids_json = row
+            try:
+                member_ids = json.loads(member_ids_json) if member_ids_json else []
+            except Exception:
+                member_ids = []
+            groups[group_id] = Group(
+                id=group_id,
+                name=name,
+                member_ids=member_ids,
+            )
+        
+        return groups
+
+
+def save_groups(groups: Dict[str, Group]) -> None:
+    """Save groups to SQLite database."""
+    _ensure_dirs()
+    _ensure_groups_db()
+    
+    with _db_connection() as conn:
+        # Delete all existing groups
+        conn.execute("DELETE FROM groups")
+        
+        # Insert all groups
+        for group_id, group in groups.items():
+            conn.execute(
+                """
+                INSERT INTO groups (id, name, member_ids)
+                VALUES (?, ?, ?)
+                """,
+                (group.id, group.name, json.dumps(group.member_ids)),
+            )
+
+
 def load_snapshot() -> Snapshot:
     """Load complete snapshot by merging config and state."""
-    config_panels, config_groups = load_config()
+    config_panels = load_config()
     state_data = load_state()
+    groups = load_groups()
 
     # Merge config and state into Panel objects
     panels = {}
@@ -154,12 +215,11 @@ def load_snapshot() -> Snapshot:
             last_change_ts=panel_state.get("last_change_ts", 0.0),
         )
 
-    groups = {k: Group(**v) for k, v in config_groups.items()}
     return Snapshot(panels=panels, groups=groups)
 
 
-def save_config(panels: Dict[str, Panel], groups: Dict[str, Group]) -> None:
-    """Save panel and group configuration (structure only)."""
+def save_config(panels: Dict[str, Panel]) -> None:
+    """Save panel configuration (structure only). Groups are now in database."""
     _ensure_dirs()
     config_panels = {}
     for panel_id, panel in panels.items():
@@ -169,11 +229,8 @@ def save_config(panels: Dict[str, Panel], groups: Dict[str, Group]) -> None:
             "group_id": panel.group_id,
         }
 
-    config_groups = {k: v.model_dump() for k, v in groups.items()}
-
     config_data = {
         "panels": config_panels,
-        "groups": config_groups,
     }
 
     with open(PANELS_CONFIG_FILE, "w", encoding="utf-8") as f:
@@ -181,38 +238,26 @@ def save_config(panels: Dict[str, Panel], groups: Dict[str, Group]) -> None:
 
 
 def save_state(panels: Dict[str, Panel]) -> None:
-    """Save panel runtime state (level, last_change_ts) to both SQLite database and JSON file."""
+    """Save panel runtime state (level, last_change_ts) to SQLite database."""
     _ensure_dirs()
     _ensure_panel_state_db()
     
-    # Prepare state data
-    state_data = {}
-    for panel_id, panel in panels.items():
-        state_data[panel_id] = {
-            "level": panel.level,
-            "last_change_ts": panel.last_change_ts,
-        }
-    
     # Write to SQLite database
     with _db_connection() as conn:
-        for panel_id, state in state_data.items():
+        for panel_id, panel in panels.items():
             conn.execute(
                 """
                 INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
                 VALUES (?, ?, ?)
                 """,
-                (panel_id, state["level"], state["last_change_ts"]),
+                (panel_id, panel.level, panel.last_change_ts),
             )
-    
-    # Also write to JSON file for backward compatibility during transition
-    with open(PANELS_STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(state_data, f, indent=2)
 
 
 def update_panel_state(panel_id: str, level: int) -> None:
     """
-    Update a single panel's state (level and last_change_ts) in both SQLite database 
-    and JSON file when a successful command is received.
+    Update a single panel's state (level and last_change_ts) in SQLite database 
+    when a successful command is received.
     This keeps the displayed tint level accurate based on successful API responses.
     """
     _ensure_dirs()
@@ -231,25 +276,13 @@ def update_panel_state(panel_id: str, level: int) -> None:
             """,
             (panel_id, level, last_change_ts),
         )
-    
-    # Also update JSON file for backward compatibility during transition
-    if os.path.exists(PANELS_STATE_FILE):
-        with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
-            state_data = json.load(f)
-    else:
-        state_data = {}
-    state_data[panel_id] = {
-        "level": level,
-        "last_change_ts": last_change_ts,
-    }
-    with open(PANELS_STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(state_data, f, indent=2)
 
 
 def save_snapshot(s: Snapshot) -> None:
-    """Save snapshot by writing config and state separately."""
-    save_config(s.panels, s.groups)
+    """Save snapshot by writing config, state, and groups separately."""
+    save_config(s.panels)
     save_state(s.panels)
+    save_groups(s.groups)
 
 
 def _ensure_audit_db() -> None:
@@ -280,6 +313,20 @@ def _ensure_panel_state_db() -> None:
                 panel_id TEXT PRIMARY KEY,
                 level INTEGER NOT NULL DEFAULT 0,
                 last_change_ts REAL NOT NULL DEFAULT 0.0
+            )
+            """
+        )
+
+
+def _ensure_groups_db() -> None:
+    """Create the SQLite table for groups if it does not exist."""
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS groups (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                member_ids TEXT NOT NULL
             )
             """
         )
@@ -324,6 +371,61 @@ def _migrate_json_state_to_db() -> None:
         conn.commit()
     except sqlite3.OperationalError:
         # Another process is already migrating or DB is locked
+        conn.rollback()
+    finally:
+        conn.close()
+
+
+def _migrate_groups_json_to_db() -> None:
+    """Migrate groups from JSON file to SQLite database if JSON exists and DB is empty."""
+    _ensure_groups_db()
+    
+    # Check if config file exists and has groups
+    if not os.path.exists(PANELS_CONFIG_FILE):
+        return
+    
+    # Use manual transaction handling for this special case that needs explicit rollback
+    conn = sqlite3.connect(AUDIT_DB_FILE)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        # Check if DB already has groups
+        count = conn.execute("SELECT COUNT(*) FROM groups").fetchone()[0]
+        if count > 0:
+            # Already migrated, skip
+            conn.rollback()
+            return
+
+        # Load JSON config
+        with open(PANELS_CONFIG_FILE, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+
+        groups_data = config_data.get("groups", {})
+        if not groups_data:
+            conn.rollback()
+            return
+
+        # Insert into database
+        for group_id, group_data in groups_data.items():
+            if isinstance(group_data, dict):
+                conn.execute(
+                    """
+                    INSERT INTO groups (id, name, member_ids)
+                    VALUES (?, ?, ?)
+                    """,
+                    (
+                        group_id,
+                        group_data.get("name", f"Group {group_id}"),
+                        json.dumps(group_data.get("member_ids", [])),
+                    ),
+                )
+        conn.commit()
+    except sqlite3.OperationalError:
+        # Another process is already migrating or DB is locked
+        conn.rollback()
+    except Exception as e:
+        # Log error but don't fail
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to migrate groups from JSON: {e}")
         conn.rollback()
     finally:
         conn.close()
