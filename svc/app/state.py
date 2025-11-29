@@ -578,15 +578,16 @@ def bootstrap_default_if_empty() -> Snapshot:
                 member_ids=["SK1", "SK2"],
             )
     
-    # Save if we made changes
-    if needs_bootstrap:
-        save_snapshot(snap)
-    
     # Only reset timestamps if we actually created new panels (initial bootstrap)
     # This preserves dwell time protection on subsequent app starts
     if created_new_panels:
-        reset_default_panel_timestamps(preserve_levels=False)
-    
+        # Reset timestamps in the in-memory snapshot before saving
+        for panel in snap.panels.values():
+            panel.last_change_ts = 0.0
+
+    # Save if we made changes
+    if needs_bootstrap:
+        save_snapshot(snap)
     return snap
 
 
