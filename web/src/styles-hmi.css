@@ -958,6 +958,7 @@ body {
 
 .form-group input[type="text"],
 .form-group input[type="number"],
+.form-group input[type="date"],
 .form-group select {
     padding: 10px 12px;
     background: var(--hmi-bg-alt);
@@ -971,6 +972,7 @@ body {
 
 .form-group input[type="text"]:focus,
 .form-group input[type="number"]:focus,
+.form-group input[type="date"]:focus,
 .form-group select:focus {
     border-color: var(--hmi-primary);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
@@ -1658,25 +1660,133 @@ select option[disabled] {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: 24px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--hmi-border);
 }
 
 .logs-filters {
     display: flex;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: 20px;
     flex: 1;
+}
+
+.logs-date-range-group {
+    min-width: 280px;
+}
+
+.logs-date-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logs-date-input {
+    flex: 1;
+    padding: 10px 12px;
+    background: var(--hmi-bg-alt);
+    border: 1px solid var(--hmi-border);
+    border-radius: 8px;
+    color: var(--hmi-text);
+    font-size: 13px;
+    font-family: inherit;
+    transition: all 0.15s ease;
+}
+
+.logs-date-input:focus {
+    outline: none;
+    border-color: var(--hmi-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.logs-date-separator {
+    color: var(--hmi-text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.logs-date-clear {
+    background: transparent;
+    border: none;
+    color: var(--hmi-text-muted);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.logs-date-clear:hover {
+    background: var(--hmi-bg-alt);
+    color: var(--hmi-text);
 }
 
 .logs-actions {
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    gap: 12px;
+}
+
+.logs-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    white-space: nowrap;
+}
+
+.logs-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.logs-btn-icon {
+    font-size: 16px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
 }
 
 .logs-refresh-btn {
-    max-width: 140px;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(37, 99, 235, 0.08));
+    color: #60a5fa;
+    border: 1px solid rgba(37, 99, 235, 0.3);
+}
+
+.logs-refresh-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.25), rgba(37, 99, 235, 0.15));
+    border-color: rgba(37, 99, 235, 0.5);
+    color: #93c5fd;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(37, 99, 235, 0.2);
+}
+
+.logs-export-btn {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.08));
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.logs-export-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(34, 197, 94, 0.15));
+    border-color: rgba(34, 197, 94, 0.5);
+    color: #86efac;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(34, 197, 94, 0.2);
 }
 
 .logs-warning {
