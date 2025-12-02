@@ -2,13 +2,18 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from .models import (
     Panel, Group, CommandRequest, CommandResult, GroupCreate, GroupUpdate, 
-    AuditEntry, HealthResponse, DeleteGroupResponse, ErrorResponse
+    AuditEntry, HealthResponse, DeleteGroupResponse, ErrorResponse, SensorInfo,
+    SensorReadingResponse
 )
 from typing import List
 from .service import ControlService
 from .config import MODE
-from .state import fetch_audit_entries
-
+from .state import (
+    fetch_audit_entries,
+    list_sensors as _list_sensors,
+    fetch_latest_readings as _fetch_latest_readings,
+    fetch_readings as _fetch_readings,
+)
 
 
 router = APIRouter()
@@ -171,3 +176,50 @@ def get_audit_logs(
     """Get audit log entries."""
     rows = fetch_audit_entries(limit=limit, offset=offset)
     return [AuditEntry(**row) for row in rows]
+
+
+@router.get(
+    "/sensors",
+    response_model=List[SensorInfo],
+    summary="List connected sensors",
+    tags=["Sensors"],
+)
+def list_sensors() -> List[SensorInfo]:
+    rows = _list_sensors()
+    return [
+        SensorInfo(
+            id=r["id"],
+            kind=r["kind"],
+            label=r["label"],
+            location=r.get("location"),
+            config=r.get("config", {}),
+        )
+        for r in rows
+    ]
+
+
+@router.get(
+    "/metrics/latest",
+    response_model=List[SensorReadingResponse],
+    summary="Latest metric values per sensor/metric",
+    tags=["Sensors"],
+)
+def get_latest_metrics() -> List[SensorReadingResponse]:
+    rows = _fetch_latest_readings()
+    return [SensorReadingResponse(**r) for r in rows]
+
+
+@router.get(
+    "/metrics/history",
+    response_model=List[SensorReadingResponse],
+    summary="Historical readings for a sensor + metric",
+    tags=["Sensors"],
+)
+def get_metric_history(
+    sensor_id: str = Query(..., description="Sensor ID, e.g. KM1-00"),
+    metric: str = Query(..., description="Metric name, e.g. 'lux'"),
+    ts_from: float = Query(..., description="Start timestamp (unix seconds)"),
+    ts_to: float = Query(..., description="End timestamp (unix seconds)"),
+) -> List[SensorReadingResponse]:
+    rows = _fetch_readings(sensor_id=sensor_id, metric=metric, ts_from=ts_from, ts_to=ts_to)
+    return [SensorReadingResponse(**r) for r in rows]
