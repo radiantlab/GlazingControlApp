@@ -76,3 +76,16 @@ class ErrorResponse(BaseModel):
     """Standard error response format."""
     detail: str = Field(description="Error message describing what went wrong")
 
+class SensorInfo(BaseModel):
+    id: str
+    kind: str
+    label: str
+    location: Optional[str] = None
+    config: Dict = Field(default_factory=dict)
+
+
+class SensorReadingResponse(BaseModel):
+    sensor_id: str
+    metric: str
+    value: float
+    ts: float

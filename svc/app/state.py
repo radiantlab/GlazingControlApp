@@ -98,6 +98,7 @@ def initialize_database() -> None:
     _migrate_from_legacy_panels_json()
     _ensure_panel_state_db()
     _ensure_groups_db()
+    _ensure_sensor_db()
     _migrate_json_state_to_db()
     _migrate_groups_json_to_db()
 
@@ -383,6 +384,147 @@ def _ensure_groups_db() -> None:
             )
             """
         )
+
+
+# --- SENSOR TABLES ---------------------------------------------------------
+
+def _ensure_sensor_db() -> None:
+    """Create tables for sensor metadata and readings if they do not exist."""
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sensors (
+                id TEXT PRIMARY KEY,           -- e.g. 'KM1-00'
+                kind TEXT NOT NULL,           -- e.g. 't10a', 'jeti', 'eko'
+                label TEXT NOT NULL,          -- human-readable name
+                location TEXT,                -- optional (e.g. 'Desk', 'Window center')
+                config_json TEXT NOT NULL     -- raw config for this sensor
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sensor_readings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sensor_id TEXT NOT NULL,
+                ts REAL NOT NULL,            -- Unix timestamp
+                metric TEXT NOT NULL,        -- e.g. 'lux', 'melanopic_edi'
+                value REAL NOT NULL,
+                FOREIGN KEY(sensor_id) REFERENCES sensors(id)
+            )
+            """
+        )
+
+
+def register_sensor(
+    sensor_id: str,
+    kind: str,
+    label: str,
+    location: str | None,
+    config: dict,
+) -> None:
+    """
+    Idempotently register a sensor; if it already exists we just update its metadata.
+    """
+    _ensure_sensor_db()
+    cfg_json = json.dumps(config)
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO sensors (id, kind, label, location, config_json)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                kind=excluded.kind,
+                label=excluded.label,
+                location=excluded.location,
+                config_json=excluded.config_json
+            """,
+            (sensor_id, kind, label, location, cfg_json),
+        )
+
+
+def insert_sensor_reading(
+    sensor_id: str,
+    ts: float,
+    metric: str,
+    value: float,
+) -> None:
+    """Insert a single reading for a sensor."""
+    _ensure_sensor_db()
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO sensor_readings (sensor_id, ts, metric, value)
+            VALUES (?, ?, ?, ?)
+            """,
+            (sensor_id, ts, metric, value),
+        )
+
+
+def fetch_latest_readings() -> list[dict]:
+    """
+    Return the latest value per (sensor_id, metric).
+    """
+    _ensure_sensor_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        rows = conn.execute(
+            """
+            SELECT r.sensor_id, r.metric, r.value, r.ts
+            FROM sensor_readings r
+            JOIN (
+                SELECT sensor_id, metric, MAX(ts) AS max_ts
+                FROM sensor_readings
+                GROUP BY sensor_id, metric
+            ) latest
+            ON r.sensor_id = latest.sensor_id
+           AND r.metric    = latest.metric
+           AND r.ts        = latest.max_ts
+            ORDER BY r.sensor_id, r.metric
+            """
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def fetch_readings(
+    sensor_id: str,
+    metric: str,
+    ts_from: float,
+    ts_to: float,
+) -> list[dict]:
+    """Fetch time series for one sensor + metric in [ts_from, ts_to]."""
+    _ensure_sensor_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        rows = conn.execute(
+            """
+            SELECT sensor_id, metric, value, ts
+            FROM sensor_readings
+            WHERE sensor_id = ?
+              AND metric    = ?
+              AND ts BETWEEN ? AND ?
+            ORDER BY ts
+            """,
+            (sensor_id, metric, ts_from, ts_to),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def list_sensors() -> list[dict]:
+    """Return all registered sensors."""
+    _ensure_sensor_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        rows = conn.execute(
+            "SELECT id, kind, label, location, config_json FROM sensors"
+        ).fetchall()
+        result: list[dict] = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["config"] = json.loads(d.pop("config_json") or "{}")
+            except Exception:
+                d["config"] = {}
+            result.append(d)
+        return result
+
 
 
 def _migrate_json_state_to_db() -> None:

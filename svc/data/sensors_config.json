@@ -1,0 +1,38 @@
+{
+    "t10a": [
+        {
+            "device_id": "KM1",
+            "port": "COM3",
+            "interval_s": 60,
+            "heads": [
+                {
+                    "head_no": 0,
+                    "sensor_id": "KM1-00",
+                    "label": "Desk center"
+                },
+                {
+                    "head_no": 1,
+                    "sensor_id": "KM1-01",
+                    "label": "Desk left"
+                }
+            ]
+        },
+        {
+            "device_id": "KM2",
+            "port": "COM4",
+            "interval_s": 60,
+            "heads": [
+                {
+                    "head_no": 0,
+                    "sensor_id": "KM2-00",
+                    "label": "Workplane center"
+                },
+                {
+                    "head_no": 1,
+                    "sensor_id": "KM2-01",
+                    "label": "Workplane back"
+                }
+            ]
+        }
+    ]
+}
