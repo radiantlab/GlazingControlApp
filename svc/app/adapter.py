@@ -56,8 +56,14 @@ class RealAdapter:
         # Cache for window states to enforce dwell time
         self._state_cache: Dict[str, Dict] = {}
 
+        # Mapping from panel_id to group_id (for workaround: one group per panel)
+        self.panel_to_group: Dict[str, str] = {}
+
         logger.info(f"RealAdapter initialized for site {self.site_id}")
         logger.info(f"Loaded {len(self.panel_to_window)} panel mappings")
+        
+        # Initialize groups: ensure each panel has a corresponding group
+        self._ensure_panel_groups()
 
     def _load_window_mapping(self) -> Dict[str, str]:
         """
@@ -85,6 +91,136 @@ class RealAdapter:
         except Exception as e:
             logger.error(f"Failed to load window mapping: {e}")
             return {}
+
+    def _ensure_panel_groups(self) -> None:
+        """
+        Initialize groups: ensure each panel has a corresponding group.
+        This is a workaround for API issues with individual window tinting.
+        Groups are named the same as their panel IDs (e.g., "P01", "SK1").
+        """
+        try:
+            # Get all existing groups
+            existing_groups = self.list_groups()
+            existing_group_names = {g.name for g in existing_groups}
+            
+            # Build panel_id -> group_id mapping from existing groups
+            for group in existing_groups:
+                # If group name matches a panel ID, map it
+                if group.name in self.panel_to_window:
+                    self.panel_to_group[group.name] = group.id
+            
+            # Find panels that don't have groups yet
+            missing_panels = []
+            for panel_id in self.panel_to_window.keys():
+                if panel_id not in self.panel_to_group:
+                    missing_panels.append(panel_id)
+            
+            if missing_panels:
+                logger.info(
+                    f"Found {len(missing_panels)} panels without groups. "
+                    f"Creating groups: {missing_panels}"
+                )
+                
+                # Create groups for missing panels
+                for panel_id in missing_panels:
+                    try:
+                        # Create a group with the panel ID as the name and member
+                        group = self.create_group(panel_id, [panel_id])
+                        self.panel_to_group[panel_id] = group.id
+                        logger.info(f"Created group '{panel_id}' (ID: {group.id}) for panel {panel_id}")
+                    except Exception as e:
+                        logger.error(f"Failed to create group for panel {panel_id}: {e}")
+            else:
+                logger.info("All panels have corresponding groups")
+                
+        except Exception as e:
+            logger.error(f"Error ensuring panel groups: {e}")
+
+    def create_group(self, name: str, member_ids: List[str]) -> Group:
+        """
+        Create a new group via Halio API.
+        
+        Args:
+            name: Group name (should match panel ID for workaround)
+            member_ids: List of panel IDs to include in the group
+            
+        Returns:
+            Created Group object
+        """
+        try:
+            # Convert panel IDs to window UUIDs
+            window_uuids = []
+            for panel_id in member_ids:
+                window_uuid = self.panel_to_window.get(panel_id)
+                if window_uuid:
+                    window_uuids.append(window_uuid)
+                else:
+                    logger.warning(f"Panel {panel_id} not found in window mapping, skipping")
+            
+            if not window_uuids:
+                raise ValueError(f"No valid windows found for panels: {member_ids}")
+            
+            url = f"{self.base_url}/sites/{self.site_id}/groups"
+            # Halio API expects: {"group": {"name": "string", "windows": ["string"]}}
+            payload = {
+                "group": {
+                    "name": name,
+                    "windows": window_uuids
+                }
+            }
+            
+            logger.info(
+                f"Creating group via Halio API: name={name} "
+                f"panels={member_ids} windows={window_uuids} url={url}"
+            )
+            
+            response = requests.post(
+                url, headers=self.headers, json=payload, timeout=10
+            )
+            
+            logger.info(
+                f"Halio API response for create group '{name}': "
+                f"status={response.status_code} body={response.text[:500]}"
+            )
+            
+            if response.status_code == 201:
+                response_data = response.json()
+                # Extract group data from response
+                # API may return wrapped response: {"statusCode": 201, "results": {...}}
+                if isinstance(response_data, dict):
+                    if "results" in response_data:
+                        group_data = response_data["results"]
+                    else:
+                        group_data = response_data
+                    
+                    group_id = group_data.get("id")
+                    if not group_id:
+                        raise ValueError(f"Group created but no ID in response: {response_data}")
+                    
+                    group = Group(
+                        id=group_id,
+                        name=name,
+                        member_ids=member_ids  # Use original panel IDs
+                    )
+                    logger.info(f"✓ Group '{name}' created successfully (ID: {group_id})")
+                    return group
+                else:
+                    raise ValueError(f"Unexpected response format: {type(response_data)}")
+            elif response.status_code == 400:
+                error_msg = response.text
+                logger.error(f"✗ Invalid group creation request: {error_msg}")
+                raise ValueError(f"Invalid request: {error_msg}")
+            else:
+                error_msg = response.text
+                logger.error(f"✗ Halio API error creating group: status={response.status_code} body={error_msg}")
+                raise RuntimeError(f"API error: {error_msg}")
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error creating group '{name}': {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Error creating group '{name}': {e}")
+            raise
 
     def _get_window_state(self, window_id: str) -> Optional[Dict]:
         """Query current state of a window from Halio API."""
@@ -209,6 +345,7 @@ class RealAdapter:
     def list_groups(self) -> List[Group]:
         """
         Fetch all groups from Halio API and convert to Group objects.
+        Populates member_ids by matching group names to panel IDs.
         """
         try:
             url = f"{self.base_url}/sites/{self.site_id}/groups"
@@ -240,10 +377,30 @@ class RealAdapter:
                     logger.warning(f"Group entry missing id: {hg}")
                     continue
 
+                group_name = hg.get("name", f"Group {group_id}")
+                
+                # Determine member_ids based on group name
+                # For workaround: groups are named after panel IDs (e.g., "P01", "SK1")
+                member_ids = []
+                if group_name in self.panel_to_window:
+                    # This is a single-panel group (workaround)
+                    member_ids = [group_name]
+                    # Update panel_to_group mapping
+                    self.panel_to_group[group_name] = group_id
+                else:
+                    # Try to get windows from group data if available
+                    # Some APIs might return windows array
+                    windows = hg.get("windows", [])
+                    if isinstance(windows, list):
+                        for window_uuid in windows:
+                            panel_id = self.window_to_panel.get(window_uuid)
+                            if panel_id:
+                                member_ids.append(panel_id)
+
                 group = Group(
                     id=group_id,
-                    name=hg.get("name", f"Group {group_id}"),
-                    member_ids=[],  # Groups API doesn't provide member windows
+                    name=group_name,
+                    member_ids=member_ids,
                 )
                 groups.append(group)
 
@@ -256,28 +413,40 @@ class RealAdapter:
     def set_panel(self, panel_id: str, level: TintLevel, min_dwell: int) -> bool:
         """
         Set tint level for a single panel via Halio API.
+        Uses group tinting as a workaround for individual window tinting issues.
 
         Returns True if command accepted, False if dwell time not met or error.
         """
-        # Translate panel ID to window UUID
+        # Translate panel ID to window UUID (for dwell time checking)
         window_id = self.panel_to_window.get(panel_id)
         if not window_id:
             logger.error(f"Panel {panel_id} not found in window mapping")
             raise KeyError(f"Panel {panel_id} not mapped to Halio window UUID")
 
-        # Check dwell time
+        # Get the group ID for this panel (workaround: one group per panel)
+        group_id = self.panel_to_group.get(panel_id)
+        if not group_id:
+            logger.error(
+                f"Panel {panel_id} does not have a corresponding group. "
+                "This should have been created during initialization."
+            )
+            raise KeyError(f"Panel {panel_id} not mapped to a group")
+
+        # Check dwell time (using window_id for consistency)
         if not self._can_change(window_id, min_dwell):
             logger.info(f"Dwell time not met for panel {panel_id}")
             return False
 
         try:
-            # POST to Halio API
-            url = f"{self.base_url}/sites/{self.site_id}/windows/{window_id}/tint"
+            # WORKAROUND: Use group tinting instead of individual window tinting
+            # POST to Halio API group tint endpoint
+            url = f"{self.base_url}/sites/{self.site_id}/groups/{group_id}/tint"
             payload = {"level": int(level)}  # Halio API expects "level", not "tintLevel"
             
             logger.info(
-                f"Sending tint command to Halio: panel={panel_id} window={window_id} "
-                f"level={level} payload={payload} url={url}"
+                f"Sending tint command via GROUP (workaround): panel={panel_id} "
+                f"group={group_id} window={window_id} level={level} "
+                f"payload={payload} url={url}"
             )
 
             response = requests.post(
@@ -286,7 +455,7 @@ class RealAdapter:
             
             # Log full response details at INFO level
             logger.info(
-                f"Halio API response for panel {panel_id}: "
+                f"Halio API response for panel {panel_id} (via group {group_id}): "
                 f"status={response.status_code} "
                 f"headers={dict(response.headers)} "
                 f"body={response.text[:500]}"  # Limit body to 500 chars
@@ -296,7 +465,7 @@ class RealAdapter:
             if response.status_code == 202:
                 logger.info(
                     f"✓✓✓ Tint command ACCEPTED for panel {panel_id} → level {level} "
-                    f"(window {window_id}) ✓✓✓"
+                    f"(via group {group_id}, window {window_id}) ✓✓✓"
                 )
                 # Parse response to get queue ID if available
                 try:
@@ -338,8 +507,8 @@ class RealAdapter:
                 
                 return True
             elif response.status_code == 404:
-                logger.error(f"✗ Window {window_id} not found on Halio API")
-                raise KeyError(f"Window {window_id} not found on Halio")
+                logger.error(f"✗ Group {group_id} not found on Halio API")
+                raise KeyError(f"Group {group_id} not found on Halio")
             elif response.status_code == 400:
                 logger.error(
                     f"✗ Invalid tint command for panel {panel_id}: "
