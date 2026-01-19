@@ -1,27 +1,5 @@
-export type Panel = {
-    id: string;
-    name: string;
-    group_id?: string | null;
-    level: number;
-    last_change_ts: number;
-};
 
-export type Group = {
-    id: string;
-    name: string;
-    member_ids: string[];
-};
-
-export type AuditLogEntry = {
-    ts: number
-    actor: string
-    target_type: "panel" | "group"
-    target_id: string
-    level: number
-    applied_to: string[]
-    result: string
-};
-
+import { Panel, Group, AuditLogEntry, SortField, SortDir} from "./types";
 
 const API_BASE = (import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -88,10 +66,15 @@ export const api = {
         endDate?: string,
         targetType?: string,
         targetFilter?: string,
-        resultFilter?: string
+        resultFilter?: string,
+        sortField?: SortField,
+        sortDir?: SortDir
     ) => {
         const params = new URLSearchParams();
         params.append("limit", limit.toString());
+
+
+
         if (startDate) {
             // Parse date string as local date (start of day in user's timezone), then convert to UTC
             // This matches LogsPanel filtering logic to ensure export matches what users see in UI
@@ -117,6 +100,9 @@ export const api = {
         if (resultFilter) {
             params.append("result_filter", resultFilter);
         }
+
+        if (sortField) params.append("sort_field", sortField);
+        if (sortDir) params.append("sort_dir", sortDir);
         
         const res = await fetch(`${API_BASE}/logs/audit/export?${params.toString()}`, {
             headers: { "Content-Type": "application/json" }
@@ -129,6 +115,7 @@ export const api = {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
+
         // Extract filename from Content-Disposition header if available
         const contentDisposition = res.headers.get("Content-Disposition");
         if (contentDisposition) {
@@ -141,6 +128,9 @@ export const api = {
         } else {
             a.download = `audit_logs_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
         }
+
+
+
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);

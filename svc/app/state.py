@@ -524,7 +524,9 @@ def append_audit(entry: AuditEntry) -> None:
 
 
 def fetch_audit_entries(limit: int = 500, offset: int = 0) -> List[Dict[str, Any]]:
-    """Fetch audit entries from SQLite ordered newest first."""
+    """Fetch audit entries from SQLite ordered xyz, asc/desc."""
+    # order by: TODO
+    # note: careful with injection here. no raw variables from api. convert them here
     _ensure_audit_db()
     with _db_connection(row_factory=sqlite3.Row) as conn:
         rows = conn.execute(

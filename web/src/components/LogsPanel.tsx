@@ -1,7 +1,9 @@
 ﻿import React, { useMemo, useState } from "react"
-import type { AuditLogEntry } from "../api"
 import { api } from "../api"
 
+import { AuditLogEntry, SortField, SortDir } from "../types"
+
+//local
 type LogsPanelProps = {
     isOpen: boolean
     onClose: () => void
@@ -11,8 +13,6 @@ type LogsPanelProps = {
     onRefresh: () => void
     isMock: boolean
 }
-
-type SortField = "ts" | "actor" | "target_type" | "target_id" | "level"
 
 export default function LogsPanel({
     isOpen,
@@ -30,7 +30,7 @@ export default function LogsPanel({
     const [startDate, setStartDate] = useState<string>("")
     const [endDate, setEndDate] = useState<string>("")
     const [sortField, setSortField] = useState<SortField>("ts")
-    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
+    const [sortDir, setSortDir] = useState<SortDir>("desc")
     const [exporting, setExporting] = useState(false)
 
     // Helper function to convert a date string (YYYY-MM-DD) to UTC timestamp
@@ -87,6 +87,7 @@ export default function LogsPanel({
 
         const sorted = [...rows]
         sorted.sort((a, b) => {
+            //maps to whatever sorting field is set
             let av: number | string = a[sortField]
             let bv: number | string = b[sortField]
 
@@ -142,7 +143,9 @@ export default function LogsPanel({
                 endDate || undefined,
                 typeFilter !== "all" ? typeFilter : undefined,
                 trimmedTargetFilter,
-                trimmedResultFilter
+                trimmedResultFilter,
+                sortField,
+                sortDir
             )
         } catch (err) {
             console.error("Failed to export audit logs:", err)
