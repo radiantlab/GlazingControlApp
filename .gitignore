@@ -234,3 +234,6 @@ svc/data/panels_config.json
 
 svc/data/audit.db
 # audit.db is a SQLite database for the audit log, changes on run time, so ignore it for now
+
+svc/data/jeti_sim_output/
+# Jeti Spectraval simulator output; generated .cap files from the sensor sim
