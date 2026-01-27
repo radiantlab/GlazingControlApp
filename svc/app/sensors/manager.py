@@ -9,12 +9,14 @@ from typing import List
 
 from .interface import SensorClient, SensorReading
 from .t10a_client import T10AClient, T10AHeadConfig
+from .jeti_spectraval_sim import JetiSpectravalSimClient
 from app.state import register_sensor, insert_sensor_reading
 
 logger = logging.getLogger(__name__)
 
 # Path to sensor config file; override via env if you want
-_SVC_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# __file__ is app/sensors/manager.py -> need svc root (parent of app)
+_SVC_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SENSORS_CONFIG_FILE = os.getenv(
     "SENSORS_CONFIG_FILE",
     os.path.join(_SVC_DIR, "data", "sensors_config.json")
@@ -30,23 +32,16 @@ def _load_config() -> dict:
     Expected JSON structure:
 
     {
-      "t10a": [
+      "t10a": [ ... ],
+      "jeti_spectraval": [
         {
-          "device_id": "KM1",
-          "port": "COM3",
+          "sensor_id": "JETI-00",
+          "template_path": "data/251118_Jeti_Spectraval_Data.cap",
+          "output_path": "data/jeti_sim_output/latest.cap",
           "interval_s": 60,
-          "heads": [
-            {"head_no": 0, "sensor_id": "KM1-00", "label": "Desk center"},
-            {"head_no": 1, "sensor_id": "KM1-01", "label": "Desk left"}
-          ]
-        },
-        {
-          "device_id": "KM2",
-          "port": "COM4",
-          "interval_s": 60,
-          "heads": [
-            {"head_no": 0, "sensor_id": "KM2-00", "label": "Window center"}
-          ]
+          "loop": true,
+          "label": "Jeti Spectraval (sim)",
+          "location": null
         }
       ]
     }
@@ -95,8 +90,51 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
         if not heads_cfg:
             continue
 
-        client = T10AClient(device_id=device_id, port=port, heads=heads_cfg)
-        clients_with_interval.append((client, interval_s))
+        try:
+            client = T10AClient(device_id=device_id, port=port, heads=heads_cfg)
+            clients_with_interval.append((client, interval_s))
+        except Exception as e:
+            logger.warning("Skip T10A device %s (port %s): %s", device_id, port, e)
+
+    # --- Jeti Spectraval sim (writes .cap + feeds API) -----------------------
+    for dev_cfg in cfg.get("jeti_spectraval", [])[:4]:
+        sensor_id = dev_cfg.get("sensor_id", "JETI-00")
+        device_id = dev_cfg.get("device_id", "JETI-SIM")
+        template_path = dev_cfg["template_path"]
+        output_path = dev_cfg["output_path"]
+        interval_s = float(dev_cfg.get("interval_s", 60.0))
+        loop = bool(dev_cfg.get("loop", True))
+        label = dev_cfg.get("label", sensor_id)
+        location = dev_cfg.get("location")
+
+        try:
+            register_sensor(
+                sensor_id=sensor_id,
+                kind="jeti_spectraval",
+                label=label,
+                location=location,
+                config={
+                    "device_id": device_id,
+                    "template_path": template_path,
+                    "output_path": output_path,
+                    "interval_s": interval_s,
+                    "loop": loop,
+                },
+            )
+            client = JetiSpectravalSimClient(
+                device_id=device_id,
+                sensor_id=sensor_id,
+                template_path=template_path,
+                output_path=output_path,
+                label=label,
+                interval_s=interval_s,
+                loop=loop,
+                location=location,
+                svc_root=_SVC_DIR,
+            )
+            clients_with_interval.append((client, interval_s))
+        except Exception as e:
+            logger.warning("Skip Jeti Spectraval sim %s: %s", sensor_id, e)
 
     return clients_with_interval
 
