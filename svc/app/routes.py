@@ -206,10 +206,14 @@ def export_audit_logs_csv(
         sort_field or
         sort_dir
     )
+
+    #check for potential injection
+    allowed_fields = ["ts", "actor", "target_type", "target_id", "level"]
+    allowed_dirs = ["desc", "asc"]
     
-    if sort_field is None:
+    if (sort_field is None) or (sort_field not in allowed_fields):
         sort_field = "ts"
-    if sort_dir is None:
+    if (sort_dir is None) or (sort_dir not in allowed_dirs):
         sort_dir = "desc"
 
     if has_filters:
@@ -282,7 +286,7 @@ def export_audit_logs_csv(
         ])
     
     # Generate filename with current date in UTC to match UTC timestamps in CSV
-    filename = f"audit_logs_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
+    filename = f"audit_logs_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_sorted_{sort_field}_{sort_dir}.csv"
     
     return Response(
         content=output.getvalue(),
