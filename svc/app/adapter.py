@@ -6,6 +6,7 @@ import threading
 import logging
 from typing import List, Dict, Optional
 from .models import Panel, Group, TintLevel
+from .state import load_groups
 from .config import HALIO_API_URL, HALIO_SITE_ID, HALIO_API_KEY, WINDOW_MAPPING_FILE
 
 # Try to import requests, but fail gracefully if not available
@@ -228,6 +229,12 @@ class RealAdapter:
                 logger.error(f"Unexpected response format: {type(response_data)}")
                 return []
 
+            local_groups = {}
+            try:
+                local_groups = load_groups()
+            except Exception as e:
+                logger.warning(f"Failed to load local group mapping: {e}")
+
             groups = []
 
             for hg in halio_groups:
@@ -240,10 +247,30 @@ class RealAdapter:
                     logger.warning(f"Group entry missing id: {hg}")
                     continue
 
+                member_ids: List[str] = []
+                hidden = False
+                local_group = local_groups.get(group_id)
+                if local_group:
+                    member_ids = list(local_group.member_ids)
+                    hidden = bool(getattr(local_group, "hidden", False))
+                else:
+                    raw_member_ids = None
+                    for key in ("member_ids", "memberIds", "members", "window_ids", "windowIds", "windows"):
+                        if isinstance(hg.get(key), list):
+                            raw_member_ids = hg.get(key)
+                            break
+                    if raw_member_ids:
+                        member_ids = [
+                            self.window_to_panel.get(member_id, member_id)
+                            for member_id in raw_member_ids
+                            if isinstance(member_id, str)
+                        ]
+
                 group = Group(
                     id=group_id,
                     name=hg.get("name", f"Group {group_id}"),
-                    member_ids=[],  # Groups API doesn't provide member windows
+                    member_ids=member_ids,
+                    hidden=hidden,
                 )
                 groups.append(group)
 
