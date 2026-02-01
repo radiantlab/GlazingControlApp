@@ -123,10 +123,10 @@ export const api = {
             if (filenameMatch) {
                 a.download = filenameMatch[1];
             } else {
-                a.download = `audit_logs_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+                a.download = `audit_logs_${new Date().toISOString().replace(/[:.]/g, "-")}_sorted_${sortField}_${sortDir}.csv`;
             }
         } else {
-            a.download = `audit_logs_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+            a.download = `audit_logs_${new Date().toISOString().replace(/[:.]/g, "-")}_sorted_${sortField}_${sortDir}.csv`;
         }
 
         //cleanup section
