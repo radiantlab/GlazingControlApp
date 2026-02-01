@@ -1,10 +1,14 @@
 from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi.responses import Response
 from .models import (
     Panel, Group, CommandRequest, CommandResult, GroupCreate, GroupUpdate, 
     AuditEntry, HealthResponse, DeleteGroupResponse, ErrorResponse
 )
-from typing import List
+from typing import List, Optional
+import csv
+import io
+from datetime import datetime, timezone
 from .service import ControlService
 from .config import MODE
 from .state import fetch_audit_entries
@@ -171,3 +175,121 @@ def get_audit_logs(
     """Get audit log entries."""
     rows = fetch_audit_entries(limit=limit, offset=offset)
     return [AuditEntry(**row) for row in rows]
+
+
+@router.get(
+    "/logs/audit/export",
+    summary="Export audit logs as CSV",
+    description="Export audit log entries as a CSV file with optional filtering",
+    tags=["Logs"]
+)
+def export_audit_logs_csv(
+    limit: int = Query(default=10000, ge=1, le=100000, description="Maximum number of entries to export"),
+    start_date: Optional[float] = Query(None, description="Start timestamp (Unix seconds)"),
+    end_date: Optional[float] = Query(None, description="End timestamp (Unix seconds)"),
+    target_type: Optional[str] = Query(None, description="Filter by target type (panel/group)"),
+    target_filter: Optional[str] = Query(None, description="Filter by target ID or applied_to"),
+    result_filter: Optional[str] = Query(None, description="Filter by result text"),
+    sort_field: Optional[str] = Query(None, description="Field to sort by"),
+    sort_dir: Optional[str] = Query(None, description="Direction to sort by")
+) -> Response:
+    """Export audit log entries as CSV with optional filtering."""
+    # If any filters are provided, fetch without limit first to ensure we get all entries
+    # that might match the filters, then apply limit after filtering.
+    # This prevents missing entries that fall outside the most recent N entries.
+    has_filters = (
+        start_date is not None or 
+        end_date is not None or 
+        (target_type and target_type != "all") or 
+        target_filter or 
+        result_filter or
+        sort_field or
+        sort_dir
+    )
+
+    #check for potential injection
+    allowed_fields = ["ts", "actor", "target_type", "target_id", "level"]
+    allowed_dirs = ["desc", "asc"]
+    
+    if (sort_field is None) or (sort_field not in allowed_fields):
+        sort_field = "ts"
+    if (sort_dir is None) or (sort_dir not in allowed_dirs):
+        sort_dir = "desc"
+
+    if has_filters:
+        # Filters require fetching all entries to find matches across the full range
+        # Use a very high limit to get all entries (practical maximum for exports)
+        rows = fetch_audit_entries(limit=1000000, offset=0, input_sort_field=sort_field, input_sort_dir=sort_dir)
+    else:
+        # No filters, safe to apply limit upfront for performance
+        rows = fetch_audit_entries(limit=limit, offset=0, input_sort_field=sort_field, input_sort_dir=sort_dir)
+    
+    # Apply filters (matching frontend filtering logic)
+    filtered_rows = rows
+    
+    # Date range filtering
+    if start_date is not None:
+        filtered_rows = [r for r in filtered_rows if r["ts"] >= start_date]
+    if end_date is not None:
+        filtered_rows = [r for r in filtered_rows if r["ts"] <= end_date]
+    
+    # Target type filtering
+    if target_type and target_type != "all":
+        filtered_rows = [r for r in filtered_rows if r["target_type"] == target_type]
+    
+    # Target ID/applied_to filtering
+    if target_filter:
+        needle = target_filter.lower()
+        filtered_rows = [
+            r for r in filtered_rows
+            if needle in r["target_id"].lower() or
+            any(needle in id.lower() for id in r["applied_to"])
+        ]
+    
+    # Result filtering
+    if result_filter:
+        needle = result_filter.lower()
+        filtered_rows = [r for r in filtered_rows if needle in r["result"].lower()]
+    
+    # Apply limit to filtered results (only if filters were used, since limit was already applied otherwise)
+    if has_filters:
+        filtered_rows = filtered_rows[:limit]
+    
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow([
+        "Timestamp",
+        "Actor",
+        "Target Type",
+        "Target ID",
+        "Level",
+        "Applied To",
+        "Result"
+    ])
+    
+    # Write data rows
+    for row in filtered_rows:
+        # Convert timestamp to human-readable format using UTC timezone
+        # This ensures consistency regardless of server timezone, matching the UTC-based Unix timestamps
+        human_readable_ts = datetime.fromtimestamp(row["ts"], tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+        writer.writerow([
+            human_readable_ts,
+            row["actor"],
+            row["target_type"],
+            row["target_id"],
+            row["level"],
+            ", ".join(row["applied_to"]),
+            row["result"]
+        ])
+    
+    # Generate filename with current date in UTC to match UTC timestamps in CSV
+    filename = f"audit_logs_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_sorted_{sort_field}_{sort_dir}.csv"
+    
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )

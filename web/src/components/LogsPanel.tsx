@@ -1,6 +1,9 @@
 ﻿import React, { useMemo, useState } from "react"
-import type { AuditLogEntry } from "../api"
+import { api } from "../api"
 
+import { AuditLogEntry, SortField, SortDir } from "../types"
+
+//local
 type LogsPanelProps = {
     isOpen: boolean
     onClose: () => void
@@ -10,8 +13,6 @@ type LogsPanelProps = {
     onRefresh: () => void
     isMock: boolean
 }
-
-type SortField = "ts" | "actor" | "target_type" | "target_id" | "level"
 
 export default function LogsPanel({
     isOpen,
@@ -26,11 +27,45 @@ export default function LogsPanel({
     const [typeFilter, setTypeFilter] = useState<"all" | "panel" | "group">("all")
     const [targetFilter, setTargetFilter] = useState("")
     const [resultFilter, setResultFilter] = useState("")
+    const [startDate, setStartDate] = useState<string>("")
+    const [endDate, setEndDate] = useState<string>("")
     const [sortField, setSortField] = useState<SortField>("ts")
-    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
+    const [sortDir, setSortDir] = useState<SortDir>("desc")
+    const [exporting, setExporting] = useState(false)
+
+    // Helper function to convert a date string (YYYY-MM-DD) to UTC timestamp
+    // Parses the date string as a local date (start/end of day in user's timezone),
+    // then converts to UTC timestamp. This ensures filtering matches what users see
+    // in toLocaleString() display, where entries are shown in their local timezone.
+    const dateStringToLocalTimestamp = (dateString: string, isEndOfDay: boolean = false): number => {
+        // Parse date string components and create a Date object representing
+        // start/end of day in the user's local timezone
+        const [year, month, day] = dateString.split('-').map(Number)
+        const date = new Date(year, month - 1, day, isEndOfDay ? 23 : 0, isEndOfDay ? 59 : 0, isEndOfDay ? 59 : 0, isEndOfDay ? 999 : 0)
+        // getTime() returns UTC milliseconds, convert to seconds
+        const seconds = date.getTime() / 1000
+        if (isEndOfDay) {
+            // For end of day, return the full seconds value (including fractional milliseconds)
+            // This ensures entries like 23:59:59.5 are included (r.ts <= endTs)
+            return seconds
+        }
+        // For start of day, use floor to get the exact start of the day (00:00:00.000)
+        return Math.floor(seconds)
+    }
 
     const filteredAuditLogs = useMemo(() => {
         let rows = auditLogs
+
+        // Date range filtering - convert local date strings to UTC timestamps
+        // This ensures the filter matches entries displayed via toLocaleString()
+        if (startDate) {
+            const startTs = dateStringToLocalTimestamp(startDate, false)
+            rows = rows.filter(r => r.ts >= startTs)
+        }
+        if (endDate) {
+            const endTs = dateStringToLocalTimestamp(endDate, true)
+            rows = rows.filter(r => r.ts <= endTs)
+        }
 
         if (typeFilter !== "all") {
             rows = rows.filter(r => r.target_type === typeFilter)
@@ -52,6 +87,7 @@ export default function LogsPanel({
 
         const sorted = [...rows]
         sorted.sort((a, b) => {
+            //maps to whatever sorting field is set
             let av: number | string = a[sortField]
             let bv: number | string = b[sortField]
 
@@ -71,7 +107,7 @@ export default function LogsPanel({
         })
 
         return sorted
-    }, [auditLogs, typeFilter, targetFilter, resultFilter, sortField, sortDir])
+    }, [auditLogs, typeFilter, targetFilter, resultFilter, startDate, endDate, sortField, sortDir])
 
     if (!isOpen) return null
 
@@ -92,6 +128,37 @@ export default function LogsPanel({
 
     const sortIndicator = (field: SortField) =>
         sortField === field ? (sortDir === "asc" ? "▲" : "▼") : ""
+
+    const handleExport = async () => {
+        if (exporting || isMock) return
+        setExporting(true)
+        try {
+            // Trim filter values to match local filtering logic (whitespace-only filters are ignored)
+            const trimmedTargetFilter = targetFilter.trim() || undefined
+            const trimmedResultFilter = resultFilter.trim() || undefined
+            
+            await api.exportAuditLogs(
+                10000,
+                startDate || undefined,
+                endDate || undefined,
+                typeFilter !== "all" ? typeFilter : undefined,
+                trimmedTargetFilter,
+                trimmedResultFilter,
+                sortField,
+                sortDir
+            )
+        } catch (err) {
+            console.error("Failed to export audit logs:", err)
+            alert("Failed to export audit logs. Please try again.")
+        } finally {
+            setExporting(false)
+        }
+    }
+
+    const clearDateFilters = () => {
+        setStartDate("")
+        setEndDate("")
+    }
 
     return (
         <>
@@ -141,6 +208,37 @@ export default function LogsPanel({
 
                             <div className="logs-toolbar">
                                 <div className="logs-filters">
+                                    <div className="form-group logs-date-range-group">
+                                        <label>Date Range</label>
+                                        <div className="logs-date-inputs">
+                                            <input
+                                                type="date"
+                                                value={startDate}
+                                                onChange={e => setStartDate(e.target.value)}
+                                                className="logs-date-input"
+                                                placeholder="Start date"
+                                            />
+                                            <span className="logs-date-separator">to</span>
+                                            <input
+                                                type="date"
+                                                value={endDate}
+                                                onChange={e => setEndDate(e.target.value)}
+                                                className="logs-date-input"
+                                                placeholder="End date"
+                                                min={startDate || undefined}
+                                            />
+                                            {(startDate || endDate) && (
+                                                <button
+                                                    className="logs-date-clear"
+                                                    onClick={clearDateFilters}
+                                                    title="Clear date filters"
+                                                >
+                                                    ✕
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
                                     <div className="form-group">
                                         <label>Type</label>
                                         <select
@@ -180,11 +278,21 @@ export default function LogsPanel({
 
                                 <div className="logs-actions">
                                     <button
-                                        className="side-panel-secondary-btn logs-refresh-btn"
+                                        className="logs-action-btn logs-refresh-btn"
                                         onClick={onRefresh}
                                         disabled={loading}
                                     >
-                                        {loading ? "Loading..." : "Refresh"}
+                                        <span className="logs-btn-icon">↻</span>
+                                        <span>{loading ? "Loading..." : "Refresh"}</span>
+                                    </button>
+                                    <button
+                                        className="logs-action-btn logs-export-btn"
+                                        onClick={handleExport}
+                                        disabled={exporting || loading || isMock}
+                                        title={isMock ? "Export not available in mock mode" : "Export all audit logs to CSV"}
+                                    >
+                                        <span className="logs-btn-icon">⬇</span>
+                                        <span>{exporting ? "Exporting..." : "Export CSV"}</span>
                                     </button>
                                 </div>
                             </div>

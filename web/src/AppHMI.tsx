@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react"
-import { api, type Panel, type Group, type AuditLogEntry } from "./api";
+import { api} from "./api";
+import {Panel, Group, AuditLogEntry} from "./types"
 import { mockApi } from "./mockData";
 import RoomGrid from "./components/RoomGrid";
 import RoomGridCompact from "./components/RoomGridCompact";

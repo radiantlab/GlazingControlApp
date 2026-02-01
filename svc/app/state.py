@@ -523,17 +523,17 @@ def append_audit(entry: AuditEntry) -> None:
         )
 
 
-def fetch_audit_entries(limit: int = 500, offset: int = 0) -> List[Dict[str, Any]]:
-    """Fetch audit entries from SQLite ordered newest first."""
+def fetch_audit_entries(limit: int = 500, offset: int = 0, input_sort_field: str = "ts", input_sort_dir: str = "desc") -> List[Dict[str, Any]]:
+    """Fetch audit entries from SQLite ordered by input_sort_field & input_sort_dir. By default, by ts, descending."""
     _ensure_audit_db()
     with _db_connection(row_factory=sqlite3.Row) as conn:
         rows = conn.execute(
-            """
+            '''
             SELECT ts, actor, target_type, target_id, level, applied_to, result
             FROM audit_log
-            ORDER BY ts DESC
+            ORDER BY {} {}
             LIMIT ? OFFSET ?
-            """,
+            '''.format(input_sort_field, input_sort_dir),
             (limit, offset),
         ).fetchall()
         
