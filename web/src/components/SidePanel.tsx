@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import type { Panel, Group } from "../api";
+import type { Panel,Group } from "../types";
 import { useToast } from "../utils/toast";
 
 type RoutineStep = {

@@ -1,5 +1,5 @@
 import React from "react";
-import type { Panel } from "../api";
+import type { Panel } from "../types";
 
 type Props = {
     panels: Panel[];

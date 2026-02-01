@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { api, type Panel, type Group } from "./api";
+import { api} from "./api";
+import {Panel, Group} from "./types"
+
 import PanelGrid from "./components/PanelGrid";
 
 export default function App() {

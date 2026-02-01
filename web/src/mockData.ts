@@ -1,4 +1,5 @@
-import type { Panel, Group } from "./api";
+import {Panel, Group} from "./types"
+
 
 // Mock panels data - 18 wall panels (P01-P18) and 2 skylights (SK1, SK2) = 20 total
 export const mockPanels: Panel[] = [

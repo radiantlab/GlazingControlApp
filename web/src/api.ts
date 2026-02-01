@@ -1,30 +1,5 @@
-export type Panel = {
-    id: string;
-    name: string;
-    group_id?: string | null;
-    level: number;
-    last_change_ts: number;
-};
-
-export type Group = {
-    id: string;
-    name: string;
-    member_ids: string[];
-};
-
-export type AuditLogEntry = {
-    ts: number
-    actor: string
-    target_type: "panel" | "group"
-    target_id: string
-    level: number
-    applied_to: string[]
-    result: string
-};
-
-
+import { Panel, Group, AuditLogEntry, SortField, SortDir} from "./types";
 const API_BASE = (import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000").replace(/\/$/, "");
-
 async function http<T>(path: string, options?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
         headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
@@ -45,7 +20,6 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
     }
     return (await res.json()) as T;
 }
-
 export const api = {
     health: () => http<{ status: string; mode: string }>("/health"),
     panels: () => http<Panel[]>("/panels"),
@@ -55,48 +29,100 @@ export const api = {
             method: "POST",
             body: JSON.stringify({ name, member_ids: memberIds })
         }),
-
     updateGroup: (groupId: string, name: string, memberIds: string[]) =>
         http<Group>(`/groups/${groupId}`, {
             method: "PATCH",
             body: JSON.stringify({ name, member_ids: memberIds })
         }),
-
     deleteGroup: (groupId: string) =>
         http<unknown>(`/groups/${groupId}`, {
             method: "DELETE"
         }),
-
     setPanelLevel: (panelId: string, level: number) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
             body: JSON.stringify({ target_type: "panel", target_id: panelId, level })
         }),
-
     setGroupLevel: (groupId: string, level: number) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
             body: JSON.stringify({ target_type: "group", target_id: groupId, level })
         }),
-
     auditLogs: (limit = 500) =>
         http<AuditLogEntry[]>(`/logs/audit?limit=${encodeURIComponent(limit)}`),
-
+    exportAuditLogs: async (
+        limit = 10000,
+        startDate?: string,
+        endDate?: string,
+        targetType?: string,
+        targetFilter?: string,
+        resultFilter?: string,
+        sortField?: SortField,
+        sortDir?: SortDir
+    ) => {
+        const params = new URLSearchParams();
+        params.append("limit", limit.toString());
+        if (startDate) {
+            const [year, month, day] = startDate.split('-').map(Number);
+            const date = new Date(year, month - 1, day, 0, 0, 0, 0);
+            params.append("start_date", Math.floor(date.getTime() / 1000).toString());
+        }
+        if (endDate) {
+            const [year, month, day] = endDate.split('-').map(Number);
+            const date = new Date(year, month - 1, day, 23, 59, 59, 999);
+            const seconds = date.getTime() / 1000;
+            params.append("end_date", seconds.toString());
+        }
+        if (targetType && targetType !== "all") {
+            params.append("target_type", targetType);
+        }
+        if (targetFilter) {
+            params.append("target_filter", targetFilter);
+        }
+        if (resultFilter) {
+            params.append("result_filter", resultFilter);
+        }
+        if (sortField) params.append("sort_field", sortField);
+        if (sortDir) params.append("sort_dir", sortDir);
+        
+        const res = await fetch(`${API_BASE}/logs/audit/export?${params.toString()}`, {
+            headers: { "Content-Type": "application/json" }
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`${res.status} ${text}`);
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const contentDisposition = res.headers.get("Content-Disposition");
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+            if (filenameMatch) {
+                a.download = filenameMatch[1];
+            } else {
+                a.download = `audit_logs_${new Date().toISOString().replace(/[:.]/g, "-")}_sorted_${sortField}_${sortDir}.csv`;
+            }
+        } else {
+            a.download = `audit_logs_${new Date().toISOString().replace(/[:.]/g, "-")}_sorted_${sortField}_${sortDir}.csv`;
+        }
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    },
     listSensors: () => http<SensorInfo[]>("/sensors"),
-
     getLatestMetrics: () => http<SensorReadingResponse[]>("/metrics/latest"),
-
     getMetricHistory: (sensorId: string, metric: string, tsFrom: number, tsTo: number) =>
         http<SensorReadingResponse[]>(`/metrics/history?sensor_id=${encodeURIComponent(sensorId)}&metric=${encodeURIComponent(metric)}&ts_from=${tsFrom}&ts_to=${tsTo}`)
 };
-
 export type SensorReadingResponse = {
     sensor_id: string;
     metric: string;
     value: number;
     ts: number;
 };
-
 export type SensorInfo = {
     id: string;
     kind: string;
@@ -104,5 +130,3 @@ export type SensorInfo = {
     location?: string;
     config: any;
 };
-
-
