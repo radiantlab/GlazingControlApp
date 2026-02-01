@@ -8,6 +8,8 @@ import ActiveControllersBar from "./components/ActiveControllersBar";
 import { controlManager, type ControlSource } from "./utils/controlManager";
 import { useToast } from "./utils/toast";
 import LogsPanel from "./components/LogsPanel";
+import LiveGraph from "./components/LiveGraph";
+import { type SensorInfo } from "./api";
 
 
 export default function AppHMI() {
@@ -26,14 +28,16 @@ export default function AppHMI() {
     const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
     const [logsLoading, setLogsLoading] = useState<boolean>(false);
     const [logsError, setLogsError] = useState<string | null>(null);
+    const [sensors, setSensors] = useState<SensorInfo[]>([]);
 
 
     async function refresh() {
         try {
             // Try real API first
-            const [p, g, h] = await Promise.all([api.panels(), api.groups(), api.health()]);
+            const [p, g, h, s] = await Promise.all([api.panels(), api.groups(), api.health(), api.listSensors()]);
             setPanels(p);
             setGroups(g);
+            setSensors(s);
 
             // set default group only once, without stomping user choice
             if (g.length) {
@@ -67,10 +71,10 @@ export default function AppHMI() {
         refresh();
         // Auto-refresh every 5 seconds to keep status current
         const interval = setInterval(refresh, 5000);
-        
+
         // Subscribe to control state changes
         const unsubscribe = controlManager.subscribe(setControlState);
-        
+
         return () => {
             clearInterval(interval);
             unsubscribe();
@@ -84,7 +88,7 @@ export default function AppHMI() {
             if (existingControl && existingControl.type !== 'manual') {
                 const priority = existingControl.type === 'routine' ? 1 : 2;
                 const manualPriority = 3; // Manual always wins
-                
+
                 // Take manual control (overrides everything)
                 const source: ControlSource = { type: 'manual', panelId };
                 controlManager.takeControl(source, true);
@@ -93,7 +97,7 @@ export default function AppHMI() {
                 const source: ControlSource = { type: 'manual', panelId };
                 controlManager.takeControl(source);
             }
-            
+
             setBusy(panelId);
             if (usingMock) {
                 await mockApi.setPanelLevel(panelId, level);
@@ -102,7 +106,7 @@ export default function AppHMI() {
             }
             await refresh();
             showToast(`Panel ${panelId} set to ${level}%`, "success");
-            
+
             // Start transition indicator - realistic time for electrochromic glass is 30-120 seconds
             // Using 5 seconds for UI demo purposes
             const TRANSITION_TIME_MS = 5000;
@@ -128,7 +132,7 @@ export default function AppHMI() {
             setBusy(null);
         }
     }
-    
+
     async function setGroup(groupId: string, level: number) {
         try {
             const group = groups.find(g => g.id === groupId);
@@ -136,11 +140,11 @@ export default function AppHMI() {
                 showToast("Group not found", "error");
                 return;
             }
-            
+
             // Take group control
             const source: ControlSource = { type: 'group', groupId, panelIds: group.member_ids };
             const result = controlManager.takeControl(source);
-            
+
             if (result.conflicts.length > 0) {
                 const confirmed = window.confirm(
                     `${result.conflicts.length} panel(s) are currently controlled. Override and proceed?`
@@ -148,7 +152,7 @@ export default function AppHMI() {
                 if (!confirmed) return;
                 controlManager.takeControl(source, true);
             }
-            
+
             setBusy(groupId);
             if (usingMock) {
                 await mockApi.setGroupLevel(groupId, level);
@@ -157,7 +161,7 @@ export default function AppHMI() {
             }
             await refresh();
             showToast(`Group "${group.name}" set to ${level}%`, "success");
-            
+
             // Release after transition (simplified - would need to track per panel)
             setTimeout(() => {
                 controlManager.releaseControl(source);
@@ -463,6 +467,18 @@ export default function AppHMI() {
                         panelControls={controlState.panelControls}
                     />
                 )}
+
+                {/* Live Graph Section */}
+                {sensors.filter(s => s.kind === "jeti_spectraval").map(s => (
+                    <LiveGraph
+                        key={s.id}
+                        sensorId={s.id}
+                        metric="lux"
+                        label={`${s.label || s.id} - Lux`}
+                        color="#ebad34"
+                    />
+                ))}
+
             </main>
 
 

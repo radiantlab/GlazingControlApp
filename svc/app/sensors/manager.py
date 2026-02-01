@@ -10,7 +10,9 @@ from typing import List
 from .interface import SensorClient, SensorReading
 from .t10a_client import T10AClient, T10AHeadConfig
 from .jeti_spectraval_sim import JetiSpectravalSimClient
+from .jeti_spectraval_watcher import JetiSpectravalFileWatcher
 from app.state import register_sensor, insert_sensor_reading
+from app.config import MODE
 
 logger = logging.getLogger(__name__)
 
@@ -96,11 +98,22 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
         except Exception as e:
             logger.warning("Skip T10A device %s (port %s): %s", device_id, port, e)
 
-    # --- Jeti Spectraval sim (writes .cap + feeds API) -----------------------
+    # --- Jeti Spectraval -----------------------------------------------------
+    # Config structure:
+    # {
+    #   "sensor_id": "JETI-00",
+    #   "device_id": "JETI-SIM" (or "JETI-REAL"?),
+    #   "output_path": "data/jeti_sim_output/latest.cap", 
+    #   ...
+    # }
+    #
+    # We ALWAYS create a FileWatcher to read 'output_path'.
+    # If device_id == "JETI-SIM", we ALSO create a SimClient to write to 'output_path'.
+    #
     for dev_cfg in cfg.get("jeti_spectraval", [])[:4]:
         sensor_id = dev_cfg.get("sensor_id", "JETI-00")
         device_id = dev_cfg.get("device_id", "JETI-SIM")
-        template_path = dev_cfg["template_path"]
+        template_path = dev_cfg.get("template_path", "")
         output_path = dev_cfg["output_path"]
         interval_s = float(dev_cfg.get("interval_s", 60.0))
         loop = bool(dev_cfg.get("loop", True))
@@ -108,6 +121,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
         location = dev_cfg.get("location")
 
         try:
+            # 1. Register the sensor in DB
             register_sensor(
                 sensor_id=sensor_id,
                 kind="jeti_spectraval",
@@ -121,20 +135,43 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     "loop": loop,
                 },
             )
-            client = JetiSpectravalSimClient(
+
+            # 2. Create the File Watcher (Reader)
+            # This is the "real" sensor source for the app
+            watcher = JetiSpectravalFileWatcher(
                 device_id=device_id,
                 sensor_id=sensor_id,
-                template_path=template_path,
-                output_path=output_path,
+                input_path=output_path,
                 label=label,
-                interval_s=interval_s,
-                loop=loop,
                 location=location,
                 svc_root=_SVC_DIR,
             )
-            clients_with_interval.append((client, interval_s))
+            # Watcher checks frequently (e.g. 1s) for new file content
+            clients_with_interval.append((watcher, 1.0))
+
+            # 3. If Simulation MODE is active, create the SimClient (Writer)
+            # It runs in the background and writes files.
+            # We ignore device_id here and rely on global MODE, 
+            # or we could check if device_id == 'JETI-SIM' AND MODE == 'sim'.
+            # Let's say if MODE is 'sim', we force start the simulator writer for any Jeti config
+            # that looks like it expects simulation (or maybe just all of them if that's the intention).
+            # Given the request "respect that", let's check MODE.
+            if MODE == "sim":
+                sim = JetiSpectravalSimClient(
+                    device_id=device_id,
+                    sensor_id=sensor_id,
+                    template_path=template_path,
+                    output_path=output_path,
+                    label=label + " (Sim Writer)",
+                    interval_s=interval_s,
+                    loop=loop,
+                    location=location,
+                    svc_root=_SVC_DIR,
+                )
+                clients_with_interval.append((sim, interval_s))
+
         except Exception as e:
-            logger.warning("Skip Jeti Spectraval sim %s: %s", sensor_id, e)
+            logger.warning("Skip Jeti Spectraval %s: %s", sensor_id, e)
 
     return clients_with_interval
 
@@ -144,6 +181,8 @@ def _worker_loop(client: SensorClient, interval_s: float) -> None:
     logger.info(f"Sensor worker started for {client} with interval {interval_s}s")
     while not _stop_flag:
         readings: List[SensorReading] = list(client.poll())
+        if readings:
+            logger.debug(f"Manager: received {len(readings)} readings from {client}")
         for r in readings:
             insert_sensor_reading(r.sensor_id, r.ts, r.metric, r.value)
         time.sleep(interval_s)

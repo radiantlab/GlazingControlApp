@@ -127,9 +127,13 @@ class JetiSpectravalSimClient(SensorClient):
         )
 
     def _ensure_output_dir(self) -> None:
-        d = os.path.dirname(self._output_abs)
-        if d:
-            os.makedirs(d, exist_ok=True)
+        if os.path.exists(self._output_abs) and os.path.isdir(self._output_abs):
+             self._output_abs = os.path.join(self._output_abs, "sim_output.cap")
+        
+        # Ensure dir exists if it's a file path
+        out_dir = os.path.dirname(self._output_abs)
+        if out_dir and not os.path.exists(out_dir):
+            os.makedirs(out_dir, exist_ok=True)
 
     def _write_row(self, lux: float, spectral: List[str], ts: float) -> None:
         now = datetime.utcfromtimestamp(ts)
@@ -143,19 +147,20 @@ class JetiSpectravalSimClient(SensorClient):
 
     def poll(self) -> Iterable[SensorReading]:
         """
-        Emit one "measurement": write one .cap row to output_path and yield SensorReading(s).
-        Advances through template rows; loops if configured.
+        Emit one "measurement": write one .cap row to output_path.
+        Does NOT yield SensorReading(s) anymore (FileWatcher does that).
         """
         if not self._template_rows:
             return
         lux, spectral = self._template_rows[self._row_index]
         ts = time.time()
         self._write_row(lux, spectral, ts)
-        yield SensorReading(sensor_id=self._sensor_id, metric="lux", value=lux, ts=ts)
-
+        # No yield
         self._row_index += 1
         if self._row_index >= len(self._template_rows):
             if self._loop:
                 self._row_index = 0
             else:
                 self._row_index = len(self._template_rows) - 1
+        
+        return []

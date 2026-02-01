@@ -80,7 +80,29 @@ export const api = {
         }),
 
     auditLogs: (limit = 500) =>
-        http<AuditLogEntry[]>(`/logs/audit?limit=${encodeURIComponent(limit)}`)
+        http<AuditLogEntry[]>(`/logs/audit?limit=${encodeURIComponent(limit)}`),
+
+    listSensors: () => http<SensorInfo[]>("/sensors"),
+
+    getLatestMetrics: () => http<SensorReadingResponse[]>("/metrics/latest"),
+
+    getMetricHistory: (sensorId: string, metric: string, tsFrom: number, tsTo: number) =>
+        http<SensorReadingResponse[]>(`/metrics/history?sensor_id=${encodeURIComponent(sensorId)}&metric=${encodeURIComponent(metric)}&ts_from=${tsFrom}&ts_to=${tsTo}`)
+};
+
+export type SensorReadingResponse = {
+    sensor_id: string;
+    metric: string;
+    value: number;
+    ts: number;
+};
+
+export type SensorInfo = {
+    id: string;
+    kind: string;
+    label: string;
+    location?: string;
+    config: any;
 };
 
 

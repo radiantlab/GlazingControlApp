@@ -39,10 +39,10 @@
         {
             "sensor_id": "JETI-00",
             "template_path": "data/251118_Jeti_Spectraval_Data.cap",
-            "output_path": "data/jeti_sim_output/latest.cap",
-            "interval_s": 60,
+            "output_path": "data/jeti_sim_output",
+            "interval_s": 5,
             "loop": true,
-            "label": "Jeti Spectraval (sim)",
+            "label": "Jeti Spectraval",
             "location": null
         }
     ]
