@@ -189,7 +189,9 @@ def export_audit_logs_csv(
     end_date: Optional[float] = Query(None, description="End timestamp (Unix seconds)"),
     target_type: Optional[str] = Query(None, description="Filter by target type (panel/group)"),
     target_filter: Optional[str] = Query(None, description="Filter by target ID or applied_to"),
-    result_filter: Optional[str] = Query(None, description="Filter by result text")
+    result_filter: Optional[str] = Query(None, description="Filter by result text"),
+    sort_field: Optional[str] = Query(None, description="Field to sort by"),
+    sort_dir: Optional[str] = Query(None, description="Direction to sort by")
 ) -> Response:
     """Export audit log entries as CSV with optional filtering."""
     # If any filters are provided, fetch without limit first to ensure we get all entries
@@ -200,16 +202,23 @@ def export_audit_logs_csv(
         end_date is not None or 
         (target_type and target_type != "all") or 
         target_filter or 
-        result_filter
+        result_filter or
+        sort_field or
+        sort_dir
     )
     
+    if sort_field is None:
+        sort_field = "ts"
+    if sort_dir is None:
+        sort_dir = "desc"
+
     if has_filters:
         # Filters require fetching all entries to find matches across the full range
         # Use a very high limit to get all entries (practical maximum for exports)
-        rows = fetch_audit_entries(limit=1000000, offset=0)
+        rows = fetch_audit_entries(limit=1000000, offset=0, input_sort_field=sort_field, input_sort_dir=sort_dir)
     else:
         # No filters, safe to apply limit upfront for performance
-        rows = fetch_audit_entries(limit=limit, offset=0)
+        rows = fetch_audit_entries(limit=limit, offset=0, input_sort_field=sort_field, input_sort_dir=sort_dir)
     
     # Apply filters (matching frontend filtering logic)
     filtered_rows = rows

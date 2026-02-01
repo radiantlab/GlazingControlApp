@@ -129,8 +129,7 @@ export const api = {
             a.download = `audit_logs_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
         }
 
-
-
+        //cleanup section
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
