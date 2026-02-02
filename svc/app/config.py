@@ -27,3 +27,6 @@ HALIO_API_KEY = os.getenv("HALIO_API_KEY", "")
 
 # Panel to Halio Window UUID mapping file
 WINDOW_MAPPING_FILE = os.path.join(_SVC_DIR, DATA_DIR, "window_mapping.json")
+
+# Local group ID (e.g., G-facade) to Halio Group UUID mapping file
+GROUP_MAPPING_FILE = os.path.join(_SVC_DIR, DATA_DIR, "group_mapping.json")

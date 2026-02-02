@@ -52,7 +52,9 @@ class Simulator:
         return True
 
 
-    def set_group(self, group_id: str, level: TintLevel, min_dwell: int) -> List[str]:
+    def set_group(
+        self, group_id: str, level: TintLevel, min_dwell: int
+    ) -> tuple[bool, List[str], str]:
         if group_id not in self.snap.groups:
             raise KeyError(group_id)
 
@@ -83,7 +85,9 @@ class Simulator:
             applied.append(pid)
 
         # do not join threads  let the API return quickly
-        return applied
+        ok = len(applied) > 0
+        msg = "group updated" if ok else "no panels updated due to dwell time"
+        return ok, applied, msg
 
     def create_group(self, name: str, member_ids: List[str], hidden: bool = False) -> Group:
         # generate a simple id like G-1 G-2 ...

@@ -95,9 +95,7 @@ class ControlService:
         self, group_id: str, level: TintLevel, actor: str = "api"
     ) -> Tuple[bool, List[str], str]:
         try:
-            applied = self.backend.set_group(group_id, level, MIN_DWELL_SECONDS)
-            ok = len(applied) > 0
-            msg = "group updated" if ok else "no panels updated due to dwell time"
+            ok, applied, msg = self.backend.set_group(group_id, level, MIN_DWELL_SECONDS)
             if ok:
                 # Update panel states for all panels that were successfully updated
                 for panel_id in applied:
