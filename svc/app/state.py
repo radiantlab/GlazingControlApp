@@ -140,13 +140,14 @@ def _migrate_from_legacy_panels_json() -> None:
                 if isinstance(group_data, dict):
                     conn.execute(
                         """
-                        INSERT INTO groups (id, name, member_ids)
-                        VALUES (?, ?, ?)
+                        INSERT INTO groups (id, name, member_ids, hidden)
+                        VALUES (?, ?, ?, ?)
                         """,
                         (
                             group_id,
                             group_data.get("name", f"Group {group_id}"),
                             json.dumps(group_data.get("member_ids", [])),
+                            int(bool(group_data.get("hidden", False))),
                         ),
                     )
 
@@ -211,11 +212,11 @@ def load_groups() -> Dict[str, Group]:
     _ensure_groups_db()  # Only ensure table exists, no migration
 
     with _db_connection() as conn:
-        rows = conn.execute("SELECT id, name, member_ids FROM groups").fetchall()
+        rows = conn.execute("SELECT id, name, member_ids, hidden FROM groups").fetchall()
         
         groups = {}
         for row in rows:
-            group_id, name, member_ids_json = row
+            group_id, name, member_ids_json, hidden = row
             try:
                 member_ids = json.loads(member_ids_json) if member_ids_json else []
             except Exception:
@@ -224,6 +225,7 @@ def load_groups() -> Dict[str, Group]:
                 id=group_id,
                 name=name,
                 member_ids=member_ids,
+                hidden=bool(hidden),
             )
         
         return groups
@@ -242,10 +244,10 @@ def save_groups(groups: Dict[str, Group]) -> None:
         for group_id, group in groups.items():
             conn.execute(
                 """
-                INSERT INTO groups (id, name, member_ids)
-                VALUES (?, ?, ?)
+                INSERT INTO groups (id, name, member_ids, hidden)
+                VALUES (?, ?, ?, ?)
                 """,
-                (group.id, group.name, json.dumps(group.member_ids)),
+                (group.id, group.name, json.dumps(group.member_ids), int(bool(group.hidden))),
             )
 
 
@@ -379,10 +381,15 @@ def _ensure_groups_db() -> None:
             CREATE TABLE IF NOT EXISTS groups (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
-                member_ids TEXT NOT NULL
+                member_ids TEXT NOT NULL,
+                hidden INTEGER NOT NULL DEFAULT 0
             )
             """
         )
+        # Ensure hidden column exists for older databases
+        columns = [row[1] for row in conn.execute("PRAGMA table_info(groups)").fetchall()]
+        if "hidden" not in columns:
+            conn.execute("ALTER TABLE groups ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0")
 
 
 def _migrate_json_state_to_db() -> None:
@@ -479,13 +486,14 @@ def _migrate_groups_json_to_db() -> None:
             if isinstance(group_data, dict):
                 conn.execute(
                     """
-                    INSERT INTO groups (id, name, member_ids)
-                    VALUES (?, ?, ?)
+                    INSERT INTO groups (id, name, member_ids, hidden)
+                    VALUES (?, ?, ?, ?)
                     """,
                     (
                         group_id,
                         group_data.get("name", f"Group {group_id}"),
                         json.dumps(group_data.get("member_ids", [])),
+                        int(bool(group_data.get("hidden", False))),
                     ),
                 )
         conn.commit()
@@ -582,12 +590,14 @@ def bootstrap_default_if_empty() -> Snapshot:
                 id="G-facade",
                 name="Facade",
                 member_ids=[f"P{i:02d}" for i in range(1, 19)],
+                hidden=False,
             )
         if "G-skylights" not in snap.groups:
             snap.groups["G-skylights"] = Group(
                 id="G-skylights",
                 name="Skylights",
                 member_ids=["SK1", "SK2"],
+                hidden=False,
             )
     
     # Only reset timestamps if we actually created new panels (initial bootstrap)

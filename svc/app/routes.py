@@ -57,9 +57,15 @@ def list_panels(service: ControlService = Depends(get_service)) -> List[Panel]:
     description="Returns a list of all groups with their member panel IDs",
     tags=["Groups"]
 )
-def list_groups(service: ControlService = Depends(get_service)) -> List[Group]:
+def list_groups(
+    include_hidden: bool = Query(default=False, description="Include hidden groups"),
+    service: ControlService = Depends(get_service),
+) -> List[Group]:
     """Get all groups."""
-    return service.list_groups()
+    groups = service.list_groups()
+    if not include_hidden:
+        groups = [g for g in groups if not getattr(g, "hidden", False)]
+    return groups
 
 
 @router.post(
@@ -86,6 +92,8 @@ def set_level(
         ok, applied, msg = service.set_group_level(body.target_id, body.level)
 
     if not ok:
+        if msg == "panel not assigned to any group":
+            raise HTTPException(status_code=400, detail=msg)
         if msg in ("panel not found", "group not found"):
             raise HTTPException(status_code=404, detail=msg)
         if "dwell" in msg:
@@ -110,7 +118,7 @@ def set_level(
 def create_group(body: GroupCreate, service: ControlService = Depends(get_service)) -> Group:
     """Create a new group."""
     try:
-        return service.create_group(body.name, body.member_ids)
+        return service.create_group(body.name, body.member_ids, body.hidden)
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -135,7 +143,7 @@ def update_group(
 ) -> Group:
     """Update an existing group."""
     try:
-        return service.update_group(group_id, body.name, body.member_ids)
+        return service.update_group(group_id, body.name, body.member_ids, body.hidden)
     except KeyError:
         raise HTTPException(status_code=404, detail="group not found")
     except RuntimeError as e:

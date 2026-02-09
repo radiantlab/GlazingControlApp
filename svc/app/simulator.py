@@ -52,7 +52,9 @@ class Simulator:
         return True
 
 
-    def set_group(self, group_id: str, level: TintLevel, min_dwell: int) -> List[str]:
+    def set_group(
+        self, group_id: str, level: TintLevel, min_dwell: int
+    ) -> tuple[bool, List[str], str]:
         if group_id not in self.snap.groups:
             raise KeyError(group_id)
 
@@ -83,9 +85,11 @@ class Simulator:
             applied.append(pid)
 
         # do not join threads  let the API return quickly
-        return applied
+        ok = len(applied) > 0
+        msg = "group updated" if ok else "no panels updated due to dwell time"
+        return ok, applied, msg
 
-    def create_group(self, name: str, member_ids: List[str]) -> Group:
+    def create_group(self, name: str, member_ids: List[str], hidden: bool = False) -> Group:
         # generate a simple id like G-1 G-2 ...
         existing_ids = set(self.snap.groups.keys())
         n = 1
@@ -96,7 +100,7 @@ class Simulator:
         # filter to only valid panel ids
         valid_ids = [pid for pid in member_ids if pid in self.snap.panels]
 
-        group = Group(id=gid, name=name, member_ids=valid_ids)
+        group = Group(id=gid, name=name, member_ids=valid_ids, hidden=hidden)
         self.snap.groups[gid] = group
 
         save_snapshot(self.snap)
@@ -107,6 +111,7 @@ class Simulator:
         group_id: str,
         name: str | None,
         member_ids: List[str] | None,
+        hidden: bool | None,
     ) -> Group:
         if group_id not in self.snap.groups:
             raise KeyError(group_id)
@@ -120,6 +125,8 @@ class Simulator:
             # normalize to only existing panels
             new_ids = [pid for pid in member_ids if pid in self.snap.panels]
             g.member_ids = list(new_ids)
+        if hidden is not None:
+            g.hidden = hidden
 
         save_snapshot(self.snap)
         return g

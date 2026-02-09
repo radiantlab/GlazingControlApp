@@ -10,6 +10,7 @@ export type Group = {
     id: string;
     name: string;
     member_ids: string[];
+    hidden?: boolean;
 };
 
 export type AuditLogEntry = {

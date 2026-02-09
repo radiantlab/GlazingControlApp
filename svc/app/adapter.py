@@ -4,9 +4,16 @@ import os
 import time
 import threading
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple, Set
 from .models import Panel, Group, TintLevel
-from .config import HALIO_API_URL, HALIO_SITE_ID, HALIO_API_KEY, WINDOW_MAPPING_FILE
+from .state import load_groups
+from .config import (
+    HALIO_API_URL,
+    HALIO_SITE_ID,
+    HALIO_API_KEY,
+    WINDOW_MAPPING_FILE,
+    GROUP_MAPPING_FILE,
+)
 
 # Try to import requests, but fail gracefully if not available
 try:
@@ -53,11 +60,18 @@ class RealAdapter:
             v: k for k, v in self.panel_to_window.items()
         }
 
+        # Load local group ID to Halio group UUID mapping
+        self.group_to_halio: Dict[str, str] = self._load_group_mapping()
+        self.halio_to_group: Dict[str, str] = {
+            v: k for k, v in self.group_to_halio.items()
+        }
+
         # Cache for window states to enforce dwell time
         self._state_cache: Dict[str, Dict] = {}
 
         logger.info(f"RealAdapter initialized for site {self.site_id}")
         logger.info(f"Loaded {len(self.panel_to_window)} panel mappings")
+        logger.info(f"Loaded {len(self.group_to_halio)} group mappings")
 
     def _load_window_mapping(self) -> Dict[str, str]:
         """
@@ -85,6 +99,51 @@ class RealAdapter:
         except Exception as e:
             logger.error(f"Failed to load window mapping: {e}")
             return {}
+
+    def _load_group_mapping(self) -> Dict[str, str]:
+        """
+        Load mapping from local group IDs (e.g., G-facade) to Halio group UUIDs.
+
+        The mapping file should be JSON format:
+        {
+            "G-facade": "uuid-for-halion-group",
+            "G-skylights": "uuid-for-halion-group",
+            ...
+        }
+        """
+        if not os.path.exists(GROUP_MAPPING_FILE):
+            logger.warning(
+                f"Group mapping file not found: {GROUP_MAPPING_FILE}. "
+                "Creating empty mapping. You must populate this file with actual UUIDs."
+            )
+            return {}
+
+        try:
+            with open(GROUP_MAPPING_FILE, "r", encoding="utf-8") as f:
+                mapping = json.load(f)
+            # Filter out comment keys (starting with '_') and empty values
+            cleaned: Dict[str, str] = {}
+            for k, v in mapping.items():
+                if k.startswith("_"):
+                    continue
+                if isinstance(v, str) and v.strip():
+                    cleaned[k] = v.strip()
+            return cleaned
+        except Exception as e:
+            logger.error(f"Failed to load group mapping: {e}")
+            return {}
+
+    def _resolve_group_ids(self, group_id: str) -> tuple[str, Optional[str]]:
+        """
+        Resolve a provided group ID to the Halio group UUID.
+
+        Returns (halio_group_id, local_group_id_or_none).
+        """
+        if group_id in self.group_to_halio:
+            return self.group_to_halio[group_id], group_id
+        if group_id in self.halio_to_group:
+            return group_id, self.halio_to_group[group_id]
+        return group_id, None
 
     def _get_window_state(self, window_id: str) -> Optional[Dict]:
         """Query current state of a window from Halio API."""
@@ -228,24 +287,76 @@ class RealAdapter:
                 logger.error(f"Unexpected response format: {type(response_data)}")
                 return []
 
-            groups = []
+            local_groups: Dict[str, Group] = {}
+            try:
+                local_groups = load_groups()
+            except Exception as e:
+                logger.warning(f"Failed to load local group mapping: {e}")
 
+            # Index Halio groups by id for quick lookup
+            halio_by_id: Dict[str, Dict] = {}
+            for hg in halio_groups:
+                if isinstance(hg, dict) and hg.get("id"):
+                    halio_by_id[hg["id"]] = hg
+
+            groups: List[Group] = []
+            mapped_halio_ids: Set[str] = set()
+
+            # Prefer local groups for membership (Halio group list doesn't include members)
+            for local_id, local_group in local_groups.items():
+                halio_id = self.group_to_halio.get(local_id)
+                halio_group = halio_by_id.get(halio_id) if halio_id else None
+                name = (
+                    halio_group.get("name", local_group.name)
+                    if halio_group
+                    else local_group.name
+                )
+
+                groups.append(
+                    Group(
+                        id=local_id,
+                        name=name,
+                        member_ids=list(local_group.member_ids),
+                        hidden=bool(getattr(local_group, "hidden", False)),
+                    )
+                )
+                if halio_id:
+                    mapped_halio_ids.add(halio_id)
+
+            # Add any remaining Halio groups not mapped to local IDs
             for hg in halio_groups:
                 if not isinstance(hg, dict):
                     logger.warning(f"Skipping invalid group entry: {hg}")
                     continue
-                    
+
                 group_id = hg.get("id")
                 if not group_id:
                     logger.warning(f"Group entry missing id: {hg}")
                     continue
+                if group_id in mapped_halio_ids:
+                    continue
 
-                group = Group(
-                    id=group_id,
-                    name=hg.get("name", f"Group {group_id}"),
-                    member_ids=[],  # Groups API doesn't provide member windows
+                member_ids: List[str] = []
+                raw_member_ids = None
+                for key in ("member_ids", "memberIds", "members", "window_ids", "windowIds", "windows"):
+                    if isinstance(hg.get(key), list):
+                        raw_member_ids = hg.get(key)
+                        break
+                if raw_member_ids:
+                    member_ids = [
+                        self.window_to_panel.get(member_id, member_id)
+                        for member_id in raw_member_ids
+                        if isinstance(member_id, str)
+                    ]
+
+                groups.append(
+                    Group(
+                        id=group_id,
+                        name=hg.get("name", f"Group {group_id}"),
+                        member_ids=member_ids,
+                        hidden=False,
+                    )
                 )
-                groups.append(group)
 
             return groups
 
@@ -360,20 +471,23 @@ class RealAdapter:
             logger.error(f"Error setting panel {panel_id}: {e}")
             return False
 
-    def set_group(self, group_id: str, level: TintLevel, min_dwell: int) -> List[str]:
+    def set_group(
+        self, group_id: str, level: TintLevel, min_dwell: int
+    ) -> Tuple[bool, List[str], str]:
         """
         Set tint level for a group via Halio API.
 
-        Returns list of panel IDs that were successfully updated.
+        Returns (ok, list of panel IDs updated, message).
         """
         try:
+            halio_group_id, local_group_id = self._resolve_group_ids(group_id)
             # Halio supports group tinting directly
-            url = f"{self.base_url}/sites/{self.site_id}/groups/{group_id}/tint"
+            url = f"{self.base_url}/sites/{self.site_id}/groups/{halio_group_id}/tint"
             payload = {"level": int(level)}  # Halio API expects "level", not "tintLevel"
             
             logger.info(
                 f"Sending tint command to Halio for group: group={group_id} "
-                f"level={level} payload={payload} url={url}"
+                f"halio_group={halio_group_id} level={level} payload={payload} url={url}"
             )
 
             response = requests.post(
@@ -398,37 +512,54 @@ class RealAdapter:
                     logger.info(f"  Queue ID: {queue_id}")
                 except Exception:
                     pass
-                # Get group members
-                groups = self.list_groups()
-                for g in groups:
-                    if g.id == group_id:
-                        # Update cache for all members
-                        for panel_id in g.member_ids:
-                            window_id = self.panel_to_window.get(panel_id)
-                            if window_id:
-                                self._state_cache[window_id] = {
-                                    "current_tint": int(level),
-                                    "last_updated": time.time(),
-                                }
-                        logger.info(f"  Applied to {len(g.member_ids)} panels: {g.member_ids}")
-                        return g.member_ids
-                logger.warning(f"Group {group_id} accepted but members not found")
-                return []
+                # Get group members (prefer local groups for membership)
+                member_ids: List[str] = []
+                if local_group_id:
+                    try:
+                        local_groups = load_groups()
+                        local_group = local_groups.get(local_group_id)
+                        if local_group:
+                            member_ids = list(local_group.member_ids)
+                    except Exception as e:
+                        logger.warning(f"Failed to load local group members: {e}")
+
+                # Fallback: try to find members from list_groups if we have no local mapping
+                if not member_ids:
+                    groups = self.list_groups()
+                    for g in groups:
+                        if g.id == group_id:
+                            member_ids = list(g.member_ids)
+                            break
+
+                if member_ids:
+                    # Update cache for all members
+                    for panel_id in member_ids:
+                        window_id = self.panel_to_window.get(panel_id)
+                        if window_id:
+                            self._state_cache[window_id] = {
+                                "current_tint": int(level),
+                                "last_updated": time.time(),
+                            }
+                    logger.info(f"  Applied to {len(member_ids)} panels: {member_ids}")
+                    return True, member_ids, "group updated"
+
+                logger.info(f"  Applied to 0 panels (members unknown)")
+                return True, [], "group command accepted"
             elif response.status_code == 404:
-                logger.error(f"✗ Group {group_id} not found on Halio API")
-                raise KeyError(f"Group {group_id} not found on Halio")
+                logger.error(f"✗ Group {halio_group_id} not found on Halio API")
+                raise KeyError(f"Group {halio_group_id} not found on Halio")
             else:
                 logger.error(
                     f"✗ Halio API error for group {group_id}: "
                     f"status={response.status_code} body={response.text}"
                 )
-                return []
+                return False, [], "halio api error"
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error setting group {group_id}: {e}")
-            return []
+            return False, [], "network error"
         except KeyError:
             raise
         except Exception as e:
             logger.error(f"Error setting group {group_id}: {e}")
-            return []
+            return False, [], "unexpected error"

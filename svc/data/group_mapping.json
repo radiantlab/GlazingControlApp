@@ -1,0 +1,6 @@
+{
+  "_comment": "Mapping from local group IDs to Halio group UUIDs",
+  "_instructions": "Replace the placeholder UUIDs with actual group UUIDs from your Halio site",
+  "G-facade": "",
+  "G-skylights": ""
+}
