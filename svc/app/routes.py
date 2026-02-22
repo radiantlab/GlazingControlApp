@@ -4,7 +4,7 @@ from fastapi.responses import Response
 from .models import (
     Panel, Group, CommandRequest, CommandResult, GroupCreate, GroupUpdate, 
     AuditEntry, HealthResponse, DeleteGroupResponse, ErrorResponse, SensorInfo,
-    SensorReadingResponse
+    SensorReadingResponse, RoutineRequest, RoutineStatusResponse, SavedRoutine
 )
 from typing import List, Optional
 import csv
@@ -17,7 +17,14 @@ from .state import (
     list_sensors as _list_sensors,
     fetch_latest_readings as _fetch_latest_readings,
     fetch_readings as _fetch_readings,
+    list_routines,
+    get_routine,
+    list_saved_routines,
+    save_saved_routine,
+    delete_saved_routine
 )
+from .routines.manager import start_routine, stop_routine, remove_routine, active_routines
+import uuid
 
 
 router = APIRouter()
@@ -86,9 +93,9 @@ def set_level(
 ) -> CommandResult:
     """Set tint level for a panel or group."""
     if body.target_type == "panel":
-        ok, applied, msg = service.set_panel_level(body.target_id, body.level)
+        ok, applied, msg = service.set_panel_level(body.target_id, body.level, body.actor)
     else:
-        ok, applied, msg = service.set_group_level(body.target_id, body.level)
+        ok, applied, msg = service.set_group_level(body.target_id, body.level, body.actor)
 
     if not ok:
         if msg in ("panel not found", "group not found"):
@@ -345,3 +352,130 @@ def get_metric_history(
 ) -> List[SensorReadingResponse]:
     rows = _fetch_readings(sensor_id=sensor_id, metric=metric, ts_from=ts_from, ts_to=ts_to)
     return [SensorReadingResponse(**r) for r in rows]
+
+
+# --- ROUTINES -------------------------------------------------------------
+
+@router.get(
+    "/routines",
+    response_model=List[RoutineStatusResponse],
+    summary="List all routines",
+    tags=["Routines"],
+)
+def get_routines() -> List[RoutineStatusResponse]:
+    routines = list_routines()
+    out = []
+    for r in routines:
+        rid = r["id"]
+        logs = []
+        if rid in active_routines:
+            logs = active_routines[rid].get("logs", [])
+
+        out.append(RoutineStatusResponse(
+            id=rid,
+            name=r["name"],
+            code=r["code"],
+            mode=r["mode"],
+            interval_ms=r.get("interval_ms"),
+            run_at_ts=r.get("run_at_ts"),
+            indefinite=r["indefinite"],
+            status=r["status"],
+            logs=logs,
+            duration_ms=None
+        ))
+    return out
+
+
+@router.post(
+    "/routines",
+    response_model=RoutineStatusResponse,
+    summary="Create and start a new routine",
+    tags=["Routines"],
+)
+def create_routine(body: RoutineRequest) -> RoutineStatusResponse:
+    rid = str(uuid.uuid4())
+    start_routine(
+        routine_id=rid,
+        name=body.name,
+        code=body.code,
+        mode=body.mode,
+        interval_ms=body.interval_ms,
+        run_at_ts=body.run_at_ts,
+        indefinite=body.indefinite
+    )
+    
+    # fetch back to return
+    r = get_routine(rid)
+    logs = active_routines.get(rid, {}).get("logs", [])
+    
+    return RoutineStatusResponse(
+        id=rid,
+        name=r["name"],
+        code=r["code"],
+        mode=r["mode"],
+        interval_ms=r.get("interval_ms"),
+        run_at_ts=r.get("run_at_ts"),
+        indefinite=r["indefinite"],
+        status=r["status"],
+        logs=logs,
+        duration_ms=None
+    )
+
+
+@router.delete(
+    "/routines/{routine_id}",
+    summary="Stop and delete a routine",
+    tags=["Routines"],
+)
+def delete_routine_endpoint(routine_id: str):
+    r = get_routine(routine_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Routine not found")
+        
+    remove_routine(routine_id)
+    return {"ok": True}
+
+
+@router.post(
+    "/routines/{routine_id}/stop",
+    summary="Stop a running routine",
+    tags=["Routines"],
+)
+def stop_routine_endpoint(routine_id: str):
+    r = get_routine(routine_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Routine not found")
+        
+    stop_routine(routine_id)
+    return {"ok": True}
+
+
+@router.get(
+    "/saved-routines",
+    response_model=List[SavedRoutine],
+    summary="List all saved routines",
+    tags=["Routines"],
+)
+def get_saved_routines() -> List[SavedRoutine]:
+    return [SavedRoutine(**r) for r in list_saved_routines()]
+
+
+@router.post(
+    "/saved-routines",
+    response_model=SavedRoutine,
+    summary="Save a routine to the server",
+    tags=["Routines"],
+)
+def create_saved_routine(body: SavedRoutine) -> SavedRoutine:
+    save_saved_routine(body.name, body.code)
+    return body
+
+
+@router.delete(
+    "/saved-routines/{name}",
+    summary="Delete a saved routine",
+    tags=["Routines"],
+)
+def delete_saved_routine_endpoint(name: str):
+    delete_saved_routine(name)
+    return {"ok": True}

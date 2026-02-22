@@ -99,6 +99,8 @@ def initialize_database() -> None:
     _ensure_panel_state_db()
     _ensure_groups_db()
     _ensure_sensor_db()
+    _ensure_routines_db()
+    _ensure_saved_routines_db()
     _migrate_json_state_to_db()
     _migrate_groups_json_to_db()
 
@@ -385,6 +387,37 @@ def _ensure_groups_db() -> None:
             """
         )
 
+
+def _ensure_routines_db() -> None:
+    """Create the SQLite table for routines if it does not exist."""
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS routines (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                code TEXT NOT NULL,
+                mode TEXT NOT NULL,
+                interval_ms INTEGER,
+                run_at_ts REAL,
+                indefinite BOOLEAN NOT NULL DEFAULT 0,
+                status TEXT NOT NULL
+            )
+            """
+        )
+
+
+def _ensure_saved_routines_db() -> None:
+    """Create the SQLite table for saved routines if it does not exist."""
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS saved_routines (
+                name TEXT PRIMARY KEY,
+                code TEXT NOT NULL
+            )
+            """
+        )
 
 # --- SENSOR TABLES ---------------------------------------------------------
 
@@ -764,3 +797,93 @@ def audit(
             result=result,
         )
     )
+
+# --- ROUTINE TABLES --------------------------------------------------------
+
+def save_routine(
+    routine_id: str,
+    name: str,
+    code: str,
+    mode: str,
+    interval_ms: int | None,
+    run_at_ts: float | None,
+    indefinite: bool,
+    status: str
+) -> None:
+    _ensure_routines_db()
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO routines 
+            (id, name, code, mode, interval_ms, run_at_ts, indefinite, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (routine_id, name, code, mode, interval_ms, run_at_ts, 1 if indefinite else 0, status)
+        )
+
+
+def get_routine(routine_id: str) -> dict | None:
+    _ensure_routines_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        row = conn.execute(
+            "SELECT * FROM routines WHERE id = ?", (routine_id,)
+        ).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        d["indefinite"] = bool(d["indefinite"])
+        return d
+
+
+def update_routine_status(routine_id: str, status: str) -> None:
+    _ensure_routines_db()
+    with _db_connection() as conn:
+        conn.execute(
+            "UPDATE routines SET status = ? WHERE id = ?",
+            (status, routine_id)
+        )
+
+
+def delete_routine(routine_id: str) -> None:
+    _ensure_routines_db()
+    with _db_connection() as conn:
+        conn.execute(
+            "DELETE FROM routines WHERE id = ?", (routine_id,)
+        )
+
+
+def list_routines() -> list[dict]:
+    _ensure_routines_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        rows = conn.execute("SELECT * FROM routines").fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            d["indefinite"] = bool(d["indefinite"])
+            result.append(d)
+        return result
+
+
+def save_saved_routine(name: str, code: str) -> None:
+    _ensure_saved_routines_db()
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO saved_routines (name, code)
+            VALUES (?, ?)
+            """,
+            (name, code)
+        )
+
+
+def list_saved_routines() -> list[dict]:
+    _ensure_saved_routines_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        rows = conn.execute("SELECT name, code FROM saved_routines ORDER BY name").fetchall()
+        return [dict(r) for r in rows]
+
+
+def delete_saved_routine(name: str) -> None:
+    _ensure_saved_routines_db()
+    with _db_connection() as conn:
+        conn.execute("DELETE FROM saved_routines WHERE name = ?", (name,))

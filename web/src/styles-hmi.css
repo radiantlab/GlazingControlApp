@@ -2364,6 +2364,10 @@ select option[disabled] {
     color: var(--hmi-text-muted);
 }
 
+.routine-status-scheduled {
+    color: var(--hmi-warning);
+}
+
 .routine-status-running {
     color: var(--hmi-success);
     animation: status-pulse 1.5s ease-in-out infinite;
