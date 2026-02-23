@@ -183,10 +183,10 @@ class RealAdapter:
                 f"status={response.status_code} body={response.text[:500]}"
             )
             
-            if response.status_code == 201:
+            if response.status_code == 202:
                 response_data = response.json()
                 # Extract group data from response
-                # API may return wrapped response: {"statusCode": 201, "results": {...}}
+                # API may return wrapped response: {"statusCode": 202, "results": {...}}
                 if isinstance(response_data, dict):
                     if "results" in response_data:
                         group_data = response_data["results"]
@@ -202,7 +202,7 @@ class RealAdapter:
                         name=name,
                         member_ids=member_ids  # Use original panel IDs
                     )
-                    logger.info(f"✓ Group '{name}' created successfully (ID: {group_id})")
+                    logger.info(f"✓ Group '{name}' creation accepted (ID: {group_id})")
                     return group
                 else:
                     raise ValueError(f"Unexpected response format: {type(response_data)}")
