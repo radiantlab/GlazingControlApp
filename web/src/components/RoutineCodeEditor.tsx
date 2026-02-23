@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { API_BASE } from "../api";
 import type { Panel, Group } from "../types";
 
 /* ---------- Types ---------- */
@@ -90,7 +91,7 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
     useEffect(() => {
         const fetchRoutines = async () => {
             try {
-                const res = await fetch("http://127.0.0.1:8000/routines");
+                const res = await fetch(`${API_BASE}/routines`);
                 if (res.ok) {
                     const data = await res.json();
                     setActiveRoutines(data);
@@ -102,7 +103,7 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
 
         const fetchSavedRoutines = async () => {
             try {
-                const res = await fetch("http://127.0.0.1:8000/saved-routines");
+                const res = await fetch(`${API_BASE}/saved-routines`);
                 if (res.ok) {
                     const data = await res.json();
                     setSavedRoutines(data);
@@ -138,7 +139,7 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
         const name = routineName.trim() || `Routine ${new Date().toLocaleTimeString()}`;
 
         try {
-            const res = await fetch("http://127.0.0.1:8000/routines", {
+            const res = await fetch(`${API_BASE}/routines`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -162,7 +163,7 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
 
     const handleStop = useCallback(async (id: string) => {
         try {
-            await fetch(`http://127.0.0.1:8000/routines/${id}/stop`, { method: "POST" });
+            await fetch(`${API_BASE}/routines/${id}/stop`, { method: "POST" });
             // Optimistic update
             setActiveRoutines(prev => prev.map(r => r.id === id ? { ...r, status: "stopped" } : r));
         } catch (err) {
@@ -172,7 +173,7 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
 
     const handleDeleteServerRoutine = useCallback(async (id: string) => {
         try {
-            await fetch(`http://127.0.0.1:8000/routines/${id}`, { method: "DELETE" });
+            await fetch(`${API_BASE}/routines/${id}`, { method: "DELETE" });
             setActiveRoutines(prev => prev.filter(r => r.id !== id));
             if (focusedRoutineId === id) setFocusedRoutineId(null);
         } catch (err) {
@@ -185,7 +186,7 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
     const handleSaveServer = useCallback(async () => {
         const name = routineName.trim() || `Routine ${savedRoutines.length + 1}`;
         try {
-            await fetch("http://127.0.0.1:8000/saved-routines", {
+            await fetch(`${API_BASE}/saved-routines`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, code })
@@ -213,7 +214,7 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
 
     const handleDeleteServerSaved = useCallback(async (name: string) => {
         try {
-            await fetch(`http://127.0.0.1:8000/saved-routines/${encodeURIComponent(name)}`, { method: "DELETE" });
+            await fetch(`${API_BASE}/saved-routines/${encodeURIComponent(name)}`, { method: "DELETE" });
             const updated = savedRoutines.filter((r) => r.name !== name);
             setSavedRoutines(updated);
         } catch (err) {

@@ -1,5 +1,5 @@
-import { Panel, Group, AuditLogEntry, SortField, SortDir} from "./types";
-const API_BASE = (import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000").replace(/\/$/, "");
+import { Panel, Group, AuditLogEntry, SortField, SortDir } from "./types";
+export const API_BASE = (import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000").replace(/\/$/, "");
 async function http<T>(path: string, options?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
         headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
@@ -84,7 +84,7 @@ export const api = {
         }
         if (sortField) params.append("sort_field", sortField);
         if (sortDir) params.append("sort_dir", sortDir);
-        
+
         const res = await fetch(`${API_BASE}/logs/audit/export?${params.toString()}`, {
             headers: { "Content-Type": "application/json" }
         });
