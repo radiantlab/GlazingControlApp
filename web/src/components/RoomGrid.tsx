@@ -8,6 +8,7 @@ type Props = {
     busyId?: string | null;
     transitioning?: Set<string>;
     panelControls?: Map<string, ControlSource>;
+    highlightedPanelIds?: Set<string>;
 };
 
 // Format timestamp as relative time (e.g., "2 minutes ago", "Just now")
@@ -15,10 +16,10 @@ function formatLastUpdated(timestamp: number, currentTime?: number): string {
     if (!timestamp || timestamp === 0) {
         return "Never";
     }
-    
+
     const now = currentTime || (Date.now() / 1000); // Use provided currentTime or get current
     const diff = now - timestamp;
-    
+
     if (diff < 5) {
         return "Just now";
     } else if (diff < 60) {
@@ -82,7 +83,8 @@ function PanelTile({
     busyId,
     isTransitioning,
     controlSource,
-    className
+    className,
+    isGroupHighlighted
 }: {
     panel: Panel
     onSet: (id: string, level: number) => Promise<void>
@@ -90,6 +92,7 @@ function PanelTile({
     isTransitioning?: boolean
     controlSource?: ControlSource | null
     className?: string
+    isGroupHighlighted?: boolean
 }) {
     const [localLevel, setLocalLevel] = React.useState(panel.level)
     const [currentTime, setCurrentTime] = React.useState(Date.now() / 1000)
@@ -193,7 +196,7 @@ function PanelTile({
 
     return (
         <div
-            className={`panel-tile ${isSkylight ? 'panel-tile-skylight' : ''} ${isBusy ? 'panel-tile-busy' : ''} ${isTransitioning ? 'panel-tile-transitioning' : ''} ${getControlBorderClass()} ${className || ''}`}
+            className={`panel-tile ${isSkylight ? 'panel-tile-skylight' : ''} ${isBusy ? 'panel-tile-busy' : ''} ${isTransitioning ? 'panel-tile-transitioning' : ''} ${getControlBorderClass()} ${isGroupHighlighted ? 'panel-tile-group-highlight' : ''} ${className || ''}`}
         >
             <div className="panel-tile-header">
                 <div className="panel-tile-name">{panel.name}</div>
@@ -301,7 +304,7 @@ function PanelTile({
 }
 
 
-export default function RoomGrid({ panels, onSet, busyId, transitioning = new Set(), panelControls = new Map() }: Props) {
+export default function RoomGrid({ panels, onSet, busyId, transitioning = new Set(), panelControls = new Map(), highlightedPanelIds = new Set() }: Props) {
     const { room1, room2 } = organizePanels(panels);
 
     return (
@@ -318,11 +321,11 @@ export default function RoomGrid({ panels, onSet, busyId, transitioning = new Se
                     <div className="room-panels-grid">
                         {/* Skylight displayed prominently at top, centered */}
                         {room1.filter(p => p.id.startsWith('SK')).map(panel => (
-                            <PanelTile key={panel.id} panel={panel} onSet={onSet} busyId={busyId} isTransitioning={transitioning.has(panel.id)} controlSource={panelControls.get(panel.id)} className="panel-tile-skylight-featured" />
+                            <PanelTile key={panel.id} panel={panel} onSet={onSet} busyId={busyId} isTransitioning={transitioning.has(panel.id)} controlSource={panelControls.get(panel.id)} isGroupHighlighted={highlightedPanelIds.has(panel.id)} className="panel-tile-skylight-featured" />
                         ))}
                         {/* Wall panels in a 3x3 grid layout */}
                         {room1.filter(p => !p.id.startsWith('SK')).map(panel => (
-                            <PanelTile key={panel.id} panel={panel} onSet={onSet} busyId={busyId} isTransitioning={transitioning.has(panel.id)} controlSource={panelControls.get(panel.id)} />
+                            <PanelTile key={panel.id} panel={panel} onSet={onSet} busyId={busyId} isTransitioning={transitioning.has(panel.id)} controlSource={panelControls.get(panel.id)} isGroupHighlighted={highlightedPanelIds.has(panel.id)} />
                         ))}
                     </div>
                 </div>
@@ -338,11 +341,11 @@ export default function RoomGrid({ panels, onSet, busyId, transitioning = new Se
                     <div className="room-panels-grid">
                         {/* Skylight displayed prominently at top, centered */}
                         {room2.filter(p => p.id.startsWith('SK')).map(panel => (
-                            <PanelTile key={panel.id} panel={panel} onSet={onSet} busyId={busyId} isTransitioning={transitioning.has(panel.id)} controlSource={panelControls.get(panel.id)} className="panel-tile-skylight-featured" />
+                            <PanelTile key={panel.id} panel={panel} onSet={onSet} busyId={busyId} isTransitioning={transitioning.has(panel.id)} controlSource={panelControls.get(panel.id)} isGroupHighlighted={highlightedPanelIds.has(panel.id)} className="panel-tile-skylight-featured" />
                         ))}
                         {/* Wall panels in a 3x3 grid layout */}
                         {room2.filter(p => !p.id.startsWith('SK')).map(panel => (
-                            <PanelTile key={panel.id} panel={panel} onSet={onSet} busyId={busyId} isTransitioning={transitioning.has(panel.id)} controlSource={panelControls.get(panel.id)} />
+                            <PanelTile key={panel.id} panel={panel} onSet={onSet} busyId={busyId} isTransitioning={transitioning.has(panel.id)} controlSource={panelControls.get(panel.id)} isGroupHighlighted={highlightedPanelIds.has(panel.id)} />
                         ))}
                     </div>
                 </div>
