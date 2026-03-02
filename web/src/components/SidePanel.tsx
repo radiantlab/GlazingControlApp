@@ -18,6 +18,7 @@ type Routine = {
 
 type Props = {
     isOpen: boolean;
+    mode: "groups" | "routines";
     onClose: () => void;
     panels: Panel[];
     groups: Group[];
@@ -29,6 +30,7 @@ type Props = {
 
 export default function SidePanel({
     isOpen,
+    mode,
     onClose,
     panels,
     groups,
@@ -37,7 +39,6 @@ export default function SidePanel({
     onGroupDelete,
     onRoutineCreate
 }: Props) {
-    const [activeTab, setActiveTab] = useState<"groups" | "routines">("groups");
     const [routineSubTab, setRoutineSubTab] = useState<"steps" | "code">("code");
     const { showToast } = useToast();
 
@@ -219,29 +220,14 @@ export default function SidePanel({
             <div className="side-panel-overlay" onClick={onClose} />
             <div className="side-panel" onClick={(e) => e.stopPropagation()}>
                 <div className="side-panel-header">
-                    <h2>Manage</h2>
+                    <h2>{mode === "groups" ? "Groups" : "Routines"}</h2>
                     <button className="side-panel-close" onClick={onClose} aria-label="Close panel">
                         ✕
                     </button>
                 </div>
 
-                <div className="side-panel-tabs">
-                    <button
-                        className={`side-panel-tab ${activeTab === "groups" ? "active" : ""}`}
-                        onClick={() => setActiveTab("groups")}
-                    >
-                        Groups
-                    </button>
-                    <button
-                        className={`side-panel-tab ${activeTab === "routines" ? "active" : ""}`}
-                        onClick={() => setActiveTab("routines")}
-                    >
-                        Routines
-                    </button>
-                </div>
-
                 <div className="side-panel-content">
-                    {activeTab === "groups" && (
+                    {mode === "groups" && (
                         <div className="side-panel-section">
                             <h3>Create New Group</h3>
                             <div className="form-group">
@@ -383,7 +369,7 @@ export default function SidePanel({
                         </div>
                     )}
 
-                    {activeTab === "routines" && (
+                    {mode === "routines" && (
                         <div className="side-panel-section">
                             {/* Steps / Code sub-tabs */}
                             <div className="routine-sub-tabs">

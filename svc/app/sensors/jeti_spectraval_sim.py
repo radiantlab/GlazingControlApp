@@ -15,6 +15,7 @@ import logging
 import os
 import time
 from datetime import datetime
+import random
 from typing import Iterable, List, Tuple
 
 from .interface import SensorClient, SensorReading
@@ -152,7 +153,12 @@ class JetiSpectravalSimClient(SensorClient):
         """
         if not self._template_rows:
             return
-        lux, spectral = self._template_rows[self._row_index]
+        base_lux, spectral = self._template_rows[self._row_index]
+        
+        # Add +/- 5% random jitter to the lux value so the graph doesn't look identical every loop
+        jitter_factor = random.uniform(0.95, 1.05)
+        lux = round(base_lux * jitter_factor, 1)
+
         ts = time.time()
         self._write_row(lux, spectral, ts)
         # No yield

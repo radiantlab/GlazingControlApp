@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react"
-import { api} from "./api";
-import {Panel, Group, AuditLogEntry} from "./types"
+import { api } from "./api";
+import { Panel, Group, AuditLogEntry } from "./types"
 import { mockApi } from "./mockData";
 import RoomGrid from "./components/RoomGrid";
 import RoomGridCompact from "./components/RoomGridCompact";
@@ -22,6 +22,7 @@ export default function AppHMI() {
     const [transitioning, setTransitioning] = useState<Set<string>>(new Set());
     const [sidePanelOpen, setSidePanelOpen] = useState<boolean>(false);
     const [controlState, setControlState] = useState(controlManager.getActiveControllers());
+    const [sidePanelMode, setSidePanelMode] = useState<"groups" | "routines">("groups");
     const { showToast } = useToast();
     const [groupId, setGroupId] = useState<string>("");
     const [groupLevel, setGroupLevel] = useState<number>(50);
@@ -383,10 +384,24 @@ export default function AppHMI() {
 
                         <button
                             className="hmi-manage-btn"
-                            onClick={() => setSidePanelOpen(true)}
-                            title="Manage Groups & Routines"
+                            onClick={() => {
+                                setSidePanelMode("groups");
+                                setSidePanelOpen(true);
+                            }}
+                            title="Manage Groups"
                         >
-                            Manage
+                            Groups
+                        </button>
+
+                        <button
+                            className="hmi-manage-btn"
+                            onClick={() => {
+                                setSidePanelMode("routines");
+                                setSidePanelOpen(true);
+                            }}
+                            title="Manage Routines"
+                        >
+                            Routines
                         </button>
                     </div>
                 </div>
@@ -485,6 +500,7 @@ export default function AppHMI() {
 
             <SidePanel
                 isOpen={sidePanelOpen}
+                mode={sidePanelMode}
                 onClose={() => setSidePanelOpen(false)}
                 panels={panels}
                 groups={groups}
