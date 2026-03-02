@@ -7,25 +7,25 @@
     --hmi-surface-hover: #353d52;
     --hmi-border: #3a4458;
     --hmi-border-light: #4a5568;
-    
+
     --hmi-text: #e8eaed;
     --hmi-text-muted: #9ca3af;
     --hmi-text-dim: #6b7280;
-    
+
     --hmi-primary: #2563eb;
     --hmi-primary-hover: #3b82f6;
     --hmi-accent: #0ea5e9;
-    
+
     --hmi-success: #10b981;
     --hmi-warning: #f59e0b;
     --hmi-danger: #ef4444;
-    
+
     --hmi-tint-clear: #e0f2fe;
     --hmi-tint-light: #7dd3fc;
     --hmi-tint-med: #0ea5e9;
     --hmi-tint-dark: #0369a1;
     --hmi-tint-max: #0c4a6e;
-    
+
     --hmi-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
     --hmi-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
@@ -34,7 +34,8 @@
     box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
     margin: 0;
     padding: 0;
     height: 100%;
@@ -163,7 +164,7 @@ body {
 }
 
 /* When active controllers bar is present, push header down */
-.active-controllers-bar ~ .hmi-header {
+.active-controllers-bar~.hmi-header {
     top: 60px;
 }
 
@@ -185,15 +186,15 @@ body {
         padding: 16px 20px;
         gap: 16px;
     }
-    
+
     .hmi-main {
         padding: 20px;
     }
-    
+
     .active-controllers-bar {
         padding: 12px 20px;
     }
-    
+
     .rooms-layout {
         gap: 20px;
     }
@@ -203,7 +204,7 @@ body {
     .hmi-main.with-side-panel {
         margin-right: 420px;
     }
-    
+
     .side-panel {
         width: 420px;
     }
@@ -214,15 +215,15 @@ body {
         padding: 14px 16px;
         gap: 12px;
     }
-    
+
     .hmi-main {
         padding: 16px;
     }
-    
+
     .hmi-status {
         gap: 16px;
     }
-    
+
     .active-controllers-bar {
         padding: 10px 16px;
     }
@@ -247,7 +248,7 @@ body {
     content: '';
     position: absolute;
     inset: 12px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 100%);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 100%);
     border-radius: 4px;
 }
 
@@ -533,9 +534,12 @@ body {
 }
 
 @keyframes panel-transition-pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.3), var(--hmi-shadow);
     }
+
     50% {
         box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.5), var(--hmi-shadow);
     }
@@ -547,10 +551,13 @@ body {
 }
 
 .panel-tile-skylight-featured {
-    grid-column: 1 / -1; /* Span all columns on its own row */
+    grid-column: 1 / -1;
+    /* Span all columns on its own row */
     justify-self: center;
-    max-width: 420px; /* Slightly wider to accommodate header elements */
-    margin: 0 auto; /* Center horizontally */
+    max-width: 420px;
+    /* Slightly wider to accommodate header elements */
+    margin: 0 auto;
+    /* Center horizontally */
     width: 100%;
     box-sizing: border-box;
 }
@@ -833,8 +840,13 @@ body {
 }
 
 @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 .side-panel {
@@ -857,6 +869,7 @@ body {
     from {
         transform: translateX(100%);
     }
+
     to {
         transform: translateX(0);
     }
@@ -1022,7 +1035,7 @@ select:focus {
 input:disabled,
 textarea:disabled,
 select:disabled {
-    background: rgba(255,255,255,0.02);
+    background: rgba(255, 255, 255, 0.02);
     color: var(--hmi-text-dim);
     border-color: var(--hmi-border);
     opacity: 0.7;
@@ -1031,14 +1044,14 @@ select:disabled {
 
 input[type="number"] {
     -moz-appearance: textfield;
-    padding-right: 10px; 
+    padding-right: 10px;
 }
 
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
 
 select {
     background-image: linear-gradient(45deg, transparent 50%, var(--hmi-text) 50%), linear-gradient(135deg, var(--hmi-text) 50%, transparent 50%), linear-gradient(var(--hmi-surface), var(--hmi-surface));
@@ -1048,9 +1061,9 @@ select {
     padding-right: 40px;
 }
 
-    select::-ms-expand {
-        display: none;
-    }
+select::-ms-expand {
+    display: none;
+}
 
 .hmi-control-inline {
     display: inline-flex;
@@ -1067,7 +1080,7 @@ select {
 .panel-tile .form-group input,
 .panel-tile .form-group select,
 .panel-tile .form-group textarea {
-    background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.02));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(0, 0, 0, 0.02));
     border-color: var(--hmi-border);
 }
 
@@ -1351,12 +1364,17 @@ select option[disabled] {
 }
 
 .room-compact-skylight-featured {
-    grid-column: 1 / -1; /* Span all columns on its own row */
+    grid-column: 1 / -1;
+    /* Span all columns on its own row */
     justify-self: center;
-    max-width: 180px; /* Increased width for better visibility */
-    min-width: 160px; /* Ensure minimum readable size */
-    margin: 0 auto; /* Center horizontally */
-    aspect-ratio: 1.4; /* Make it slightly wider than tall for better proportions */
+    max-width: 180px;
+    /* Increased width for better visibility */
+    min-width: 160px;
+    /* Ensure minimum readable size */
+    margin: 0 auto;
+    /* Center horizontally */
+    aspect-ratio: 1.4;
+    /* Make it slightly wider than tall for better proportions */
 }
 
 .room-compact-panel {
@@ -1444,29 +1462,29 @@ select option[disabled] {
     .hmi-main.with-side-panel {
         margin-right: 400px;
     }
-    
+
     .side-panel {
         width: 400px;
     }
-    
+
     .room-compact-grid {
         grid-template-columns: repeat(4, 1fr);
     }
-    
+
     .hmi-header-inner {
         padding: 12px 16px;
         gap: 12px;
     }
-    
+
     .hmi-main {
         padding: 16px;
     }
-    
+
     .hmi-status {
         gap: 12px;
         flex-wrap: wrap;
     }
-    
+
     .hmi-status-item {
         flex-shrink: 0;
     }
@@ -1476,34 +1494,34 @@ select option[disabled] {
     .hmi-main.with-side-panel {
         margin-right: 0;
     }
-    
+
     .side-panel {
         width: 100%;
         max-width: 480px;
     }
-    
+
     .room-grid-compact {
         grid-template-columns: 1fr;
     }
-    
+
     .hmi-header-inner {
         padding: 12px 16px;
         flex-wrap: wrap;
         gap: 12px;
     }
-    
+
     .hmi-main {
         padding: 12px;
     }
-    
+
     .hmi-status {
         gap: 8px;
     }
-    
+
     .hmi-brand {
         gap: 12px;
     }
-    
+
     .hmi-brand-text h1 {
         font-size: 18px;
     }
@@ -1630,19 +1648,45 @@ select option[disabled] {
     padding: 0;
 }
 
-    .group-card .room-header {
-        padding: 10px 16px;
-        border-bottom: 1px solid var(--hmi-border);
-    }
+.group-card .room-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--hmi-border);
+}
 
-    .group-card .room-panels-grid {
-        padding-top: 12px;
-        padding-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
+.group-card .room-panels-grid {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* Group selection preview highlight — light yellow glow on member panels */
+.panel-tile-group-highlight {
+    background: rgba(253, 224, 71, 0.15) !important;
+    border-color: rgba(234, 179, 8, 0.5) !important;
+    box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.25), 0 0 12px rgba(253, 224, 71, 0.15);
+    transition: all 0.25s ease;
+}
+
+.panel-tile-group-highlight:hover {
+    box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.35), 0 0 16px rgba(253, 224, 71, 0.2);
+}
+
+/* Group dropdown glow when a group is selected */
+.group-select-active {
+    border: 2px solid rgba(234, 179, 8, 0.5) !important;
+    box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.25), 0 0 10px rgba(253, 224, 71, 0.2);
+    background: rgba(253, 224, 71, 0.08) !important;
+    transition: all 0.25s ease;
+}
+
+.room-compact-panel-group-highlight {
+    background: rgba(253, 224, 71, 0.2) !important;
+    border-color: rgba(234, 179, 8, 0.5) !important;
+    box-shadow: 0 0 8px rgba(253, 224, 71, 0.2);
+}
 
 
 /* Logs panel styling */
@@ -1794,7 +1838,7 @@ select option[disabled] {
     padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid var(--hmi-warning);
-    background: linear-gradient( 135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.02) );
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.02));
     color: var(--hmi-text);
     font-size: 13px;
 }
@@ -1804,7 +1848,7 @@ select option[disabled] {
     padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid var(--hmi-danger);
-    background: linear-gradient( 135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02) );
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02));
     color: var(--hmi-text);
     font-size: 13px;
 }
@@ -1823,31 +1867,31 @@ select option[disabled] {
     font-size: 13px;
 }
 
-    .logs-table thead {
-        background: linear-gradient(180deg, var(--hmi-surface) 0%, var(--hmi-bg-alt) 100%);
-    }
+.logs-table thead {
+    background: linear-gradient(180deg, var(--hmi-surface) 0%, var(--hmi-bg-alt) 100%);
+}
 
-    .logs-table th,
-    .logs-table td {
-        padding: 8px 10px;
-        text-align: left;
-        border-bottom: 1px solid var(--hmi-border);
-    }
+.logs-table th,
+.logs-table td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--hmi-border);
+}
 
-    .logs-table th {
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--hmi-text-muted);
-        user-select: none;
-        cursor: pointer;
-        white-space: nowrap;
-    }
+.logs-table th {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--hmi-text-muted);
+    user-select: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
 
-        .logs-table th span {
-            vertical-align: middle;
-        }
+.logs-table th span {
+    vertical-align: middle;
+}
 
 .logs-sort-indicator {
     display: inline-block;
@@ -1955,11 +1999,11 @@ select option[disabled] {
     color: #f9fafb;
 }
 
-    .logs-modal-header h2 {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 600;
-    }
+.logs-modal-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
 
 .logs-modal-close {
     border: none;
@@ -1971,9 +2015,9 @@ select option[disabled] {
     border-radius: 999px;
 }
 
-    .logs-modal-close:hover {
-        background: rgba(15, 23, 42, 0.45);
-    }
+.logs-modal-close:hover {
+    background: rgba(15, 23, 42, 0.45);
+}
 
 
 .logs-modal-tabs {
@@ -1992,10 +2036,10 @@ select option[disabled] {
     cursor: pointer;
 }
 
-    .logs-modal-tab.active {
-        background: rgba(37, 99, 235, 0.18);
-        color: var(--hmi-primary);
-    }
+.logs-modal-tab.active {
+    background: rgba(37, 99, 235, 0.18);
+    color: var(--hmi-primary);
+}
 
 
 .logs-panel-content {
@@ -2033,6 +2077,7 @@ select option[disabled] {
         transform: translateX(100%);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;
@@ -2045,10 +2090,9 @@ select option[disabled] {
         left: 12px;
         max-width: none;
     }
-    
+
     .toast {
         min-width: auto;
         max-width: none;
     }
 }
-

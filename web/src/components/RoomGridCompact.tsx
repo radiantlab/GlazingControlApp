@@ -6,10 +6,11 @@ type Props = {
     panels: Panel[];
     transitioning: Set<string>;
     panelControls?: Map<string, ControlSource>;
+    highlightedPanelIds?: Set<string>;
 };
 
 // Simplified compact view for when side panel is open
-export default function RoomGridCompact({ panels, transitioning, panelControls = new Map() }: Props) {
+export default function RoomGridCompact({ panels, transitioning, panelControls = new Map(), highlightedPanelIds = new Set() }: Props) {
     // Organize panels by room (same logic as RoomGrid but simplified display)
     const room1Panels = panels.filter(p => {
         if (p.id === 'SK1') return true;
@@ -63,11 +64,11 @@ export default function RoomGridCompact({ panels, transitioning, panelControls =
                         const getControlClass = () => `controlled-${controlType}`;
                         const isSkylight = panel.id.startsWith('SK');
                         const isFirstSkylight = isSkylight && index === 0;
-                        
+
                         return (
                             <div
                                 key={panel.id}
-                                className={`room-compact-panel ${transitioning.has(panel.id) ? 'transitioning' : ''} ${getControlClass()} ${isFirstSkylight ? 'room-compact-skylight-featured' : ''}`}
+                                className={`room-compact-panel ${transitioning.has(panel.id) ? 'transitioning' : ''} ${getControlClass()} ${isFirstSkylight ? 'room-compact-skylight-featured' : ''} ${highlightedPanelIds.has(panel.id) ? 'room-compact-panel-group-highlight' : ''}`}
                                 title={controlSource ? `Controlled by: ${controlType}` : `Available for: ${controlType} control`}
                             >
                                 <div className="room-compact-panel-id">{panel.id}</div>
@@ -99,11 +100,11 @@ export default function RoomGridCompact({ panels, transitioning, panelControls =
                         const getControlClass = () => `controlled-${controlType}`;
                         const isSkylight = panel.id.startsWith('SK');
                         const isFirstSkylight = isSkylight && index === 0;
-                        
+
                         return (
                             <div
                                 key={panel.id}
-                                className={`room-compact-panel ${transitioning.has(panel.id) ? 'transitioning' : ''} ${getControlClass()} ${isFirstSkylight ? 'room-compact-skylight-featured' : ''}`}
+                                className={`room-compact-panel ${transitioning.has(panel.id) ? 'transitioning' : ''} ${getControlClass()} ${isFirstSkylight ? 'room-compact-skylight-featured' : ''} ${highlightedPanelIds.has(panel.id) ? 'room-compact-panel-group-highlight' : ''}`}
                                 title={controlSource ? `Controlled by: ${controlType}` : `Available for: ${controlType} control`}
                             >
                                 <div className="room-compact-panel-id">{panel.id}</div>
