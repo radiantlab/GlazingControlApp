@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import type { Panel,Group } from "../types";
+import type { Panel, Group } from "../types";
 import { useToast } from "../utils/toast";
+import RoutineCodeEditor from "./RoutineCodeEditor";
 
 type RoutineStep = {
     target_type: "panel" | "group";
@@ -17,6 +18,7 @@ type Routine = {
 
 type Props = {
     isOpen: boolean;
+    mode: "groups" | "routines";
     onClose: () => void;
     panels: Panel[];
     groups: Group[];
@@ -28,6 +30,7 @@ type Props = {
 
 export default function SidePanel({
     isOpen,
+    mode,
     onClose,
     panels,
     groups,
@@ -36,7 +39,7 @@ export default function SidePanel({
     onGroupDelete,
     onRoutineCreate
 }: Props) {
-    const [activeTab, setActiveTab] = useState<"groups" | "routines">("groups");
+    const [routineSubTab, setRoutineSubTab] = useState<"steps" | "code">("code");
     const { showToast } = useToast();
 
     // group creation state
@@ -217,29 +220,14 @@ export default function SidePanel({
             <div className="side-panel-overlay" onClick={onClose} />
             <div className="side-panel" onClick={(e) => e.stopPropagation()}>
                 <div className="side-panel-header">
-                    <h2>Manage</h2>
+                    <h2>{mode === "groups" ? "Groups" : "Routines"}</h2>
                     <button className="side-panel-close" onClick={onClose} aria-label="Close panel">
                         ✕
                     </button>
                 </div>
 
-                <div className="side-panel-tabs">
-                    <button
-                        className={`side-panel-tab ${activeTab === "groups" ? "active" : ""}`}
-                        onClick={() => setActiveTab("groups")}
-                    >
-                        Groups
-                    </button>
-                    <button
-                        className={`side-panel-tab ${activeTab === "routines" ? "active" : ""}`}
-                        onClick={() => setActiveTab("routines")}
-                    >
-                        Routines
-                    </button>
-                </div>
-
                 <div className="side-panel-content">
-                    {activeTab === "groups" && (
+                    {mode === "groups" && (
                         <div className="side-panel-section">
                             <h3>Create New Group</h3>
                             <div className="form-group">
@@ -381,131 +369,157 @@ export default function SidePanel({
                         </div>
                     )}
 
-                    {activeTab === "routines" && (
+                    {mode === "routines" && (
                         <div className="side-panel-section">
-                            <h3>Create New Routine</h3>
-                            <div className="form-group">
-                                <label>Routine Name</label>
-                                <input
-                                    type="text"
-                                    value={newRoutineName}
-                                    onChange={e => setNewRoutineName(e.target.value)}
-                                    placeholder="e.g., Morning Setup"
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label>Steps</label>
-                                <div className="routine-steps">
-                                    {routineSteps.length === 0 ? (
-                                        <div className="routine-steps-empty">
-                                            No steps yet  click Add Step to begin
-                                        </div>
-                                    ) : (
-                                        routineSteps.map((step, index) => (
-                                            <div key={index} className="routine-step">
-                                                <div className="routine-step-header">
-                                                    <span>Step {index + 1}</span>
-                                                    <button
-                                                        className="routine-step-remove"
-                                                        onClick={() => handleRemoveRoutineStep(index)}
-                                                    >
-                                                        Remove
-                                                    </button>
-                                                </div>
-                                                <div className="routine-step-fields">
-                                                    <select
-                                                        value={step.target_type}
-                                                        onChange={e =>
-                                                            handleUpdateRoutineStep(index, {
-                                                                target_type: e.target
-                                                                    .value as "panel" | "group"
-                                                            })
-                                                        }
-                                                    >
-                                                        <option value="panel">Panel</option>
-                                                        <option value="group">Group</option>
-                                                    </select>
-                                                    <select
-                                                        value={step.target_id}
-                                                        onChange={e =>
-                                                            handleUpdateRoutineStep(index, {
-                                                                target_id: e.target.value
-                                                            })
-                                                        }
-                                                    >
-                                                        <option value="">
-                                                            Select {step.target_type}...
-                                                        </option>
-                                                        {step.target_type === "panel"
-                                                            ? panels.map(p => (
-                                                                <option key={p.id} value={p.id}>
-                                                                    {p.name} ({p.id})
-                                                                </option>
-                                                            ))
-                                                            : groups.map(g => (
-                                                                <option key={g.id} value={g.id}>
-                                                                    {g.name} ({g.id})
-                                                                </option>
-                                                            ))}
-                                                    </select>
-                                                    <input
-                                                        type="number"
-                                                        min={0}
-                                                        max={100}
-                                                        value={step.level}
-                                                        onChange={e =>
-                                                            handleUpdateRoutineStep(index, {
-                                                                level: Number(e.target.value)
-                                                            })
-                                                        }
-                                                        placeholder="Level"
-                                                    />
-                                                    <input
-                                                        type="number"
-                                                        min={0}
-                                                        value={step.delay_after_ms}
-                                                        onChange={e =>
-                                                            handleUpdateRoutineStep(index, {
-                                                                delay_after_ms: Number(e.target.value)
-                                                            })
-                                                        }
-                                                        placeholder="Delay ms"
-                                                    />
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
+                            {/* Steps / Code sub-tabs */}
+                            <div className="routine-sub-tabs">
                                 <button
-                                    className="side-panel-secondary-btn"
-                                    onClick={handleAddRoutineStep}
+                                    className={`routine-sub-tab ${routineSubTab === "steps" ? "active" : ""}`}
+                                    onClick={() => setRoutineSubTab("steps")}
+                                    type="button"
                                 >
-                                    + Add Step
+                                    Steps
+                                </button>
+                                <button
+                                    className={`routine-sub-tab ${routineSubTab === "code" ? "active" : ""}`}
+                                    onClick={() => setRoutineSubTab("code")}
+                                    type="button"
+                                >
+                                    Code
                                 </button>
                             </div>
 
-                            <button
-                                className="side-panel-action-btn"
-                                onClick={handleCreateRoutine}
-                                disabled={
-                                    isCreatingRoutine ||
-                                    !newRoutineName.trim() ||
-                                    routineSteps.length === 0
-                                }
-                            >
-                                {isCreatingRoutine ? "Creating..." : "Create Routine"}
-                            </button>
+                            {routineSubTab === "steps" && (
+                                <>
+                                    <h3>Create New Routine</h3>
+                                    <div className="form-group">
+                                        <label>Routine Name</label>
+                                        <input
+                                            type="text"
+                                            value={newRoutineName}
+                                            onChange={e => setNewRoutineName(e.target.value)}
+                                            placeholder="e.g., Morning Setup"
+                                        />
+                                    </div>
 
-                            <div className="side-panel-section-divider" />
+                                    <div className="form-group">
+                                        <label>Steps</label>
+                                        <div className="routine-steps">
+                                            {routineSteps.length === 0 ? (
+                                                <div className="routine-steps-empty">
+                                                    No steps yet  click Add Step to begin
+                                                </div>
+                                            ) : (
+                                                routineSteps.map((step, index) => (
+                                                    <div key={index} className="routine-step">
+                                                        <div className="routine-step-header">
+                                                            <span>Step {index + 1}</span>
+                                                            <button
+                                                                className="routine-step-remove"
+                                                                onClick={() => handleRemoveRoutineStep(index)}
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </div>
+                                                        <div className="routine-step-fields">
+                                                            <select
+                                                                value={step.target_type}
+                                                                onChange={e =>
+                                                                    handleUpdateRoutineStep(index, {
+                                                                        target_type: e.target
+                                                                            .value as "panel" | "group"
+                                                                    })
+                                                                }
+                                                            >
+                                                                <option value="panel">Panel</option>
+                                                                <option value="group">Group</option>
+                                                            </select>
+                                                            <select
+                                                                value={step.target_id}
+                                                                onChange={e =>
+                                                                    handleUpdateRoutineStep(index, {
+                                                                        target_id: e.target.value
+                                                                    })
+                                                                }
+                                                            >
+                                                                <option value="">
+                                                                    Select {step.target_type}...
+                                                                </option>
+                                                                {step.target_type === "panel"
+                                                                    ? panels.map(p => (
+                                                                        <option key={p.id} value={p.id}>
+                                                                            {p.name} ({p.id})
+                                                                        </option>
+                                                                    ))
+                                                                    : groups.map(g => (
+                                                                        <option key={g.id} value={g.id}>
+                                                                            {g.name} ({g.id})
+                                                                        </option>
+                                                                    ))}
+                                                            </select>
+                                                            <input
+                                                                type="number"
+                                                                min={0}
+                                                                max={100}
+                                                                value={step.level}
+                                                                onChange={e =>
+                                                                    handleUpdateRoutineStep(index, {
+                                                                        level: Number(e.target.value)
+                                                                    })
+                                                                }
+                                                                placeholder="Level"
+                                                            />
+                                                            <input
+                                                                type="number"
+                                                                min={0}
+                                                                value={step.delay_after_ms}
+                                                                onChange={e =>
+                                                                    handleUpdateRoutineStep(index, {
+                                                                        delay_after_ms: Number(e.target.value)
+                                                                    })
+                                                                }
+                                                                placeholder="Delay ms"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                        <button
+                                            className="side-panel-secondary-btn"
+                                            onClick={handleAddRoutineStep}
+                                        >
+                                            + Add Step
+                                        </button>
+                                    </div>
 
-                            <h3>Existing Routines</h3>
-                            <div className="routines-list">
-                                <div className="routines-empty">
-                                    No routines created yet  routines allow you to automate
-                                    sequences of tint changes
-                                </div>
-                            </div>
+                                    <button
+                                        className="side-panel-action-btn"
+                                        onClick={handleCreateRoutine}
+                                        disabled={
+                                            isCreatingRoutine ||
+                                            !newRoutineName.trim() ||
+                                            routineSteps.length === 0
+                                        }
+                                    >
+                                        {isCreatingRoutine ? "Creating..." : "Create Routine"}
+                                    </button>
+
+                                    <div className="side-panel-section-divider" />
+
+                                    <h3>Existing Routines</h3>
+                                    <div className="routines-list">
+                                        <div className="routines-empty">
+                                            No routines created yet  routines allow you to automate
+                                            sequences of tint changes
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {routineSubTab === "code" && (
+                                <RoutineCodeEditor panels={panels} groups={groups} />
+                            )}
                         </div>
                     )}
                 </div>

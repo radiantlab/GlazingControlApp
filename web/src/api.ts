@@ -1,8 +1,5 @@
-
-import { Panel, Group, AuditLogEntry, SortField, SortDir} from "./types";
-
-const API_BASE = (import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000").replace(/\/$/, "");
-
+import { Panel, Group, AuditLogEntry, SortField, SortDir } from "./types";
+export const API_BASE = (import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000").replace(/\/$/, "");
 async function http<T>(path: string, options?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
         headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
@@ -23,7 +20,6 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
     }
     return (await res.json()) as T;
 }
-
 export const api = {
     health: () => http<{ status: string; mode: string }>("/health"),
     panels: () => http<Panel[]>("/panels"),
@@ -33,33 +29,27 @@ export const api = {
             method: "POST",
             body: JSON.stringify({ name, member_ids: memberIds })
         }),
-
     updateGroup: (groupId: string, name: string, memberIds: string[]) =>
         http<Group>(`/groups/${groupId}`, {
             method: "PATCH",
             body: JSON.stringify({ name, member_ids: memberIds })
         }),
-
     deleteGroup: (groupId: string) =>
         http<unknown>(`/groups/${groupId}`, {
             method: "DELETE"
         }),
-
     setPanelLevel: (panelId: string, level: number) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
             body: JSON.stringify({ target_type: "panel", target_id: panelId, level })
         }),
-
     setGroupLevel: (groupId: string, level: number) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
             body: JSON.stringify({ target_type: "group", target_id: groupId, level })
         }),
-
     auditLogs: (limit = 500) =>
         http<AuditLogEntry[]>(`/logs/audit?limit=${encodeURIComponent(limit)}`),
-
     exportAuditLogs: async (
         limit = 10000,
         startDate?: string,
@@ -72,23 +62,15 @@ export const api = {
     ) => {
         const params = new URLSearchParams();
         params.append("limit", limit.toString());
-
-
-
         if (startDate) {
-            // Parse date string as local date (start of day in user's timezone), then convert to UTC
-            // This matches LogsPanel filtering logic to ensure export matches what users see in UI
             const [year, month, day] = startDate.split('-').map(Number);
             const date = new Date(year, month - 1, day, 0, 0, 0, 0);
             params.append("start_date", Math.floor(date.getTime() / 1000).toString());
         }
         if (endDate) {
-            // Parse date string as local date (end of day in user's timezone), then convert to UTC
-            // This matches LogsPanel filtering logic to ensure export matches what users see in UI
             const [year, month, day] = endDate.split('-').map(Number);
             const date = new Date(year, month - 1, day, 23, 59, 59, 999);
             const seconds = date.getTime() / 1000;
-            // Include fractional seconds to match component's end-of-day handling
             params.append("end_date", seconds.toString());
         }
         if (targetType && targetType !== "all") {
@@ -100,10 +82,9 @@ export const api = {
         if (resultFilter) {
             params.append("result_filter", resultFilter);
         }
-
         if (sortField) params.append("sort_field", sortField);
         if (sortDir) params.append("sort_dir", sortDir);
-        
+
         const res = await fetch(`${API_BASE}/logs/audit/export?${params.toString()}`, {
             headers: { "Content-Type": "application/json" }
         });
@@ -115,8 +96,6 @@ export const api = {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-
-        // Extract filename from Content-Disposition header if available
         const contentDisposition = res.headers.get("Content-Disposition");
         if (contentDisposition) {
             const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
@@ -128,13 +107,26 @@ export const api = {
         } else {
             a.download = `audit_logs_${new Date().toISOString().replace(/[:.]/g, "-")}_sorted_${sortField}_${sortDir}.csv`;
         }
-
-        //cleanup section
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-    }
+    },
+    listSensors: () => http<SensorInfo[]>("/sensors"),
+    getLatestMetrics: () => http<SensorReadingResponse[]>("/metrics/latest"),
+    getMetricHistory: (sensorId: string, metric: string, tsFrom: number, tsTo: number) =>
+        http<SensorReadingResponse[]>(`/metrics/history?sensor_id=${encodeURIComponent(sensorId)}&metric=${encodeURIComponent(metric)}&ts_from=${tsFrom}&ts_to=${tsTo}`)
 };
-
-
+export type SensorReadingResponse = {
+    sensor_id: string;
+    metric: string;
+    value: number;
+    ts: number;
+};
+export type SensorInfo = {
+    id: string;
+    kind: string;
+    label: string;
+    location?: string;
+    config: any;
+};

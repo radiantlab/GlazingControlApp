@@ -12,6 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.routes import router
 from app.state import bootstrap_default_if_empty, initialize_database
+from app.sensors.manager import start_sensor_workers, stop_sensor_workers
+from app.routines.manager import resume_routines
+
 
 # Configure logging to show all INFO level logs from our modules
 logging.basicConfig(
@@ -116,6 +119,16 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
+@app.on_event("startup")
+async def _start_app_services() -> None:
+    start_sensor_workers()
+    resume_routines()
+
+
+@app.on_event("shutdown")
+async def _stop_sensors() -> None:
+    stop_sensor_workers()
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
