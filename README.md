@@ -32,6 +32,26 @@ An overview of the file structure:
 - `web/` for the researcher UI (Contains a README specific  to the web interface)
 - `svc/` for the control service and queue (Contains a README specific to the backend service)
 
+## Watch for errors
+Run the watcher from `root`, `svc`, or `web`:
+
+```bash
+npm run watch
+```
+
+Defaults by folder:
+- root: backend + frontend (`both`)
+- svc: backend only
+- web: frontend only
+
+Override the target in any folder:
+
+```bash
+npm run watch -- backend
+npm run watch -- frontend
+npm run watch -- both
+```
+
 ## License
 
 GPL 3.0 License. See LICENSE.
