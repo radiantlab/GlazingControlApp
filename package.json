@@ -1,0 +1,10 @@
+{
+    "name": "glazing-control-workspace",
+    "private": true,
+    "scripts": {
+        "watch": "node scripts/watch.mjs",
+        "watch:backend": "node scripts/watch.mjs backend",
+        "watch:frontend": "node scripts/watch.mjs frontend",
+        "watch:both": "node scripts/watch.mjs both"
+    }
+}

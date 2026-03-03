@@ -5,6 +5,12 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
+        "typecheck": "tsc --noEmit",
+        "typecheck:watch": "tsc --noEmit --watch --preserveWatchOutput",
+        "watch": "node ../scripts/watch.mjs",
+        "watch:backend": "node ../scripts/watch.mjs backend",
+        "watch:frontend": "node ../scripts/watch.mjs frontend",
+        "watch:both": "node ../scripts/watch.mjs both",
         "build": "vite build",
         "preview": "vite preview"
     },
