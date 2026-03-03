@@ -240,3 +240,6 @@ svc/data/jeti_sim_output/
 
 svc/data/routines/
 # Routines are stored in the svc/data/routines directory
+
+/docs/SensorDocs
+# Sensor documentation is stored in the docs/SensorDocs directory
