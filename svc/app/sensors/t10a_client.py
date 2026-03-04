@@ -1,9 +1,12 @@
-﻿# app/sensors/t10a_client.py
+# app/sensors/t10a_client.py
 from __future__ import annotations
-import time
+
 import logging
+import re
+import time
 from dataclasses import dataclass
 from typing import Iterable, List
+
 import serial  # pip install pyserial
 
 from .interface import SensorClient, SensorReading
@@ -21,14 +24,14 @@ class T10AHeadConfig:
 
 class T10AClient(SensorClient):
     """
-    Driver for a single Konica Minolta T-10A body with 1–4 sensor heads.
+    Driver for a single Konica Minolta T-10A body with 1-4 sensor heads.
     One instance = one COM port = one meter (up to 4 heads daisy-chained).
 
     Based on T-10A Communication Specifications:
       - 9600 baud, 7 data bits, even parity, 1 stop bit.
       - ASCII framed commands with STX/ETX + BCC.
-      - Command '54' → PC mode.
-      - Command '10' → measurement data output (long frame).
+      - Command '54' -> PC mode.
+      - Command '10' -> measurement data output (long frame).
     """
 
     def __init__(
@@ -37,10 +40,25 @@ class T10AClient(SensorClient):
         port: str,
         heads: List[T10AHeadConfig],
         timeout_s: float = 1.0,
+        protocol: dict | None = None,
     ) -> None:
         self.id = device_id      # e.g. "KM1"
         self.port = port
         self.heads = heads
+
+        protocol_cfg = protocol or {}
+        self._head_index_base = int(protocol_cfg.get("head_index_base", 0))
+        self._body_template = str(
+            protocol_cfg.get("body_template", "{head:02d}{cmd}{params}")
+        )
+        self._measure_command = str(protocol_cfg.get("measure_command", "10"))
+        self._measure_params = str(protocol_cfg.get("measure_params", "0200"))
+        self._pc_mode_command = str(protocol_cfg.get("pc_mode_command", "54"))
+        self._pc_mode_params = str(protocol_cfg.get("pc_mode_params", "0000"))
+        self._send_pc_mode = str(
+            protocol_cfg.get("send_pc_mode", "true")
+        ).lower() in {"1", "true", "yes", "on"}
+        self._pc_mode_head_no = int(protocol_cfg.get("pc_mode_head_no", 0))
 
         self.ser = serial.Serial(
             port=self.port,
@@ -53,23 +71,30 @@ class T10AClient(SensorClient):
         logger.info(f"T10AClient[{self.id}] opened on {self.port}")
 
         # put meter into PC mode (command 54)
-        self._enter_pc_mode()
+        if self._send_pc_mode:
+            self._enter_pc_mode()
 
     # --- low-level helpers -------------------------------------------------
 
-    def _build_frame(self, head_no: int, cmd: str) -> bytes:
+    def _build_frame(self, head_no: int, cmd: str, params: str = "") -> bytes:
         """
         Build a T-10A frame for given head + command.
 
-        You MUST implement this exactly as in CS0103E:
-          [STX] + body + [ETX] + BCC
+        Frame format:
+          [STX] + body + [ETX] + BCC + CRLF
 
-        - body typically contains instrument address, receptor-head #, command code.
-        - BCC is a 2-digit hex XOR checksum as specified in the doc.
+        Body layout is configurable through `body_template`:
+          default: "{head:02d}{cmd}{params}"
+        where `head` is `head_no + head_index_base`.
         """
-        # PSEUDO: you will fill this in exactly from the spec
-        body = f"00{head_no:02d}{cmd}"  # Example only; check the doc!
-        # compute BCC over STX+body+ETX (see spec for exact range)
+        head_address = head_no + self._head_index_base
+        body = self._body_template.format(
+            head=head_address,
+            head_no=head_no,
+            cmd=cmd,
+            params=params,
+        )
+
         stx = "\x02"
         etx = "\x03"
         raw = (stx + body + etx).encode("ascii")
@@ -82,50 +107,81 @@ class T10AClient(SensorClient):
         frame = raw + bcc + b"\r\n"
         return frame
 
-    def _send_command(self, head_no: int, cmd: str) -> str:
+    def _send_command(self, head_no: int, cmd: str, params: str = "") -> str:
         """Send a command and return the raw ASCII reply (without CRLF)."""
-        frame = self._build_frame(head_no, cmd)
+        frame = self._build_frame(head_no, cmd, params=params)
+        self.ser.reset_input_buffer()
         self.ser.write(frame)
         self.ser.flush()
-        line = self.ser.readline().decode("ascii", errors="replace").strip()
+        line = self.ser.read_until(expected=b"\r\n").decode("ascii", errors="replace").strip()
         return line
 
     def _enter_pc_mode(self) -> None:
-        """Send command 54 once to enter PC mode."""
+        """Send configured PC mode command once."""
         try:
-            # '54' is the PC mode command code in the spec.
-            reply = self._send_command(head_no=0, cmd="54")
+            reply = self._send_command(
+                head_no=self._pc_mode_head_no,
+                cmd=self._pc_mode_command,
+                params=self._pc_mode_params,
+            )
             logger.info(f"T10A[{self.id}] PC mode reply: {reply!r}")
         except Exception as e:
             logger.error(f"T10A[{self.id}] failed to enter PC mode: {e}")
 
     # --- parse replies -----------------------------------------------------
 
+    @staticmethod
+    def _strip_transport(reply: str) -> str:
+        s = reply.strip()
+        if s.startswith("\x02"):
+            s = s[1:]
+        etx_idx = s.find("\x03")
+        if etx_idx >= 0:
+            s = s[:etx_idx]
+        return s
+
     def _parse_measurement_reply(self, head_cfg: T10AHeadConfig, reply: str) -> float | None:
         """
-        Parse the long measurement frame for a given head, returning Ev [lux].
+        Parse a long measurement frame for a head and return Ev [lux].
 
-        The spec gives the exact field layout; roughly:
-          STX + addr + head + '10' + status + sign + 4 digits + exponent + ... + ETX + BCC
-
-        Here we assume we've already stripped STX/ETX/BCC and are looking at the body.
-        You MUST adjust offsets based on the manual.
+        Handles common reply token shapes such as:
+          +0123E0, +0123+0, scientific notation, or plain decimal.
         """
         try:
-            # Example based on typical format: sddddE±dd
-            # You will replace this with proper slicing.
-            # For illustration we search for the EV numeric substring:
-            # find first '+' or '-' and take 6 chars, etc.
-            idx = max(reply.find("+"), reply.find("-"))
-            if idx == -1:
+            body = self._strip_transport(reply)
+            if not body:
                 return None
-            numeric = reply[idx : idx + 7]  # e.g. "+0123E0"
-            # crude parse: "+0123E0" -> 123 * 10**0
-            sign = -1 if numeric[0] == "-" else 1
-            mant = int(numeric[1:5])
-            exponent = int(numeric[6:])
-            value = sign * mant * (10 ** exponent)
-            return float(value)
+
+            if "ERR" in body.upper():
+                return None
+
+            # Pattern 1: +0123E0 or -0123E+1
+            m = re.search(r"([+-])(\d{4})(?:E)([+-]?\d{1,2})", body)
+            if m:
+                sign = -1 if m.group(1) == "-" else 1
+                mant = int(m.group(2))
+                exp = int(m.group(3))
+                return float(sign * mant * (10 ** exp))
+
+            # Pattern 2: +0123+0 / -0123-1
+            m = re.search(r"([+-])(\d{4})([+-]\d{1,2})", body)
+            if m:
+                sign = -1 if m.group(1) == "-" else 1
+                mant = int(m.group(2))
+                exp = int(m.group(3))
+                return float(sign * mant * (10 ** exp))
+
+            # Pattern 3: standard scientific float token.
+            m = re.search(r"[+-]?(?:\d+\.\d*|\d*\.\d+|\d+)[Ee][+-]?\d+", body)
+            if m:
+                return float(m.group(0))
+
+            # Pattern 4: plain decimal token only (avoid accidental parsing of header integers).
+            m = re.search(r"[+-]?(?:\d+\.\d*|\d*\.\d+)", body)
+            if m:
+                return float(m.group(0))
+
+            return None
         except Exception as e:
             logger.warning(f"T10A[{self.id}] parse error for {head_cfg.sensor_id}: reply={reply!r} err={e}")
             return None
@@ -134,7 +190,8 @@ class T10AClient(SensorClient):
 
     def poll(self) -> Iterable[SensorReading]:
         """
-        Poll all configured heads once (command '10' = measurement output).
+        Poll all configured heads once.
+
         Returns one SensorReading per head with metric 'lux'.
         """
         readings: list[SensorReading] = []
@@ -142,8 +199,11 @@ class T10AClient(SensorClient):
 
         for head in self.heads:
             try:
-                reply = self._send_command(head.head_no, cmd="10")
-                # strip STX/ETX/BCC here if your readline includes them
+                reply = self._send_command(
+                    head.head_no,
+                    cmd=self._measure_command,
+                    params=self._measure_params,
+                )
                 ev = self._parse_measurement_reply(head, reply)
                 if ev is None:
                     continue

@@ -2,20 +2,21 @@ from __future__ import annotations
 import logging
 import os
 import time
+from datetime import datetime
 from typing import Iterable, List, Tuple
 from .interface import SensorClient, SensorReading
+from .spectral_metrics import compute_jeti_metrics
 
 logger = logging.getLogger(__name__)
-
 
 _IDX_DATE = 1
 _IDX_TIME = 2
 _IDX_LUX = 5
 _IDX_SPECTRAL_START = 8
-_DELIM = "; "
+
 
 def _parse_cap_row(line: str) -> Tuple[float, List[str]]:
-    """Parse one .cap line. Returns (lux_value, list of spectral value strings)."""
+    """Parse one .cap line. Returns (lux_value, spectral-value strings)."""
     parts = [p.strip() for p in line.split(";")]
     if len(parts) < _IDX_SPECTRAL_START + 1:
         raise ValueError(f"Row has too few fields: {len(parts)}")
@@ -27,10 +28,29 @@ def _parse_cap_row(line: str) -> Tuple[float, List[str]]:
     return lux, spectral
 
 
+def _parse_cap_timestamp(line: str) -> float | None:
+    """Parse measurement timestamp from one .cap line."""
+    parts = [p.strip() for p in line.split(";")]
+    if len(parts) <= _IDX_TIME:
+        return None
+
+    date_str = parts[_IDX_DATE]
+    time_str = parts[_IDX_TIME]
+    if not date_str or not time_str:
+        return None
+
+    try:
+        dt = datetime.strptime(
+            f"{date_str} {time_str.upper()}",
+            "%m/%d/%Y %I:%M:%S%p",
+        )
+        return dt.timestamp()
+    except ValueError:
+        return None
+
+
 class JetiSpectravalFileWatcher(SensorClient):
-    """
-    Watches a Jeti Spectraval .cap file for new readings.
-    """
+    """Watches a Jeti Spectraval .cap file for new readings."""
 
     def __init__(
         self,
@@ -47,19 +67,15 @@ class JetiSpectravalFileWatcher(SensorClient):
         self._location = location
         self._input_path = input_path
         self._svc_root = svc_root or os.getcwd()
-        
-        # Resolve paths relative to svc root
+
         if os.path.isabs(input_path):
-             self._input_abs = input_path
+            self._input_abs = input_path
         else:
-             self._input_abs = os.path.normpath(os.path.join(self._svc_root, input_path))
+            self._input_abs = os.path.normpath(os.path.join(self._svc_root, input_path))
 
         self._file_pos = 0
-        
-        # Initial seek to end if file exists (or start from beginning? 
-        # Usually for a "live" system we might want only new data, 
-        # but for simplicity let's start from 0 if it's not too huge, 
-        # or seek to end. Let's seek to end to avoid re-ingesting old history for now).
+        self._last_measurement_ts: float | None = None
+
         if os.path.exists(self._input_abs):
             if os.path.isdir(self._input_abs):
                 self._is_dir = True
@@ -68,13 +84,12 @@ class JetiSpectravalFileWatcher(SensorClient):
                 self._is_dir = False
                 self._current_file = self._input_abs
         else:
-            # Path doesn't exist yet, assume file for now or wait
             self._is_dir = False
             self._current_file = None
 
         if self._current_file and os.path.exists(self._current_file):
             self._file_pos = os.path.getsize(self._current_file)
-        
+
         logger.info(
             "JetiSpectravalFileWatcher watching %s (dir=%s) -> current %s pos %s",
             self._input_abs,
@@ -87,8 +102,8 @@ class JetiSpectravalFileWatcher(SensorClient):
         """Find the .cap file with the latest mtime in the folder."""
         try:
             candidates = [
-                os.path.join(folder, f) 
-                for f in os.listdir(folder) 
+                os.path.join(folder, f)
+                for f in os.listdir(folder)
                 if f.endswith(".cap")
             ]
             if not candidates:
@@ -99,26 +114,23 @@ class JetiSpectravalFileWatcher(SensorClient):
             return None
 
     def poll(self) -> Iterable[SensorReading]:
-        """
-        Check for new lines in the watched file.
-        """
-        # If directory mode, check for file rotation
+        """Check for new lines in the watched file."""
         if self._is_dir:
             newest = self._get_newest_cap_file(self._input_abs)
             if newest and newest != self._current_file:
                 logger.info(f"Watcher: switching to new file {newest}")
                 self._current_file = newest
-                self._file_pos = 0  # START FROM BEGINNING for new files
-        
+                self._file_pos = 0
+                self._last_measurement_ts = None
+
         if not self._current_file or not os.path.exists(self._current_file):
             return
 
         try:
             current_size = os.path.getsize(self._current_file)
             if current_size < self._file_pos:
-                # File was truncated or rotated
                 self._file_pos = 0
-            
+
             if current_size == self._file_pos:
                 return
 
@@ -132,26 +144,39 @@ class JetiSpectravalFileWatcher(SensorClient):
             if not new_data:
                 return
 
-             # Process lines
             lines = new_data.split("\n")
-            
             for line in lines:
                 line = line.strip()
                 if not line:
                     continue
-                # Skip header if it appears (e.g. from file rotation or initial read)
-                # if line.startswith("Date and Time"):
-                #     continue
-                
+
                 try:
-                    lux, _ = _parse_cap_row(line)
-                    logger.debug(f"Watcher: parsed lux={lux}")
-                    yield SensorReading(
-                        sensor_id=self._sensor_id,
-                        metric="lux",
-                        value=lux,
-                        ts=time.time()
+                    lux, spectral = _parse_cap_row(line)
+                    measurement_ts = _parse_cap_timestamp(line) or time.time()
+                    metrics = compute_jeti_metrics(lux=lux, spectral_values=spectral)
+
+                    if self._last_measurement_ts is not None:
+                        dt = measurement_ts - self._last_measurement_ts
+                        if dt > 0:
+                            metrics["sample_interval_s"] = dt
+                    self._last_measurement_ts = measurement_ts
+
+                    if not metrics:
+                        continue
+
+                    logger.debug(
+                        "Watcher: parsed metrics for %s at ts=%s (%d values)",
+                        self._sensor_id,
+                        measurement_ts,
+                        len(metrics),
                     )
+                    for metric, value in metrics.items():
+                        yield SensorReading(
+                            sensor_id=self._sensor_id,
+                            metric=metric,
+                            value=value,
+                            ts=measurement_ts,
+                        )
                 except ValueError as e:
                     logger.warning(f"Watcher: failed to parse line '{line}': {e}")
                     continue

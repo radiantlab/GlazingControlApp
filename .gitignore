@@ -224,22 +224,20 @@ docs/TintSpecificAPIPages.pdf
 web/node_modules/
 web/dist/
 
+# Service runtime/state data
 svc/data/audit.json
+svc/data/audit.db
 svc/data/panels.json
 svc/data/panels_state.json
 svc/data/panels_config.json
-#svc/svc/data/window_mapping.json
-# Note: panels_config.json is tracked (structural data)
-# panels_state.json is ignored (runtime state)
-
-svc/data/audit.db
-# audit.db is a SQLite database for the audit log, changes on run time, so ignore it for now
-
-svc/data/jeti_sim_output/
-# Jeti Spectraval simulator output; generated .cap files from the sensor sim
-
 svc/data/routines/
-# Routines are stored in the svc/data/routines directory
+
+# JETI simulator output (configured as either file or directory)
+svc/data/jeti_sim_output
+svc/data/jeti_sim_output/
 
 /docs/SensorDocs
 # Sensor documentation is stored in the docs/SensorDocs directory
+
+# Local temporary research repo / scratch workspace
+/.tmp_luox/

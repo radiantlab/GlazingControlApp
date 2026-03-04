@@ -137,7 +137,8 @@ class JetiSpectravalSimClient(SensorClient):
             os.makedirs(out_dir, exist_ok=True)
 
     def _write_row(self, lux: float, spectral: List[str], ts: float) -> None:
-        now = datetime.utcfromtimestamp(ts)
+        # Use local wall-clock time because watcher parses CAP timestamps as local naive datetime.
+        now = datetime.fromtimestamp(ts)
         date_str = now.strftime("%-m/%-d/%Y") if os.name != "nt" else now.strftime("%m/%d/%Y")
         time_str = now.strftime("%I:%M:%S%p").lower().replace(" 0", " ")
         line = build_cap_line(self._header_parts, date_str, time_str, lux, spectral) + "\n"

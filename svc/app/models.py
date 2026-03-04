@@ -92,6 +92,15 @@ class SensorReadingResponse(BaseModel):
     ts: float
 
 
+class SensorLogEntry(BaseModel):
+    sensor_id: str
+    sensor_kind: Optional[str] = None
+    sensor_label: Optional[str] = None
+    metric: str
+    value: float
+    ts: float
+
+
 class RoutineRequest(BaseModel):
     name: str = Field(description="Name of the routine")
     code: str = Field(description="Python code to execute")

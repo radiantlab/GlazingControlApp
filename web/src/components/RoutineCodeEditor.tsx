@@ -39,6 +39,16 @@ else:
     log("Lux is fine, no action needed")`,
     },
     {
+        label: "Use melanopic EDI from JETI",
+        code: `const melEdi = await sensors.getLatest("JETI-00", "melanopic_edi_lx");
+log("Melanopic EDI: " + melEdi);
+
+if (melEdi !== null && melEdi > 120) {
+  await groups.setLevel("G-facade", 70);
+  log("High melanopic EDI - tinted facade to 70%");
+}`,
+    },
+    {
         label: "Set all panels to 0% (clear)",
         code: `all_panels = panels.list()
 for p in all_panels:

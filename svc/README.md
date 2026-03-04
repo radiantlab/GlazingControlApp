@@ -106,6 +106,60 @@ The adapter automatically:
 | `HALIO_API_URL` | - | Halio API base URL (real mode only) |
 | `HALIO_SITE_ID` | - | Your Halio site UUID (real mode only) |
 | `HALIO_API_KEY` | - | Your Halio API key (real mode only) |
+| `SENSORS_CONFIG_FILE` | `svc/data/sensors_config.json` | Sensor runtime config |
+| `SVC_ENABLE_T10A_IN_SIM` | `false` | Enable T-10A polling in sim mode |
+| `SVC_ENABLE_JETI_SERIAL_IN_SIM` | `false` | Enable JETI serial polling in sim mode |
+| `SVC_ENABLE_EKO_IN_SIM` | `false` | Enable EKO C-BOX polling in sim mode |
+
+### Sensor Integration (Real Mode)
+
+The backend supports three real sensor paths via `svc/data/sensors_config.json`:
+
+- `t10a`: Konica Minolta T-10A via serial (9600, 7E1)
+- `jeti_spectraval`: either
+  - `transport: "file"` (watch a live `.cap` output path), or
+  - `transport: "serial_scpi"` (direct SPECFIRM serial)
+- `eko_ms90_plus`: EKO C-BOX over Modbus RTU (RS-485, default 9600, 8N1, slave 1)
+
+See the sample config in [`svc/data/sensors_config.json`](./data/sensors_config.json) and
+the on-site wiring/runbook in [`docs/real_sensor_setup.md`](../docs/real_sensor_setup.md).
+
+### Sensor Integration (Sim Mode)
+
+In `SVC_MODE=sim`, the backend now emits live sample data for all three sensor families:
+
+- `t10a`: simulated lux for each configured head
+- `jeti_spectraval`: existing `.cap` sim writer + watcher flow
+- `eko_ms90_plus`: simulated irradiance/solar-position/temperature telemetry
+
+This means the HMI can render:
+
+- live latest values per sensor
+- one live graph per sensor with metric selection
+- live sensor logs with CSV export
+
+without physical hardware attached.
+
+If you need to poll real serial devices while still in sim mode, set:
+
+- `SVC_ENABLE_T10A_IN_SIM=true`
+- `SVC_ENABLE_JETI_SERIAL_IN_SIM=true`
+- `SVC_ENABLE_EKO_IN_SIM=true`
+
+### Sensor Log APIs
+
+The following endpoints are available in both `sim` and `real` modes:
+
+- `GET /logs/sensors`:
+  returns sensor reading log rows with filters (`sensor_id`, `metric`, `ts_from`, `ts_to`) and sorting.
+- `GET /logs/sensors/export`:
+  exports filtered sensor logs as CSV.
+
+Existing sensor metric APIs remain:
+
+- `GET /sensors`
+- `GET /metrics/latest`
+- `GET /metrics/history`
 
 ## Testing
 

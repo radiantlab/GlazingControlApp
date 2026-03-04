@@ -112,6 +112,72 @@ export const api = {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
     },
+    getSensorLogs: (
+        limit = 500,
+        offset = 0,
+        sensorId?: string,
+        metric?: string,
+        tsFrom?: number,
+        tsTo?: number,
+        sortField: SensorSortField = "ts",
+        sortDir: SortDir = "desc",
+    ) => {
+        const params = new URLSearchParams();
+        params.append("limit", String(limit));
+        params.append("offset", String(offset));
+        params.append("sort_field", sortField);
+        params.append("sort_dir", sortDir);
+        if (sensorId) params.append("sensor_id", sensorId);
+        if (metric) params.append("metric", metric);
+        if (tsFrom != null) params.append("ts_from", String(tsFrom));
+        if (tsTo != null) params.append("ts_to", String(tsTo));
+        return http<SensorLogEntry[]>(`/logs/sensors?${params.toString()}`);
+    },
+    exportSensorLogs: async (
+        limit = 100000,
+        sensorId?: string,
+        metric?: string,
+        tsFrom?: number,
+        tsTo?: number,
+        sortField: SensorSortField = "ts",
+        sortDir: SortDir = "desc",
+    ) => {
+        const params = new URLSearchParams();
+        params.append("limit", String(limit));
+        params.append("sort_field", sortField);
+        params.append("sort_dir", sortDir);
+        if (sensorId) params.append("sensor_id", sensorId);
+        if (metric) params.append("metric", metric);
+        if (tsFrom != null) params.append("ts_from", String(tsFrom));
+        if (tsTo != null) params.append("ts_to", String(tsTo));
+
+        const res = await fetch(`${API_BASE}/logs/sensors/export?${params.toString()}`, {
+            headers: { "Content-Type": "application/json" }
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`${res.status} ${text}`);
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const contentDisposition = res.headers.get("Content-Disposition");
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+            if (filenameMatch) {
+                a.download = filenameMatch[1];
+            } else {
+                a.download = `sensor_logs_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+            }
+        } else {
+            a.download = `sensor_logs_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+        }
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    },
     listSensors: () => http<SensorInfo[]>("/sensors"),
     getLatestMetrics: () => http<SensorReadingResponse[]>("/metrics/latest"),
     getMetricHistory: (sensorId: string, metric: string, tsFrom: number, tsTo: number) =>
@@ -129,4 +195,21 @@ export type SensorInfo = {
     label: string;
     location?: string;
     config: any;
+};
+
+export type SensorSortField =
+    | "ts"
+    | "sensor_id"
+    | "metric"
+    | "value"
+    | "sensor_kind"
+    | "sensor_label";
+
+export type SensorLogEntry = {
+    sensor_id: string;
+    sensor_kind?: string | null;
+    sensor_label?: string | null;
+    metric: string;
+    value: number;
+    ts: number;
 };

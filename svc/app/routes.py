@@ -4,7 +4,7 @@ from fastapi.responses import Response
 from .models import (
     Panel, Group, CommandRequest, CommandResult, GroupCreate, GroupUpdate, 
     AuditEntry, HealthResponse, DeleteGroupResponse, ErrorResponse, SensorInfo,
-    SensorReadingResponse, RoutineRequest, RoutineStatusResponse, SavedRoutine
+    SensorReadingResponse, SensorLogEntry, RoutineRequest, RoutineStatusResponse, SavedRoutine
 )
 from typing import List, Optional
 import csv
@@ -17,6 +17,7 @@ from .state import (
     list_sensors as _list_sensors,
     fetch_latest_readings as _fetch_latest_readings,
     fetch_readings as _fetch_readings,
+    fetch_sensor_log_entries as _fetch_sensor_log_entries,
     list_routines,
     get_routine,
     list_saved_routines,
@@ -304,6 +305,118 @@ def export_audit_logs_csv(
         content=output.getvalue(),
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.get(
+    "/logs/sensors",
+    response_model=List[SensorLogEntry],
+    summary="Get sensor logs",
+    description="Retrieve sensor reading log entries with optional filtering and sorting",
+    tags=["Logs"],
+)
+def get_sensor_logs(
+    limit: int = Query(default=500, ge=1, le=5000, description="Maximum number of entries to return"),
+    offset: int = Query(default=0, ge=0, description="Number of entries to skip"),
+    sensor_id: Optional[str] = Query(None, description="Filter by sensor ID"),
+    metric: Optional[str] = Query(None, description="Filter by metric name"),
+    ts_from: Optional[float] = Query(None, description="Start timestamp (Unix seconds)"),
+    ts_to: Optional[float] = Query(None, description="End timestamp (Unix seconds)"),
+    sort_field: Optional[str] = Query(None, description="Field to sort by"),
+    sort_dir: Optional[str] = Query(None, description="Direction to sort by (asc/desc)"),
+) -> List[SensorLogEntry]:
+    allowed_fields = ["ts", "sensor_id", "metric", "value", "sensor_kind", "sensor_label"]
+    allowed_dirs = ["desc", "asc"]
+
+    if (sort_field is None) or (sort_field not in allowed_fields):
+        sort_field = "ts"
+    if (sort_dir is None) or (sort_dir not in allowed_dirs):
+        sort_dir = "desc"
+
+    rows = _fetch_sensor_log_entries(
+        limit=limit,
+        offset=offset,
+        sensor_id=sensor_id,
+        metric=metric,
+        ts_from=ts_from,
+        ts_to=ts_to,
+        input_sort_field=sort_field,
+        input_sort_dir=sort_dir,
+    )
+    return [SensorLogEntry(**r) for r in rows]
+
+
+@router.get(
+    "/logs/sensors/export",
+    summary="Export sensor logs as CSV",
+    description="Export sensor reading logs as a CSV file with optional filtering and sorting",
+    tags=["Logs"],
+)
+def export_sensor_logs_csv(
+    limit: int = Query(default=100000, ge=1, le=1000000, description="Maximum number of entries to export"),
+    sensor_id: Optional[str] = Query(None, description="Filter by sensor ID"),
+    metric: Optional[str] = Query(None, description="Filter by metric name"),
+    ts_from: Optional[float] = Query(None, description="Start timestamp (Unix seconds)"),
+    ts_to: Optional[float] = Query(None, description="End timestamp (Unix seconds)"),
+    sort_field: Optional[str] = Query(None, description="Field to sort by"),
+    sort_dir: Optional[str] = Query(None, description="Direction to sort by (asc/desc)"),
+) -> Response:
+    allowed_fields = ["ts", "sensor_id", "metric", "value", "sensor_kind", "sensor_label"]
+    allowed_dirs = ["desc", "asc"]
+
+    if (sort_field is None) or (sort_field not in allowed_fields):
+        sort_field = "ts"
+    if (sort_dir is None) or (sort_dir not in allowed_dirs):
+        sort_dir = "desc"
+
+    rows = _fetch_sensor_log_entries(
+        limit=limit,
+        offset=0,
+        sensor_id=sensor_id,
+        metric=metric,
+        ts_from=ts_from,
+        ts_to=ts_to,
+        input_sort_field=sort_field,
+        input_sort_dir=sort_dir,
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "Timestamp",
+            "Sensor ID",
+            "Sensor Kind",
+            "Sensor Label",
+            "Metric",
+            "Value",
+        ]
+    )
+
+    for row in rows:
+        human_readable_ts = datetime.fromtimestamp(row["ts"], tz=timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%S UTC"
+        )
+        writer.writerow(
+            [
+                human_readable_ts,
+                row["sensor_id"],
+                row.get("sensor_kind") or "",
+                row.get("sensor_label") or "",
+                row["metric"],
+                row["value"],
+            ]
+        )
+
+    filename = (
+        f"sensor_logs_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+        f"_sorted_{sort_field}_{sort_dir}.csv"
+    )
+
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
