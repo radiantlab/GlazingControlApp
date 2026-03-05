@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
-import { api, type SensorInfo, type SensorLogEntry, type SensorSortField } from "../api"
+import { api, type SensorInfo, type SensorLogEntry, type SensorSortField, type RoutineStatusResponse } from "../api"
 
 import { AuditLogEntry, SortField, SortDir } from "../types"
+
+const InfoIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: "14px", height: "14px", display: "inline-block", verticalAlign: "text-bottom", marginLeft: "4px", opacity: 0.6 }}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+    </svg>
+)
 
 // local
 type LogsPanelProps = {
@@ -13,6 +19,7 @@ type LogsPanelProps = {
     onRefresh: () => void
     isMock: boolean
     sensors: SensorInfo[]
+    onRoutineLinkClick?: (routineId: string) => void
 }
 
 export default function LogsPanel({
@@ -23,9 +30,10 @@ export default function LogsPanel({
     error,
     onRefresh,
     isMock,
-    sensors
+    sensors,
+    onRoutineLinkClick
 }: LogsPanelProps) {
-    const [activeTab, setActiveTab] = useState<"audit" | "sensors">("audit")
+    const [activeTab, setActiveTab] = useState<"audit" | "sensors" | "routines">("audit")
     const [typeFilter, setTypeFilter] = useState<"all" | "panel" | "group">("all")
     const [targetFilter, setTargetFilter] = useState("")
     const [resultFilter, setResultFilter] = useState("")
@@ -59,6 +67,29 @@ export default function LogsPanel({
         }
         return Math.floor(seconds)
     }
+
+    // Routines state
+    const [routines, setRoutines] = useState<RoutineStatusResponse[]>([])
+    const [routinesLoading, setRoutinesLoading] = useState(false)
+    const [routinesError, setRoutinesError] = useState<string | null>(null)
+
+    const loadRoutines = useCallback(async () => {
+        if (isMock) {
+            setRoutines([])
+            setRoutinesError("Routine logs are not available in mock mode")
+            return
+        }
+        try {
+            setRoutinesLoading(true)
+            setRoutinesError(null)
+            const data = await api.getRoutines()
+            setRoutines(data)
+        } catch (err) {
+            setRoutinesError(`Failed to load routines: ${String(err)}`)
+        } finally {
+            setRoutinesLoading(false)
+        }
+    }, [isMock])
 
     useEffect(() => {
         if (!sensors.length) {
@@ -131,6 +162,14 @@ export default function LogsPanel({
         const interval = setInterval(loadSensorLogs, 2000)
         return () => clearInterval(interval)
     }, [isOpen, activeTab, loadSensorLogs])
+
+    useEffect(() => {
+        if (!isOpen || activeTab !== "routines") return
+
+        loadRoutines()
+        const interval = setInterval(loadRoutines, 2000)
+        return () => clearInterval(interval)
+    }, [isOpen, activeTab, loadRoutines])
 
     const filteredAuditLogs = useMemo(() => {
         let rows = auditLogs
@@ -325,6 +364,12 @@ export default function LogsPanel({
                     >
                         Sensor log
                     </button>
+                    <button
+                        className={`side-panel-tab ${activeTab === "routines" ? "active" : ""}`}
+                        onClick={() => setActiveTab("routines")}
+                    >
+                        Routine log
+                    </button>
                 </div>
 
                 <div className="logs-panel-content">
@@ -431,38 +476,38 @@ export default function LogsPanel({
                                 <table className="logs-table">
                                     <thead>
                                         <tr>
-                                            <th onClick={() => toggleSort("ts")}>
-                                                <span>Time</span>
+                                            <th onClick={() => toggleSort("ts")} title="When the action occurred">
+                                                <span>Time <InfoIcon /></span>
                                                 <span className="logs-sort-indicator">
                                                     {sortIndicator("ts")}
                                                 </span>
                                             </th>
-                                            <th onClick={() => toggleSort("actor")}>
-                                                <span>Actor</span>
+                                            <th onClick={() => toggleSort("actor")} title="The initiator of the action (e.g., manual, group, routine)">
+                                                <span>Actor <InfoIcon /></span>
                                                 <span className="logs-sort-indicator">
                                                     {sortIndicator("actor")}
                                                 </span>
                                             </th>
-                                            <th onClick={() => toggleSort("target_type")}>
-                                                <span>Type</span>
+                                            <th onClick={() => toggleSort("target_type")} title="Whether a single panel or a group was targeted">
+                                                <span>Type <InfoIcon /></span>
                                                 <span className="logs-sort-indicator">
                                                     {sortIndicator("target_type")}
                                                 </span>
                                             </th>
-                                            <th onClick={() => toggleSort("target_id")}>
-                                                <span>Target</span>
+                                            <th onClick={() => toggleSort("target_id")} title="The specific ID of the panel or group">
+                                                <span>Target <InfoIcon /></span>
                                                 <span className="logs-sort-indicator">
                                                     {sortIndicator("target_id")}
                                                 </span>
                                             </th>
-                                            <th onClick={() => toggleSort("level")}>
-                                                <span>Level</span>
+                                            <th onClick={() => toggleSort("level")} title="The applied tint level (0-100)">
+                                                <span>Level <InfoIcon /></span>
                                                 <span className="logs-sort-indicator">
                                                     {sortIndicator("level")}
                                                 </span>
                                             </th>
-                                            <th>Applied to</th>
-                                            <th>Result</th>
+                                            <th title="Panel IDs that were actually updated">Applied to <InfoIcon /></th>
+                                            <th title="The resulting outcome of the action">Result <InfoIcon /></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -480,7 +525,33 @@ export default function LogsPanel({
                                                     <td className="logs-cell-time">
                                                         {formatDateTime(row.ts)}
                                                     </td>
-                                                    <td>{row.actor}</td>
+                                                    <td>
+                                                        {row.actor.startsWith("routine:") ? (
+                                                            <button
+                                                                className="hmi-link-btn"
+                                                                onClick={() => {
+                                                                    const routineId = row.actor.replace("routine:", "");
+                                                                    if (onRoutineLinkClick) {
+                                                                        onRoutineLinkClick(routineId);
+                                                                    }
+                                                                }}
+                                                                title="View Routine"
+                                                                style={{
+                                                                    background: 'none',
+                                                                    border: 'none',
+                                                                    color: 'var(--txt-blue)',
+                                                                    textDecoration: 'underline',
+                                                                    cursor: 'pointer',
+                                                                    padding: 0,
+                                                                    font: 'inherit'
+                                                                }}
+                                                            >
+                                                                {row.actor}
+                                                            </button>
+                                                        ) : (
+                                                            row.actor
+                                                        )}
+                                                    </td>
                                                     <td className="logs-cell-tag">
                                                         <span className={`logs-pill logs-pill-${row.target_type}`}>
                                                             {row.target_type}
@@ -643,6 +714,108 @@ export default function LogsPanel({
                                                     <td>{row.value.toFixed(4)}</td>
                                                 </tr>
                                             ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === "routines" && (
+                        <div className="logs-section">
+                            {isMock && (
+                                <div className="logs-warning">
+                                    Routine logs are not available in mock mode
+                                </div>
+                            )}
+
+                            <div className="logs-toolbar">
+                                <div className="logs-actions" style={{ marginLeft: "auto" }}>
+                                    <button
+                                        className="logs-action-btn logs-refresh-btn"
+                                        onClick={loadRoutines}
+                                        disabled={routinesLoading || isMock}
+                                    >
+                                        <span>{routinesLoading ? "Loading..." : "Refresh"}</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {routinesError && <div className="logs-error">{routinesError}</div>}
+
+                            <div className="logs-table-wrapper">
+                                <table className="logs-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Mode</th>
+                                            <th>Status</th>
+                                            <th>Run / Ended At</th>
+                                            <th>Logs Summary</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {routines.filter(r => r.status === "done" || r.status === "error" || r.status === "stopped").length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} className="logs-empty">
+                                                    {routinesLoading ? "Loading routines..." : "No past routines found"}
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            routines
+                                                .filter(r => r.status === "done" || r.status === "error" || r.status === "stopped")
+                                                .sort((a, b) => (b.run_at_ts || 0) - (a.run_at_ts || 0))
+                                                .map(r => {
+                                                    const lastLog = r.logs && r.logs.length > 0 ? r.logs[r.logs.length - 1] : "No logs";
+                                                    const hasError = r.status === "error" || lastLog.includes("❌");
+                                                    const hasSuccess = r.status === "done" || lastLog.includes("✅");
+
+                                                    return (
+                                                        <tr key={r.id}>
+                                                            <td style={{ fontWeight: 600 }}>
+                                                                <button
+                                                                    className="hmi-link-btn"
+                                                                    onClick={() => {
+                                                                        if (onRoutineLinkClick) {
+                                                                            onRoutineLinkClick(r.id);
+                                                                        }
+                                                                    }}
+                                                                    title="View Routine code and logs"
+                                                                    style={{
+                                                                        background: 'none',
+                                                                        border: 'none',
+                                                                        color: 'var(--txt-blue)',
+                                                                        textDecoration: 'underline',
+                                                                        cursor: 'pointer',
+                                                                        padding: 0,
+                                                                        font: 'inherit'
+                                                                    }}
+                                                                >
+                                                                    {r.name}
+                                                                </button>
+                                                            </td>
+                                                            <td style={{ color: "var(--hmi-text-muted)", fontSize: "12px" }}>{r.mode}</td>
+                                                            <td>
+                                                                <span className={`routine-status-badge routine-status-${r.status}`} style={{ margin: 0, zoom: 0.85 }}>
+                                                                    ● {r.status}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ fontSize: "12px", color: "var(--hmi-text-muted)" }}>
+                                                                {r.run_at_ts ? formatDateTime(r.run_at_ts) : "-"}
+                                                            </td>
+                                                            <td style={{
+                                                                color: hasError ? "var(--txt-red)" : hasSuccess ? "var(--txt-green)" : "inherit",
+                                                                fontSize: "13px",
+                                                                maxWidth: "400px",
+                                                                whiteSpace: "nowrap",
+                                                                overflow: "hidden",
+                                                                textOverflow: "ellipsis"
+                                                            }} title={lastLog}>
+                                                                {lastLog}
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })
                                         )}
                                     </tbody>
                                 </table>

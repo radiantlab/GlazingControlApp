@@ -1385,16 +1385,10 @@ select option[disabled] {
 
 .room-compact-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     width: 100%;
     box-sizing: border-box;
-}
-
-@media (max-width: 1400px) {
-    .room-compact-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
 }
 
 .room-compact-skylight-featured {
@@ -2468,9 +2462,14 @@ select option[disabled] {
 }
 
 .routine-status-badge {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
 }
 
 .routine-status-idle {

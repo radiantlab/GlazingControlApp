@@ -177,6 +177,7 @@ export default function AppHMI() {
     const [graphMetricBySensor, setGraphMetricBySensor] = useState<Record<string, string>>({});
     const [visibleSensorIds, setVisibleSensorIds] = useState<string[]>([]);
     const sensorVisibilityUserSet = useRef(false);
+    const [targetRoutineId, setTargetRoutineId] = useState<string | null>(null);
 
 
     async function refresh() {
@@ -280,7 +281,7 @@ export default function AppHMI() {
             if (usingMock) {
                 await mockApi.setPanelLevel(panelId, level);
             } else {
-                await api.setPanelLevel(panelId, level);
+                await api.setPanelLevel(panelId, level, "manual");
             }
             await refresh();
             showToast(`Panel ${panelId} set to ${level}%`, "success");
@@ -335,7 +336,7 @@ export default function AppHMI() {
             if (usingMock) {
                 await mockApi.setGroupLevel(groupId, level);
             } else {
-                await api.setGroupLevel(groupId, level);
+                await api.setGroupLevel(groupId, level, "group");
             }
             await refresh();
             showToast(`Group "${group.name}" set to ${level}%`, "success");
@@ -602,84 +603,69 @@ export default function AppHMI() {
                 </div>
 
                 {mainTab === "control" && (
-                <>
-                {/* group control card, same visual treatment as a room section */}
-                <div className="room-section group-card">
-                    <div className="room-header">
-                        <h2 className="room-title">Group control</h2>
-                        <div className="room-stats">
-                            <span>{groups.length} groups</span>
-                        </div>
-                    </div>
+                    <>
+                        {/* group control card, same visual treatment as a room section */}
+                        <div className="room-section group-card">
+                            <div className="room-header">
+                                <h2 className="room-title">Group control</h2>
+                                <div className="room-stats">
+                                    <span>{groups.length} groups</span>
+                                </div>
+                            </div>
 
-                    <div className="room-panels-grid" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                        <label htmlFor="hmi-group-select" className="hmi-status-label" style={{ minWidth: 56 }}>Group</label>
+                            <div className="room-panels-grid" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                <label htmlFor="hmi-group-select" className="hmi-status-label" style={{ minWidth: 56 }}>Group</label>
 
-                        <select
-                            id="hmi-group-select"
-                            value={groupId}
-                            onChange={e => setGroupId(e.target.value)}
-                            style={{ padding: '6px 10px' }}
-                        >
-                            <option value="">Select a group</option>
-                            {groups.map(g => (
-                                <option key={g.id} value={g.id}>{g.name}</option>
-                            ))}
-                        </select>
-
-                        <label htmlFor="hmi-group-level" className="hmi-status-label" style={{ marginLeft: 8 }}>Level</label>
-                        <input
-                            id="hmi-group-level"
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={groupLevel}
-                            onChange={e => setGroupLevel(Math.max(0, Math.min(100, Number(e.target.value))))}
-                            style={{ width: 80, padding: '6px 8px' }}
-                        />
-
-                        <button
-                            className="hmi-manage-btn"
-                            onClick={() => groupId && setGroup(groupId, groupLevel)}
-                            disabled={!groupId || busy === groupId}
-                            title="Set selected group level"
-                        >
-                            {busy === groupId ? 'Setting…' : 'Set Group'}
-                        </button>
-
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto' }}>
-                            {[0, 25, 50, 75, 100].map(v => (
-                                <button
-                                    key={v}
-                                    className="hmi-manage-btn"
-                                    onClick={() => {
-                                        setGroupLevel(v)
-                                        if (groupId) setGroup(groupId, v)
-                                    }}
-                                    disabled={!groupId || busy === groupId}
-                                    title={`Set ${v}%`}
+                                <select
+                                    id="hmi-group-select"
+                                    value={groupId}
+                                    onChange={e => setGroupId(e.target.value)}
+                                    style={{ padding: '6px 10px' }}
                                 >
-                                    {v}
+                                    <option value="">Select a group</option>
+                                    {groups.map(g => (
+                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                    ))}
+                                </select>
+
+                                <label htmlFor="hmi-group-level" className="hmi-status-label" style={{ marginLeft: 8 }}>Tint Level</label>
+                                <input
+                                    id="hmi-group-level"
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    value={groupLevel}
+                                    onChange={e => setGroupLevel(Math.max(0, Math.min(100, Number(e.target.value))))}
+                                    style={{ width: 80, padding: '6px 8px' }}
+                                />
+
+                                <button
+                                    className="hmi-manage-btn"
+                                    onClick={() => groupId && setGroup(groupId, groupLevel)}
+                                    disabled={!groupId || busy === groupId}
+                                    title="Set selected group level"
+                                >
+                                    {busy === groupId ? 'Setting…' : 'Tint Group'}
                                 </button>
-                            ))}
+
+
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                {/* room grids */}
-                {sidePanelOpen ? (
-                    <RoomGridCompact panels={panels} transitioning={transitioning} panelControls={controlState.panelControls} />
-                ) : (
-                    <RoomGrid
-                        panels={panels}
-                        onSet={setPanel}
-                        busyId={busy}
-                        transitioning={transitioning}
-                        panelControls={controlState.panelControls}
-                    />
-                )}
+                        {/* room grids */}
+                        {sidePanelOpen ? (
+                            <RoomGridCompact panels={panels} transitioning={transitioning} panelControls={controlState.panelControls} />
+                        ) : (
+                            <RoomGrid
+                                panels={panels}
+                                onSet={setPanel}
+                                busyId={busy}
+                                transitioning={transitioning}
+                                panelControls={controlState.panelControls}
+                            />
+                        )}
 
-                </>
+                    </>
                 )}
 
                 {/* Sensor Metrics + Live Graph Section */}
@@ -843,6 +829,7 @@ export default function AppHMI() {
                 onGroupCreate={createGroup}
                 onGroupUpdate={updateGroup}
                 onGroupDelete={deleteGroup}
+                targetRoutineId={targetRoutineId}
             />
 
             <LogsPanel
@@ -854,6 +841,12 @@ export default function AppHMI() {
                 onRefresh={loadAuditLogs}
                 isMock={usingMock}
                 sensors={sensors}
+                onRoutineLinkClick={(routineId) => {
+                    setTargetRoutineId(routineId);
+                    setSidePanelMode("routines");
+                    setSidePanelOpen(true);
+                    setLogsPanelOpen(false);
+                }}
             />
 
         </>

@@ -38,15 +38,15 @@ export const api = {
         http<unknown>(`/groups/${groupId}`, {
             method: "DELETE"
         }),
-    setPanelLevel: (panelId: string, level: number) =>
+    setPanelLevel: (panelId: string, level: number, actor?: string) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
-            body: JSON.stringify({ target_type: "panel", target_id: panelId, level })
+            body: JSON.stringify({ target_type: "panel", target_id: panelId, level, ...(actor ? { actor } : {}) })
         }),
-    setGroupLevel: (groupId: string, level: number) =>
+    setGroupLevel: (groupId: string, level: number, actor?: string) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
-            body: JSON.stringify({ target_type: "group", target_id: groupId, level })
+            body: JSON.stringify({ target_type: "group", target_id: groupId, level, ...(actor ? { actor } : {}) })
         }),
     auditLogs: (limit = 500) =>
         http<AuditLogEntry[]>(`/logs/audit?limit=${encodeURIComponent(limit)}`),
@@ -181,8 +181,25 @@ export const api = {
     listSensors: () => http<SensorInfo[]>("/sensors"),
     getLatestMetrics: () => http<SensorReadingResponse[]>("/metrics/latest"),
     getMetricHistory: (sensorId: string, metric: string, tsFrom: number, tsTo: number) =>
-        http<SensorReadingResponse[]>(`/metrics/history?sensor_id=${encodeURIComponent(sensorId)}&metric=${encodeURIComponent(metric)}&ts_from=${tsFrom}&ts_to=${tsTo}`)
+        http<SensorReadingResponse[]>(`/metrics/history?sensor_id=${encodeURIComponent(sensorId)}&metric=${encodeURIComponent(metric)}&ts_from=${tsFrom}&ts_to=${tsTo}`),
+    getRoutines: () => http<RoutineStatusResponse[]>("/routines")
 };
+
+export type RoutineStatus = "idle" | "scheduled" | "running" | "error" | "done" | "stopped";
+
+export type RoutineStatusResponse = {
+    id: string;
+    name: string;
+    code: string;
+    mode: "once" | "interval";
+    interval_ms?: number;
+    run_at_ts?: number;
+    indefinite: boolean;
+    status: RoutineStatus;
+    logs: string[];
+    duration_ms?: number;
+};
+
 export type SensorReadingResponse = {
     sensor_id: string;
     metric: string;

@@ -85,7 +85,7 @@ export default function RoutineDocs() {
                 </p>
                 <ul style={{ lineHeight: "1.6", paddingLeft: "20px" }}>
                     <li>Type a name in the <strong>Routine Name</strong> field.</li>
-                    <li>Click <strong>Save to Server</strong>. This saves the template permanently to the system database.</li>
+                    <li>Click <strong>Save Routine</strong>. This saves the template permanently to the system database.</li>
                     <li>You can then reload it at any time from any device by clicking <strong>Load</strong> in the Saved Routines list at the bottom of the editor.</li>
                 </ul>
             </section>

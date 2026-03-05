@@ -14,8 +14,7 @@ from app.state import (
     list_routines
 )
 
-# Global dictionary to track active routine processes and their buffered logs
-# { "routine_id": {"process": Popen, "logs": [str], "task": asyncio.Task | None} }
+# { "routine_id": {"process": Popen, "logs": [str], "timer": threading.Timer | None} }
 active_routines: Dict[str, Dict[str, Any]] = {}
 
 ROUTINES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "data", "routines")
@@ -65,7 +64,7 @@ class PanelsWrapper:
         try:
             r = requests.post(
                 f"{API_URL}/commands/set-level",
-                json={"target_type": "panel", "target_id": panel_id, "level": int(level), "actor": "routine"}
+                json={"target_type": "panel", "target_id": panel_id, "level": int(level), "actor": f"routine:{ROUTINE_ID}"}
             )
             log(f"✓ Panel {panel_id} -> {level}%")
             return r.json()
@@ -85,7 +84,7 @@ class GroupsWrapper:
         try:
             r = requests.post(
                 f"{API_URL}/commands/set-level",
-                json={"target_type": "group", "target_id": group_id, "level": int(level), "actor": "routine"}
+                json={"target_type": "group", "target_id": group_id, "level": int(level), "actor": f"routine:{ROUTINE_ID}"}
             )
             log(f"✓ Group {group_id} -> {level}%")
             return r.json()
@@ -128,13 +127,14 @@ def _log_reader(process: subprocess.Popen, routine_id: str):
     # Process ended
     if routine_id in active_routines:
         code = process.returncode
+        end_time = time.strftime('%Y-%m-%d %H:%M:%S')
         if code == 0:
-            active_routines[routine_id]["logs"].append(f"✅ Route finished cleanly.")
+            active_routines[routine_id]["logs"].append(f"✅ Routine finished cleanly at {end_time}.")
             update_routine_status(routine_id, "done")
         elif code == -15 or code == 15: # SIGTERM
             pass # We manually killed it, handled in stop_routine
         else:
-            active_routines[routine_id]["logs"].append(f"❌ Routine crashed with exit code {code}.")
+            active_routines[routine_id]["logs"].append(f"❌ Routine crashed with exit code {code} at {end_time}.")
             update_routine_status(routine_id, "error")
 
 
@@ -143,7 +143,7 @@ def _execute_subprocess(routine_id: str, code: str, mode: str, interval_ms: int 
     script_path = os.path.join(ROUTINES_DIR, f"{routine_id}.py")
     
     # Build the script content
-    script_content = PREAMBLE + "\n"
+    script_content = f"ROUTINE_ID = '{routine_id}'\n" + PREAMBLE + "\n"
     
     if mode == "once":
         script_content += code
@@ -176,10 +176,16 @@ def _execute_subprocess(routine_id: str, code: str, mode: str, interval_ms: int 
         universal_newlines=True
     )
 
+    existing_logs = active_routines.get(routine_id, {}).get("logs", [])
+    if existing_logs and existing_logs[0].startswith("⏳"):
+        existing_logs.append(f"▶ Execution started at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    else:
+        existing_logs = [f"▶ Running routine at {time.strftime('%Y-%m-%d %H:%M:%S')}"]
+
     active_routines[routine_id] = {
         "process": process,
-        "logs": ["▶ Running routine..."],
-        "task": active_routines.get(routine_id, {}).get("task")
+        "logs": existing_logs,
+        "timer": active_routines.get(routine_id, {}).get("timer")
     }
     
     update_routine_status(routine_id, "running")
@@ -189,14 +195,7 @@ def _execute_subprocess(routine_id: str, code: str, mode: str, interval_ms: int 
     t.start()
 
 
-async def _scheduled_execution(routine_id: str, delay_seconds: float, code: str, mode: str, interval_ms: int | None, indefinite: bool):
-    """Asyncio task to wait the required delay before executing the subprocess."""
-    try:
-        await asyncio.sleep(delay_seconds)
-        if routine_id in active_routines:
-            _execute_subprocess(routine_id, code, mode, interval_ms, indefinite)
-    except asyncio.CancelledError:
-        pass
+
 
 
 def start_routine(
@@ -218,32 +217,37 @@ def start_routine(
             initial_status = "scheduled"
         else:
             delay_s = 0.0
-            
+            run_at_ts = time.time()
+    else:
+        run_at_ts = time.time()
+        
     save_routine(routine_id, name, code, mode, interval_ms, run_at_ts, indefinite, initial_status)
     
     if delay_s > 0:
         active_routines[routine_id] = {
             "process": None,
             "logs": [f"⏳ Scheduled to start at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(run_at_ts))}"],
-            "task": None
+            "timer": None
         }
         
-        task = asyncio.create_task(_scheduled_execution(routine_id, delay_s, code, mode, interval_ms, indefinite))
-        active_routines[routine_id]["task"] = task
+        timer = threading.Timer(delay_s, _execute_subprocess, args=(routine_id, code, mode, interval_ms, indefinite))
+        timer.daemon = True
+        timer.start()
+        active_routines[routine_id]["timer"] = timer
     else:
         _execute_subprocess(routine_id, code, mode, interval_ms, indefinite)
 
 
 def stop_routine(routine_id: str) -> None:
-    """Terminates the subprocess or cancels the scheduled task."""
+    """Terminates the subprocess or cancels the scheduled timer."""
     if routine_id in active_routines:
         r = active_routines[routine_id]
-        if r.get("task"):
-            r["task"].cancel()
+        if r.get("timer"):
+            r["timer"].cancel()
         if r.get("process"):
             r["process"].terminate()
             
-        r["logs"].append("⏹ Routine stopped")
+        r["logs"].append(f"⏹ Routine stopped at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         del active_routines[routine_id]
         
     update_routine_status(routine_id, "stopped")

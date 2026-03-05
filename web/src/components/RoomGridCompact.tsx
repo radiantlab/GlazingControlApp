@@ -52,7 +52,7 @@ export default function RoomGridCompact({ panels, transitioning, panelControls =
         <div className="room-grid-compact">
             <div className="room-compact-section">
                 <div className="room-compact-header">
-                    <h3>Room 1</h3>
+                    <h3>Left Room</h3>
                     <span className="room-compact-count">{room1.length} panels</span>
                 </div>
                 <div className="room-compact-grid">
@@ -88,7 +88,7 @@ export default function RoomGridCompact({ panels, transitioning, panelControls =
 
             <div className="room-compact-section">
                 <div className="room-compact-header">
-                    <h3>Room 2</h3>
+                    <h3>Right Room</h3>
                     <span className="room-compact-count">{room2.length} panels</span>
                 </div>
                 <div className="room-compact-grid">

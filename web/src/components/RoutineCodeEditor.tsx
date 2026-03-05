@@ -1,24 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { API_BASE } from "../api";
+import { API_BASE, type RoutineStatusResponse } from "../api";
 import type { Panel, Group } from "../types";
-
-/* ---------- Types ---------- */
-
-type RoutineStatus = "idle" | "scheduled" | "running" | "error" | "done" | "stopped";
-
-type RoutineStatusResponse = {
-    id: string;
-    name: string;
-    code: string;
-    mode: "once" | "interval";
-    interval_ms?: number;
-    run_at_ts?: number;
-    indefinite: boolean;
-    status: RoutineStatus;
-    logs: string[];
-    duration_ms?: number;
-};
 
 /* ---------- localStorage helpers ---------- */
 
@@ -28,41 +11,82 @@ type SavedRoutine = { name: string; code: string };
 
 const EXAMPLES: { label: string; code: string }[] = [
     {
-        label: "If lux > 80, tint Right Group to 50%",
-        code: `lux = sensors.get_latest("KM1-00", "lux")
+        label: "Basic: Tint group if lux is high",
+        code: `lux = sensors.get_latest("T10A-00", "lux")
 log(f"Current lux: {lux}")
 
-if lux is not None and lux > 80:
-    groups.set_level("G-right", 50)
-    log("High lux — tinted Right Group to 50%")
+if lux is not None and lux > 2000:
+    groups.set_level("G-facade", 50)
+    log("High lux — tinted facade group to 50%")
 else:
-    log("Lux is fine, no action needed")`,
+    groups.set_level("G-facade", 0)
+    log("Lux is fine, cleared facade group")`,
     },
     {
-        label: "Use melanopic EDI from JETI",
-        code: `const melEdi = await sensors.getLatest("JETI-00", "melanopic_edi_lx");
-log("Melanopic EDI: " + melEdi);
+        label: "Advanced: Tint based on EKO Global Horizontal Irradiance",
+        code: `ghi = sensors.get_latest("EKO-00", "ghi_w_m2")
+sun_elev = sensors.get_latest("EKO-00", "sun_elevation_deg")
 
-if (melEdi !== null && melEdi > 120) {
-  await groups.setLevel("G-facade", 70);
-  log("High melanopic EDI - tinted facade to 70%");
-}`,
-    },
-    {
-        label: "Set all panels to 0% (clear)",
-        code: `all_panels = panels.list()
-for p in all_panels:
-    panels.set_level(p["id"], 0)
-log("All panels cleared to 0%")`,
-    },
-    {
-        label: "Log all sensor readings",
-        code: `sensor_list = sensors.list()
-log(f"Found {len(sensor_list)} sensor(s)")
+log(f"GHI: {ghi} W/m2, Sun Elev: {sun_elev} deg")
 
-for s in sensor_list:
-    val = sensors.get_latest(s["id"], "lux")
-    log(f"{s['label']} ({s['id']}): lux = {val}")`,
+if ghi is not None and sun_elev is not None:
+    if ghi > 500 and sun_elev > 45:
+        # High noon sun, strong irradiance
+        groups.set_level("G-all", 80)
+        log("Strong sun detected, tinted all to 80%")
+    elif ghi > 200:
+        groups.set_level("G-all", 40)
+        log("Moderate sun detected, tinted all to 40%")
+    else:
+        # Cloudy or low sun
+        groups.set_level("G-all", 0)
+        log("Low irradiance, cleared all panels")`,
+    },
+    {
+        label: "Research: Melanopic EDI limits with JETI",
+        code: `mel_edi = sensors.get_latest("JETI-00", "melanopic_edi_lx")
+sun_elev = sensors.get_latest("EKO-00", "sun_elevation_deg")
+
+log(f"Melanopic EDI: {mel_edi} lx")
+
+if mel_edi is not None:
+    if mel_edi > 250:
+        # Too much circadian stimulus
+        groups.set_level("G-facade", 60)
+        log("High Melanopic EDI, tinting facade to 60%")
+    elif mel_edi < 100 and sun_elev is not None and sun_elev > 10:
+        # Not enough daylight stimulus while sun is up
+        groups.set_level("G-facade", 0)
+        log("Low Melanopic EDI, clearing facade to maximize daylight")`,
+    },
+    {
+        label: "Color Quality: Maintain minimum CRI",
+        code: `cri = sensors.get_latest("JETI-00", "cri_ra")
+lux = sensors.get_latest("T10A-00", "lux")
+
+log(f"CRI (Ra): {cri}, Lux: {lux}")
+
+# Example logic: if tinting is ruining the color quality of the room,
+# we might want to reduce the tint to let more natural light in.
+if cri is not None and cri < 80:
+    log("Color rendering is poor. Clearing panels to allow more natural light.")
+    groups.set_level("G-facade", 0)
+elif lux is not None and lux > 3000:
+    log("Color rendering is fine, but it's too bright. Tinting to 50%.")
+    groups.set_level("G-facade", 50)`,
+    },
+    {
+        label: "Safety: Monitor internal sensor temperatures",
+        code: `board_temp = sensors.get_latest("EKO-00", "board_temp_c")
+
+log(f"EKO Board Temp: {board_temp} °C")
+
+if board_temp is not None and board_temp > 60:
+    log("WARNING: Sensor internal temperature is critically high!")
+    # Send all panels to max tint to block thermal energy if sensor is indoors
+    groups.set_level("G-all", 100)
+else:
+    log("Thermal levels acceptable.")`,
     },
 ];
 
@@ -71,9 +95,10 @@ for s in sensor_list:
 type Props = {
     panels: Panel[];
     groups: Group[];
+    initialRoutineId?: string | null;
 };
 
-export default function RoutineCodeEditor({ panels, groups }: Props) {
+export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: Props) {
     const [code, setCode] = useState("");
     const [routineName, setRoutineName] = useState("");
     const [mode, setMode] = useState<"once" | "interval">("once");
@@ -84,18 +109,33 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
 
     // Global active routines state
     const [activeRoutines, setActiveRoutines] = useState<RoutineStatusResponse[]>([]);
-    const [focusedRoutineId, setFocusedRoutineId] = useState<string | null>(null);
+    const [focusedRoutineId, setFocusedRoutineId] = useState<string | null>(initialRoutineId || null);
+
+    const loadedRoutineIdRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (initialRoutineId && loadedRoutineIdRef.current !== initialRoutineId && activeRoutines.length > 0) {
+            setFocusedRoutineId(initialRoutineId);
+            const found = activeRoutines.find(r => r.id === initialRoutineId);
+            if (found) {
+                setCode(found.code || "");
+                setRoutineName(found.name || "");
+                if (found.mode === "once" || found.mode === "interval") {
+                    setMode(found.mode);
+                }
+                if (found.interval_ms) setIntervalMs(found.interval_ms);
+                setIndefinite(found.indefinite || false);
+                loadedRoutineIdRef.current = initialRoutineId;
+            }
+        }
+    }, [initialRoutineId, activeRoutines]);
 
     const [savedRoutines, setSavedRoutines] = useState<SavedRoutine[]>([]);
     const [showExamples, setShowExamples] = useState(false);
+    const [isLaunching, setIsLaunching] = useState(false);
+    const [launchSuccess, setLaunchSuccess] = useState(false);
 
-    const consoleEndRef = useRef<HTMLDivElement>(null);
-
-    // Auto-scroll console
     const focusedRoutine = activeRoutines.find(r => r.id === focusedRoutineId);
-    useEffect(() => {
-        consoleEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [focusedRoutine?.logs]);
 
     // Polling loop
     useEffect(() => {
@@ -132,6 +172,8 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
     /* ---- launch routine ---- */
     const handleLaunch = useCallback(async () => {
         if (!code.trim()) return;
+        setIsLaunching(true);
+        setLaunchSuccess(false);
 
         let runAtTs: number | undefined = undefined;
         if (runAtDate || runAtTime) {
@@ -164,9 +206,13 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
             if (res.ok) {
                 const data = await res.json();
                 setFocusedRoutineId(data.id);
+                setLaunchSuccess(true);
+                setTimeout(() => setLaunchSuccess(false), 2000);
             }
         } catch (err) {
             console.error("Failed to launch routine", err);
+        } finally {
+            setIsLaunching(false);
         }
     }, [code, routineName, mode, intervalMs, runAtDate, runAtTime, indefinite]);
 
@@ -223,6 +269,9 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
     );
 
     const handleDeleteServerSaved = useCallback(async (name: string) => {
+        if (!window.confirm(`Are you sure you want to delete the saved routine "${name}"?`)) {
+            return;
+        }
         try {
             await fetch(`${API_BASE}/saved-routines/${encodeURIComponent(name)}`, { method: "DELETE" });
             const updated = savedRoutines.filter((r) => r.name !== name);
@@ -240,13 +289,13 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
     return (
         <div className="routine-code-editor">
             {/* Active Routines List */}
-            {activeRoutines.length > 0 && (
+            {activeRoutines.filter(r => r.status === "running" || r.status === "scheduled").length > 0 && (
                 <div style={{ marginBottom: 16, border: '1px solid var(--hmi-border-color)', borderRadius: '6px', overflow: 'hidden' }}>
                     <div style={{ background: 'var(--hmi-bg-panel)', padding: '8px 12px', fontWeight: 600, borderBottom: '1px solid var(--hmi-border-color)', fontSize: '13px' }}>
-                        Active & Recent Routines
+                        Active & Scheduled Routines
                     </div>
                     <div>
-                        {activeRoutines.map(r => (
+                        {activeRoutines.filter(r => r.status === "running" || r.status === "scheduled").map(r => (
                             <div
                                 key={r.id}
                                 style={{
@@ -268,6 +317,11 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
                                     <span style={{ fontSize: '12px', color: 'var(--hmi-text-muted)' }}>
                                         ({r.mode})
                                     </span>
+                                    {r.status === 'scheduled' && r.run_at_ts && (
+                                        <span style={{ fontSize: '12px', color: 'var(--txt-orange, #e67e22)' }}>
+                                            — at {new Date(r.run_at_ts * 1000).toLocaleString()}
+                                        </span>
+                                    )}
                                 </div>
                                 <div style={{ display: 'flex', gap: '6px' }}>
                                     {(r.status === "running" || r.status === "scheduled") && (
@@ -445,10 +499,11 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
                     <button
                         className="side-panel-action-btn"
                         onClick={handleLaunch}
-                        disabled={!code.trim()}
+                        disabled={!code.trim() || isLaunching}
                         type="button"
+                        style={launchSuccess ? { background: 'var(--hmi-success)', borderColor: 'var(--hmi-success)' } : undefined}
                     >
-                        ▶ Launch Routine
+                        {isLaunching ? "Launching..." : launchSuccess ? "✓ Launched!" : "▶ Launch Routine"}
                     </button>
                     <button
                         className="side-panel-secondary-btn"
@@ -456,7 +511,7 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
                         disabled={!code.trim()}
                         type="button"
                     >
-                        Save to Server
+                        Save Routine
                     </button>
                 </div>
             </div>
@@ -483,7 +538,6 @@ export default function RoutineCodeEditor({ panels, groups }: Props) {
                                 </div>
                             ))
                         )}
-                        <div ref={consoleEndRef} />
                     </div>
                 </div>
             )}

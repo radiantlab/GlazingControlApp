@@ -15,10 +15,10 @@ function formatLastUpdated(timestamp: number, currentTime?: number): string {
     if (!timestamp || timestamp === 0) {
         return "Never";
     }
-    
+
     const now = currentTime || (Date.now() / 1000); // Use provided currentTime or get current
     const diff = now - timestamp;
-    
+
     if (diff < 5) {
         return "Just now";
     } else if (diff < 60) {
@@ -269,11 +269,6 @@ function PanelTile({
                                 const el = document.getElementById(`range-${panel.id}`) as HTMLInputElement | null
                                 if (el) el.value = String(v)
                                 setLocalLevel(v)
-                                try {
-                                    await onSet(panel.id, v)
-                                } catch (e) {
-                                    setLocalLevel(panel.level)
-                                }
                             }}
                         >
                             {v}
@@ -310,7 +305,7 @@ export default function RoomGrid({ panels, onSet, busyId, transitioning = new Se
                 {/* Room 1 */}
                 <div className="room-section">
                     <div className="room-header">
-                        <h2 className="room-title">Room 1</h2>
+                        <h2 className="room-title">Left Room</h2>
                         <div className="room-stats">
                             <span>{room1.length} panels</span>
                         </div>
@@ -330,7 +325,7 @@ export default function RoomGrid({ panels, onSet, busyId, transitioning = new Se
                 {/* Room 2 */}
                 <div className="room-section">
                     <div className="room-header">
-                        <h2 className="room-title">Room 2</h2>
+                        <h2 className="room-title">Right Room</h2>
                         <div className="room-stats">
                             <span>{room2.length} panels</span>
                         </div>
