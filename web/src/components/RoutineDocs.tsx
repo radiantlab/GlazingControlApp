@@ -137,6 +137,86 @@ for s in sensor_list:
                     </div>
                 </div>
             </section>
+            <section style={{ marginBottom: "40px" }}>
+                <h2 style={{ color: "var(--hmi-text-bright)" }}>Available Sensors & Metrics</h2>
+                <p style={{ lineHeight: "1.6", marginBottom: "16px" }}>
+                    The <code>sensors.get_latest(sensor_id, metric)</code> function requires specific sensor IDs and metric names depending on the hardware. Use the references below to know what metrics you can extract from each sensor on the system.
+                </p>
+
+                <details style={{ backgroundColor: "var(--hmi-panel-bg)", padding: "16px", borderRadius: "8px", border: "1px solid var(--hmi-border)", marginBottom: "16px", cursor: "pointer" }}>
+                    <summary style={{ color: "var(--btn-blue)", fontSize: "16px", fontWeight: "bold", outline: "none" }}>T-10A Illuminance Meter (t10a)</summary>
+                    <div style={{ marginTop: "16px", paddingLeft: "20px", cursor: "default" }}>
+                        <p style={{ lineHeight: "1.6", marginBottom: "8px" }}>Provides basic illuminance (lux) readings.</p>
+                        <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Common Sensor IDs:</h4>
+                        <ul style={{ margin: "0 0 12px 0", paddingLeft: "20px" }}>
+                            <li><code>KM1-00</code> - Konica Minolta T-10A</li>
+                        </ul>
+                        <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Available Metrics:</h4>
+                        <ul style={{ margin: 0, paddingLeft: "20px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "4px" }}>
+                            <li><code>lux</code>: Illuminance (lx)</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details style={{ backgroundColor: "var(--hmi-panel-bg)", padding: "16px", borderRadius: "8px", border: "1px solid var(--hmi-border)", marginBottom: "16px", cursor: "pointer" }}>
+                    <summary style={{ color: "var(--btn-blue)", fontSize: "16px", fontWeight: "bold", outline: "none" }}>JETI Spectraval 1501 Spectroradiometer (jeti_spectraval)</summary>
+                    <div style={{ marginTop: "16px", paddingLeft: "20px", cursor: "default" }}>
+                        <p style={{ lineHeight: "1.6", marginBottom: "8px" }}>Provides advanced colorimetry, illuminance, and non-visual (melanopic) lighting metrics.</p>
+                        <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Common Sensor IDs:</h4>
+                        <ul style={{ margin: "0 0 12px 0", paddingLeft: "20px" }}>
+                            <li><code>JT1-00</code> - JETI Spectraval</li>
+                        </ul>
+                        <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Available Metrics:</h4>
+                        <ul style={{ margin: 0, paddingLeft: "20px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "4px" }}>
+                            <li><code>lux</code>: Illuminance (lx)</li>
+                            <li><code>melanopic_edi_lx</code>: Melanopic EDI (lx)</li>
+                            <li><code>cct_ohno_k</code>: CCT (K) - Ohno, 2013</li>
+                            <li><code>cri_ra</code>: Colour Rendering Index [Ra]</li>
+                            <li><code>cfi_rf</code>: Colour Fidelity Index [Rf]</li>
+                            <li><code>cie1931_x</code>: CIE 1931 xy chromaticity [x]</li>
+                            <li><code>cie1931_y</code>: CIE 1931 xy chromaticity [y]</li>
+                            <li><code>s_cone_irradiance_mw_m2</code>: S-cone-opic irradiance (mW/m2)</li>
+                            <li><code>m_cone_irradiance_mw_m2</code>: M-cone-opic irradiance (mW/m2)</li>
+                            <li><code>l_cone_irradiance_mw_m2</code>: L-cone-opic irradiance (mW/m2)</li>
+                            <li><code>rhodopic_irradiance_mw_m2</code>: Rhodopic irradiance (mW/m2)</li>
+                            <li><code>melanopic_irradiance_mw_m2</code>: Melanopic irradiance (mW/m2)</li>
+                            <li><code>s_cone_edi_lx</code>: S-cone-opic EDI (lx)</li>
+                            <li><code>m_cone_edi_lx</code>: M-cone-opic EDI (lx)</li>
+                            <li><code>l_cone_edi_lx</code>: L-cone-opic EDI (lx)</li>
+                            <li><code>rhodopic_edi_lx</code>: Rhodopic EDI (lx)</li>
+                            <li><code>cct_robertson_k</code>: CCT (K) - Robertson, 1968</li>
+                            <li><code>duv_ohno</code>: Duv - Ohno, 2013</li>
+                            <li><code>duv_robertson</code>: Duv - Robertson, 1968</li>
+                            <li><code>sample_interval_s</code>: Sample interval (s)</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details style={{ backgroundColor: "var(--hmi-panel-bg)", padding: "16px", borderRadius: "8px", border: "1px solid var(--hmi-border)", marginBottom: "16px", cursor: "pointer" }}>
+                    <summary style={{ color: "var(--btn-blue)", fontSize: "16px", fontWeight: "bold", outline: "none" }}>EKO MS-90+ Sun Tracker Pyranometer (eko_ms90_plus)</summary>
+                    <div style={{ marginTop: "16px", paddingLeft: "20px", cursor: "default" }}>
+                        <p style={{ lineHeight: "1.6", marginBottom: "8px" }}>Outdoor environmental sensor providing global, direct, and diffuse solar irradiance, as well as sun position data.</p>
+                        <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Common Sensor IDs:</h4>
+                        <ul style={{ margin: "0 0 12px 0", paddingLeft: "20px" }}>
+                            <li><code>EK1-00</code> - EKO MS-90+</li>
+                        </ul>
+                        <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Available Metrics:</h4>
+                        <ul style={{ margin: 0, paddingLeft: "20px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "4px" }}>
+                            <li><code>ghi_w_m2</code>: Global horizontal irradiance (W/m2)</li>
+                            <li><code>dni_w_m2</code>: Direct normal irradiance (W/m2)</li>
+                            <li><code>dhi_w_m2</code>: Diffuse horizontal irradiance (W/m2)</li>
+                            <li><code>sun_elevation_deg</code>: Sun elevation (deg)</li>
+                            <li><code>sun_azimuth_deg</code>: Sun azimuth (deg)</li>
+                            <li><code>board_temp_c</code>: Board temperature (degC)</li>
+                            <li><code>sensor_temp_c</code>: Sensor temperature (degC)</li>
+                            <li><code>gps_satellites</code>: GPS satellites</li>
+                            <li><code>latitude_deg</code>: Latitude (deg)</li>
+                            <li><code>longitude_deg</code>: Longitude (deg)</li>
+                            <li><code>gps_timestamp_s</code>: GPS timestamp (s)</li>
+                        </ul>
+                    </div>
+                </details>
+            </section>
         </div>
     );
 }
