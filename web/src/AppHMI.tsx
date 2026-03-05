@@ -613,14 +613,14 @@ export default function AppHMI() {
                                 </div>
                             </div>
 
-                            <div className="room-panels-grid" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                            <div className="room-panels-grid" style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                 <label htmlFor="hmi-group-select" className="hmi-status-label" style={{ minWidth: 56 }}>Group</label>
 
                                 <select
                                     id="hmi-group-select"
                                     value={groupId}
                                     onChange={e => setGroupId(e.target.value)}
-                                    style={{ padding: '6px 10px' }}
+                                    style={{ padding: '4px 8px' }}
                                 >
                                     <option value="">Select a group</option>
                                     {groups.map(g => (
@@ -636,7 +636,7 @@ export default function AppHMI() {
                                     max={100}
                                     value={groupLevel}
                                     onChange={e => setGroupLevel(Math.max(0, Math.min(100, Number(e.target.value))))}
-                                    style={{ width: 80, padding: '6px 8px' }}
+                                    style={{ width: 80, padding: '4px 8px' }}
                                 />
 
                                 <button
@@ -644,6 +644,7 @@ export default function AppHMI() {
                                     onClick={() => groupId && setGroup(groupId, groupLevel)}
                                     disabled={!groupId || busy === groupId}
                                     title="Set selected group level"
+                                    style={{ padding: '4px 10px' }}
                                 >
                                     {busy === groupId ? 'Setting…' : 'Tint Group'}
                                 </button>

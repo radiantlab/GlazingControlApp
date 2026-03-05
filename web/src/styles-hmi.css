@@ -1356,7 +1356,7 @@ select option[disabled] {
     background: var(--hmi-surface);
     border: 2px solid var(--hmi-border);
     border-radius: 12px;
-    padding: 16px;
+    padding: 12px 16px;
     width: 100%;
     box-sizing: border-box;
     overflow-x: hidden;
@@ -1366,8 +1366,8 @@ select option[disabled] {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
-    padding-bottom: 12px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
     border-bottom: 1px solid var(--hmi-border);
 }
 
@@ -1401,12 +1401,12 @@ select option[disabled] {
     /* Ensure minimum readable size */
     margin: 0 auto;
     /* Center horizontally */
-    aspect-ratio: 1.4;
-    /* Make it slightly wider than tall for better proportions */
+    aspect-ratio: 2.5;
+    /* Make it much wider than tall for proportions */
 }
 
 .room-compact-panel {
-    aspect-ratio: 1;
+    aspect-ratio: 1.6;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1414,7 +1414,7 @@ select option[disabled] {
     background: var(--hmi-bg-alt);
     border: 1px solid var(--hmi-border);
     border-radius: 6px;
-    padding: 8px;
+    padding: 4px;
     transition: all 0.15s ease;
 }
 
@@ -1437,14 +1437,14 @@ select option[disabled] {
 }
 
 .room-compact-panel-id {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--hmi-text-muted);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .room-compact-panel-status {
     width: 100%;
-    padding: 4px;
+    padding: 2px;
     border-radius: 4px;
     text-align: center;
     font-size: 11px;
