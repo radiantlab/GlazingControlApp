@@ -36,11 +36,6 @@ export default function AppHMI() {
             setPanels(p);
             setGroups(g);
 
-            // set default group only once, without stomping user choice
-            if (g.length) {
-                setGroupId(prev => prev || g[0].id);
-            }
-
             setHealth(`${h.status} • ${h.mode}`);
             setUsingMock(false);
         } catch (err) {
@@ -49,10 +44,6 @@ export default function AppHMI() {
                 const [p, g, h] = await Promise.all([mockApi.panels(), mockApi.groups(), mockApi.health()]);
                 setPanels(p);
                 setGroups(g);
-
-                if (g.length) {
-                    setGroupId(prev => prev || g[0].id);
-                }
 
                 setHealth(`${h.status} • ${h.mode} (mock)`);
                 setUsingMock(true);
@@ -68,10 +59,10 @@ export default function AppHMI() {
         refresh();
         // Auto-refresh every 5 seconds to keep status current
         const interval = setInterval(refresh, 5000);
-        
+
         // Subscribe to control state changes
         const unsubscribe = controlManager.subscribe(setControlState);
-        
+
         return () => {
             clearInterval(interval);
             unsubscribe();
@@ -85,7 +76,7 @@ export default function AppHMI() {
             if (existingControl && existingControl.type !== 'manual') {
                 const priority = existingControl.type === 'routine' ? 1 : 2;
                 const manualPriority = 3; // Manual always wins
-                
+
                 // Take manual control (overrides everything)
                 const source: ControlSource = { type: 'manual', panelId };
                 controlManager.takeControl(source, true);
@@ -94,7 +85,7 @@ export default function AppHMI() {
                 const source: ControlSource = { type: 'manual', panelId };
                 controlManager.takeControl(source);
             }
-            
+
             setBusy(panelId);
             if (usingMock) {
                 await mockApi.setPanelLevel(panelId, level);
@@ -103,7 +94,7 @@ export default function AppHMI() {
             }
             await refresh();
             showToast(`Panel ${panelId} set to ${level}%`, "success");
-            
+
             // Start transition indicator - realistic time for electrochromic glass is 30-120 seconds
             // Using 5 seconds for UI demo purposes
             const TRANSITION_TIME_MS = 5000;
@@ -129,7 +120,7 @@ export default function AppHMI() {
             setBusy(null);
         }
     }
-    
+
     async function setGroup(groupId: string, level: number) {
         try {
             const group = groups.find(g => g.id === groupId);
@@ -137,11 +128,11 @@ export default function AppHMI() {
                 showToast("Group not found", "error");
                 return;
             }
-            
+
             // Take group control
             const source: ControlSource = { type: 'group', groupId, panelIds: group.member_ids };
             const result = controlManager.takeControl(source);
-            
+
             if (result.conflicts.length > 0) {
                 const confirmed = window.confirm(
                     `${result.conflicts.length} panel(s) are currently controlled. Override and proceed?`
@@ -149,7 +140,7 @@ export default function AppHMI() {
                 if (!confirmed) return;
                 controlManager.takeControl(source, true);
             }
-            
+
             setBusy(groupId);
             if (usingMock) {
                 await mockApi.setGroupLevel(groupId, level);
@@ -158,7 +149,7 @@ export default function AppHMI() {
             }
             await refresh();
             showToast(`Group "${group.name}" set to ${level}%`, "success");
-            
+
             // Release after transition (simplified - would need to track per panel)
             setTimeout(() => {
                 controlManager.releaseControl(source);
@@ -309,6 +300,10 @@ export default function AppHMI() {
     }
 
 
+    // Derive which panels belong to the currently selected group (for highlight preview)
+    const selectedGroup = groups.find(g => g.id === groupId);
+    const highlightedPanelIds = new Set<string>(selectedGroup?.member_ids ?? []);
+
     return (
         <>
             <ActiveControllersBar
@@ -403,6 +398,7 @@ export default function AppHMI() {
 
                         <select
                             id="hmi-group-select"
+                            className={groupId ? 'group-select-active' : ''}
                             value={groupId}
                             onChange={e => setGroupId(e.target.value)}
                             style={{ padding: '6px 10px' }}
@@ -454,7 +450,7 @@ export default function AppHMI() {
 
                 {/* room grids */}
                 {sidePanelOpen ? (
-                    <RoomGridCompact panels={panels} transitioning={transitioning} panelControls={controlState.panelControls} />
+                    <RoomGridCompact panels={panels} transitioning={transitioning} panelControls={controlState.panelControls} highlightedPanelIds={highlightedPanelIds} />
                 ) : (
                     <RoomGrid
                         panels={panels}
@@ -462,6 +458,7 @@ export default function AppHMI() {
                         busyId={busy}
                         transitioning={transitioning}
                         panelControls={controlState.panelControls}
+                        highlightedPanelIds={highlightedPanelIds}
                     />
                 )}
             </main>
