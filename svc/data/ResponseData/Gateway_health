@@ -1,0 +1,70 @@
+{
+  "hdr": {
+    "seq": 789267,
+    "utc": 1770667935,
+    "node": "cc9470000478",
+    "token": "177066793500000789267",
+    "source": "gateway-cc9470000478",
+    "system": "cc9470000478",
+    "utc_ms": 1770667935142,
+    "gateway": "cc9470000478",
+    "version": 2,
+    "archItemId": "586fa710-1cf4-472c-badf-d88495248dd3",
+    "event_type": "gateway_health",
+    "gatewayArchItemId": "586fa710-1cf4-472c-badf-d88495248dd3"
+  },
+  "body": {
+    "mem": 43444,
+    "loadavg": "0.62 0.52 0.48 3/76 7621",
+    "num_nodes": 21,
+    "num_groups": 2,
+    "num_scenes": 15
+  },
+  "site_id": "8638b496-cb1d-4797-8bba-b8e7a34d8a96",
+  "data": {
+    "archItem": {
+      "archDriver": null,
+      "archGateway": null,
+      "maxSlotNumber": 1,
+      "partId": "01017231550068",
+      "createdAt": "2024-03-13T20:12:27.000Z",
+      "deletedAt": null,
+      "driverDriveId": null,
+      "id": "586fa710-1cf4-472c-badf-d88495248dd3",
+      "isAvailable": true,
+      "lastHeartbeatAt": "1970-01-01T00:00:00.000Z",
+      "lastPullAt": "2024-03-30T19:11:06.000Z",
+      "lastUpdatedAt": "2026-02-09T20:26:46.000Z",
+      "lft": 4,
+      "meta": "{\"battery_voltage\":\"NA\",\"fault_states\":{},\"fwversion\":\"Kinestral linux distribution 2.3-2.2.6 \\\\n \\\\l\",\"mem\":43444}",
+      "name": "GW-TH1",
+      "nodeId": "c3b8a654-8b45-4554-9a65-27b963192a60",
+      "organizationId": null,
+      "parentId": "ae723d7e-ea77-4fe3-a386-10ebce5edb83",
+      "rgt": 5,
+      "siteId": "8638b496-cb1d-4797-8bba-b8e7a34d8a96",
+      "sortOrder": 0,
+      "subtype": null,
+      "type": "gateway",
+      "updatedAt": "2026-01-14T00:24:24.000Z",
+      "parts": [
+        {
+          "archItemId": "586fa710-1cf4-472c-badf-d88495248dd3",
+          "barcode": null,
+          "createdAt": "2024-03-18T20:24:45.000Z",
+          "deletedAt": "1970-01-01T00:00:00.000Z",
+          "hardwareId": "cc9470000478",
+          "id": "3944e856-0a58-44ae-97e6-897d4b2b5b9e",
+          "meta": null,
+          "serialNumber": "01017231550068",
+          "sku": "GW100-000",
+          "slot": 1,
+          "updatedAt": "2024-03-18T20:24:45.000Z"
+        }
+      ]
+    }
+  },
+  "timestamp": null,
+  "summary": "gateway_health event from source: gateway-cc9470000478, originator: undefined, system: cc9470000478",
+  "$$hashKey": "object:109"
+}
