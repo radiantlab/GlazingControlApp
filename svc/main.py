@@ -95,7 +95,11 @@ def create_app() -> FastAPI:
     # Initialize database and run migrations once at startup
     initialize_database()
     # Bootstrap default panels/groups if needed
-    bootstrap_default_if_empty()
+    
+    # Needs to be lazy loaded to avoid circular imports sometimes
+    from app.routes import get_service
+    # Pass the adapter so create_group can be called on boot
+    bootstrap_default_if_empty(adapter=get_service().backend)
     
     app = FastAPI(title="ECG Control Service", version="0.1.0")
 

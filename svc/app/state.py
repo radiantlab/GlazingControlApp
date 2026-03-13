@@ -558,7 +558,7 @@ def fetch_audit_entries(limit: int = 500, offset: int = 0, input_sort_field: str
 
 
 
-def bootstrap_default_if_empty() -> Snapshot:
+def bootstrap_default_if_empty(adapter: Any = None) -> Snapshot:
     """
     Bootstrap default panels and groups if config doesn't exist.
     
@@ -599,6 +599,43 @@ def bootstrap_default_if_empty() -> Snapshot:
                 member_ids=["SK1", "SK2"],
                 hidden=False,
             )
+            
+    # Ensure every panel has its own group for individual routing
+    import logging
+    log = logging.getLogger(__name__)
+    log.info(f"Checking for missing single-panel groups. Adapter present: {adapter is not None}")
+    
+    # Build a set of group IDs that already have a Halio mapping
+    halio_mapped_groups: set = set()
+    if adapter and hasattr(adapter, "group_to_halio"):
+        halio_mapped_groups = set(adapter.group_to_halio.keys())
+    log.info(f"Groups already mapped to Halio: {halio_mapped_groups or 'none'}")
+    
+    for pid in snap.panels:
+        gid = f"G-{pid}"
+        
+        # Create local group if missing
+        if gid not in snap.groups:
+            needs_bootstrap = True
+            log.info(f"Group {gid} is missing locally. Creating...")
+            snap.groups[gid] = Group(
+                id=gid,
+                name=f"Panel {pid}",
+                member_ids=[pid],
+                hidden=True,
+            )
+        
+        # Create Halio API group if the local group has no Halio mapping
+        if gid not in halio_mapped_groups:
+            if adapter and hasattr(adapter, "create_group"):
+                try:
+                    log.info(f"Group {gid} has no Halio mapping. Creating via Halio API...")
+                    adapter.create_group(name=f"Panel {pid}", member_ids=[pid], hidden=True)
+                    needs_bootstrap = True
+                except Exception as e:
+                    log.error(f"Failed to auto-create group {gid} on Halio: {e}")
+            else:
+                log.warning(f"No adapter available to create Halio group for {gid}")
     
     # Only reset timestamps if we actually created new panels (initial bootstrap)
     # This preserves dwell time protection on subsequent app starts

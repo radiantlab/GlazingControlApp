@@ -359,10 +359,109 @@ class RealAdapter:
                 )
 
             return groups
-
         except Exception as e:
             logger.error(f"Error listing groups: {e}")
             return []
+
+    def create_group(self, name: str, member_ids: List[str], hidden: bool = False) -> Group:
+        """
+        Create a new group via Halio API and update local mapping.
+        """
+        try:
+            # POST to Halio API to create group
+            url = f"{self.base_url}/sites/{self.site_id}/groups"
+            
+            # Map local panel IDs to Halio window UUIDs
+            window_ids = []
+            for pid in member_ids:
+                if pid in self.panel_to_window:
+                    window_ids.append(self.panel_to_window[pid])
+                else:
+                    logger.warning(f"Panel {pid} not mapped to a window UUID, skipping for group creation")
+                    
+            payload = {
+                "group": {
+                    "name": name,
+                    "windows": window_ids
+                }
+            }
+            
+            logger.info(f"Creating group in Halio API: name={name} payload={payload} url={url}")
+
+            response = requests.post(
+                url, headers=self.headers, json=payload, timeout=10
+            )
+
+            if response.status_code in (201, 202):
+                response_data = response.json()
+                # Halio API typically returns the created group details in 'results' or the root JSON
+                group_data = response_data.get("results", response_data)
+                
+                if isinstance(group_data, list) and len(group_data) > 0:
+                    group_data = group_data[0]
+                    
+                halio_group_id = group_data.get("id")
+                
+                if not halio_group_id:
+                    logger.error(f"Failed to extract group ID from Halio response: {response_data}")
+                    raise RuntimeError("Failed to extract group ID from Halio response")
+                
+                # We need a local ID. The state.py creates things like "G-P01".
+                # To be safe, let's use the provided name, slightly cleaned up, or a fallback.
+                local_id = f"G-{name.replace('Panel ', '')}"
+                if " " in local_id:
+                     # fallback if it's not a panel name
+                     import uuid
+                     local_id = f"G-custom-{uuid.uuid4().hex[:6]}"
+
+                logger.info(f"✓ Group created in Halio API: local_id={local_id} halio_id={halio_group_id}")
+                
+                # Update our in-memory mappings
+                self.group_to_halio[local_id] = halio_group_id
+                self.halio_to_group[halio_group_id] = local_id
+                
+                # Save the mapping to the file
+                self._save_group_mapping()
+
+                return Group(
+                    id=local_id,
+                    name=name,
+                    member_ids=member_ids,
+                    hidden=hidden,
+                )
+            else:
+                 logger.error(f"✗ Failed to create group in Halio API: status={response.status_code} body={response.text}")
+                 raise RuntimeError(f"Failed to create group in Halio API: {response.text}")
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error creating group {name}: {e}")
+            raise RuntimeError(f"Network error creating group {name}: {e}")
+        except Exception as e:
+            logger.error(f"Error creating group {name}: {e}")
+            raise RuntimeError(f"Error creating group {name}: {e}")
+
+    def _save_group_mapping(self) -> None:
+        """Save the current group mapping to the mapping file."""
+        try:
+            # We try to load existing to preserve any comments or unknown keys, 
+            # but if it fails or doesn't exist, we start fresh.
+            mapping = {}
+            if os.path.exists(GROUP_MAPPING_FILE):
+                try:
+                    with open(GROUP_MAPPING_FILE, "r", encoding="utf-8") as f:
+                         mapping = json.load(f)
+                except Exception:
+                     pass
+                     
+            # Update with our current mapping
+            mapping.update(self.group_to_halio)
+            
+            with open(GROUP_MAPPING_FILE, "w", encoding="utf-8") as f:
+                 json.dump(mapping, f, indent=4)
+                 
+            logger.info(f"Saved {len(self.group_to_halio)} group mappings to {GROUP_MAPPING_FILE}")
+        except Exception as e:
+             logger.error(f"Failed to save group mapping: {e}")
 
     def set_panel(self, panel_id: str, level: TintLevel, min_dwell: int) -> bool:
         """
