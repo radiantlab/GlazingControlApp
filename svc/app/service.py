@@ -5,7 +5,7 @@ from .models import TintLevel
 from .simulator import Simulator
 from .adapter import RealAdapter
 from .config import MODE, MIN_DWELL_SECONDS
-from .state import audit, update_panel_state
+from .state import audit, update_panel_state, load_groups
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,21 @@ class ControlService:
             self.backend = RealAdapter()
         else:
             self.backend = Simulator()
+
+    def _find_group_for_panel(self, panel_id: str):
+        groups = load_groups()
+        matches = [g for g in groups.values() if panel_id in g.member_ids]
+        if not matches:
+            return None
+        matches.sort(key=lambda g: (len(g.member_ids), g.id))
+        if len(matches) > 1:
+            logger.warning(
+                "Panel %s is in multiple groups (%s); using %s",
+                panel_id,
+                ", ".join(g.id for g in matches),
+                matches[0].id,
+            )
+        return matches[0]
 
     # read
     def list_panels(self):
@@ -33,6 +48,26 @@ class ControlService:
             f"Service.set_panel_level called: panel={panel_id} level={level} "
             f"mode={self.mode} actor={actor}"
         )
+        if self.mode == "real":
+            group = self._find_group_for_panel(panel_id)
+            if not group:
+                msg = "panel not assigned to any group"
+                logger.error(
+                    "Panel %s is not assigned to any group; cannot route to group tinting",
+                    panel_id,
+                )
+                audit(actor, "panel", panel_id, int(level), [], msg)
+                return False, [], msg
+
+            logger.info(
+                "Routing panel %s command to group %s",
+                panel_id,
+                group.id,
+            )
+            ok, applied, msg = self.set_group_level(group.id, level, actor=actor)
+            if ok:
+                msg = f"panel {panel_id} routed to group {group.id}"
+            return ok, applied, msg
         try:
             ok = self.backend.set_panel(panel_id, level, MIN_DWELL_SECONDS)
             if ok:
@@ -60,9 +95,7 @@ class ControlService:
         self, group_id: str, level: TintLevel, actor: str = "api"
     ) -> Tuple[bool, List[str], str]:
         try:
-            applied = self.backend.set_group(group_id, level, MIN_DWELL_SECONDS)
-            ok = len(applied) > 0
-            msg = "group updated" if ok else "no panels updated due to dwell time"
+            ok, applied, msg = self.backend.set_group(group_id, level, MIN_DWELL_SECONDS)
             if ok:
                 # Update panel states for all panels that were successfully updated
                 for panel_id in applied:
@@ -76,15 +109,21 @@ class ControlService:
         except KeyError:
             return False, [], "group not found"
 
-    def create_group(self, name: str, member_ids: List[str]):
+    def create_group(self, name: str, member_ids: List[str], hidden: bool = False):
         if not hasattr(self.backend, "create_group"):
             raise RuntimeError("group create not supported in this mode")
-        return self.backend.create_group(name, member_ids)
+        return self.backend.create_group(name, member_ids, hidden)
 
-    def update_group(self, group_id: str, name: str | None, member_ids: List[str] | None):
+    def update_group(
+        self,
+        group_id: str,
+        name: str | None,
+        member_ids: List[str] | None,
+        hidden: bool | None,
+    ):
         if not hasattr(self.backend, "update_group"):
             raise RuntimeError("group update not supported in this mode")
-        return self.backend.update_group(group_id, name, member_ids)
+        return self.backend.update_group(group_id, name, member_ids, hidden)
 
     def delete_group(self, group_id: str) -> bool:
         if not hasattr(self.backend, "delete_group"):

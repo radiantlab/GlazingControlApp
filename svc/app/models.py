@@ -18,6 +18,7 @@ class Group(BaseModel):
     id: str = Field(description="Group identifier (e.g., G-facade, G-1)")
     name: str = Field(description="Human-readable group name")
     member_ids: List[str] = Field(default_factory=list, description="List of panel IDs in this group")
+    hidden: bool = Field(default=False, description="Whether to hide this group from the UI")
 
 
 class CommandRequest(BaseModel):
@@ -59,12 +60,14 @@ class GroupCreate(BaseModel):
     """Request to create a new group."""
     name: str = Field(description="Name for the new group")
     member_ids: List[str] = Field(default_factory=list, description="Panel IDs to include in the group")
+    hidden: bool = Field(default=False, description="Whether to hide this group from the UI")
 
 
 class GroupUpdate(BaseModel):
     """Request to update an existing group."""
     name: Optional[str] = Field(default=None, description="New name for the group (optional)")
     member_ids: Optional[List[str]] = Field(default=None, description="New list of panel IDs (optional)")
+    hidden: Optional[bool] = Field(default=None, description="Whether to hide this group from the UI (optional)")
 
 
 class DeleteGroupResponse(BaseModel):
