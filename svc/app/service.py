@@ -61,18 +61,19 @@ class ControlService:
     ) -> Tuple[bool, List[str], str]:
         try:
             applied = self.backend.set_group(group_id, level, MIN_DWELL_SECONDS)
-            ok = len(applied) > 0
+            ok = applied is not None
+            applied_ids = applied or []
             msg = "group updated" if ok else "no panels updated due to dwell time"
             if ok:
                 # Update panel states for all panels that were successfully updated
-                for panel_id in applied:
+                for panel_id in applied_ids:
                     try:
                         update_panel_state(panel_id, int(level))
                         logger.debug(f"Updated panel state for {panel_id} to level {level}")
                     except Exception as e:
                         logger.warning(f"Failed to update panel state for {panel_id}: {e}")
-            audit(actor, "group", group_id, int(level), applied, msg)
-            return ok, applied, msg
+            audit(actor, "group", group_id, int(level), applied_ids, msg)
+            return ok, applied_ids, msg
         except KeyError:
             return False, [], "group not found"
 

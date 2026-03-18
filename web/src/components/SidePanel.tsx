@@ -36,6 +36,8 @@ export default function SidePanel({
     onGroupDelete,
     onRoutineCreate
 }: Props) {
+    const sortedPanels = [...panels].sort((a, b) => a.name.localeCompare(b.name));
+    const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
     const [activeTab, setActiveTab] = useState<"groups" | "routines">("groups");
     const { showToast } = useToast();
 
@@ -253,9 +255,9 @@ export default function SidePanel({
                             </div>
 
                             <div className="form-group">
-                                <label>Select Panels ({selectedPanelIds.size} selected)</label>
+                                <label>Select Windows ({selectedPanelIds.size} selected)</label>
                                 <div className="panel-selector">
-                                    {panels.map(panel => (
+                                    {sortedPanels.map(panel => (
                                         <label key={panel.id} className="panel-checkbox">
                                             <input
                                                 type="checkbox"
@@ -285,7 +287,7 @@ export default function SidePanel({
 
                             <h3>Existing Groups</h3>
                             <div className="groups-list">
-                                {groups.map(group => {
+                                {sortedGroups.map(group => {
                                     const isEditing = editingGroupId === group.id;
                                     return (
                                         <div key={group.id} className="group-item">
@@ -308,7 +310,7 @@ export default function SidePanel({
                                                     <div className="form-group">
                                                         <label>Edit members</label>
                                                         <div className="panel-selector">
-                                                            {panels.map(panel => (
+                                                            {sortedPanels.map(panel => (
                                                                 <label key={panel.id} className="panel-checkbox">
                                                                     <input
                                                                         type="checkbox"
@@ -348,7 +350,7 @@ export default function SidePanel({
                                             ) : (
                                                 <>
                                                     <div className="group-item-members">
-                                                        {group.member_ids.length} panel
+                                                        {group.member_ids.length} window
                                                         {group.member_ids.length !== 1 ? "s" : ""}
                                                     </div>
                                                     <div
@@ -438,12 +440,12 @@ export default function SidePanel({
                                                             Select {step.target_type}...
                                                         </option>
                                                         {step.target_type === "panel"
-                                                            ? panels.map(p => (
+                                                            ? sortedPanels.map(p => (
                                                                 <option key={p.id} value={p.id}>
                                                                     {p.name} ({p.id})
                                                                 </option>
                                                             ))
-                                                            : groups.map(g => (
+                                                            : sortedGroups.map(g => (
                                                                 <option key={g.id} value={g.id}>
                                                                     {g.name} ({g.id})
                                                                 </option>
