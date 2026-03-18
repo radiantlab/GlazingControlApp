@@ -2,13 +2,6 @@
 
 A local first control and scheduling system for 18 facade electrochromic panels and 2 skylights in the OSU Radiant Lab trailer. Goals include safe manual control, study friendly scheduling, live status, and reliable operation on a constrained trailer network.
 
-## Team
-
-- Aidan Lusk  <luskai@oregonstate.edu>  
-- Carlos Vasquez  <vasqueca@oregonstate.edu>  
-- Ian McKee  <mckeei@oregonstate.edu>  
-- Tyler Vincent  <vincenty@oregonstate.edu>
-
 ## Working Agreements
 
 - Feature branches use `feature/<short-name>`
@@ -51,6 +44,14 @@ npm run watch -- backend
 npm run watch -- frontend
 npm run watch -- both
 ```
+
+## Acknowledgment
+
+- Aidan Lusk  <luskai@oregonstate.edu>  
+- Carlos Vasquez  <vasqueca@oregonstate.edu>  
+- Ian McKee  <mckeei@oregonstate.edu>  
+- Tyler Vincent  <vincenty@oregonstate.edu>
+- Alexander Ulbrich  <alexander.ulbrich@oregonstate.edu>
 
 ## License
 
