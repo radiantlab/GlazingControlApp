@@ -177,3 +177,25 @@ You should see the control interface
 2. Pick a group set a level press `Set group`  
 3. Move a slider on any panel and press `Apply`  
 4. Press `Refresh` in the header to reload state
+
+---
+
+# Build a Podman Image and Deploy It
+
+To build a new image:
+
+```sh
+podman build -t glazing-control-app .
+```
+
+To run the container in podman:
+
+```sh
+podman run --rm -p 8000:8000 `
+    -v "${PWD}\svc\data:/app/svc/data" `
+    -e SVC_MODE=real `
+    -e HALIO_API_URL= `
+    -e HALIO_SITE_ID= `
+    -e HALIO_API_KEY= `
+    glazing-control-app
+```

@@ -5,10 +5,14 @@ load_dotenv()  # Load .env file before importing app modules
 import time
 import logging
 import json
+import os
+from pathlib import Path
 from typing import Callable
 import uvicorn
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.routes import router
 from app.state import bootstrap_default_if_empty, initialize_database
@@ -24,6 +28,8 @@ logging.getLogger("app.adapter").setLevel(logging.INFO)
 logging.getLogger("app.service").setLevel(logging.INFO)
 
 logger = logging.getLogger(__name__)
+ROOT_DIR = Path(__file__).resolve().parent.parent
+WEB_DIST_DIR = Path(os.getenv("WEB_DIST_DIR", ROOT_DIR / "web" / "dist"))
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -112,7 +118,30 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(router)
+    configure_frontend(app)
     return app
+
+
+def configure_frontend(app: FastAPI) -> None:
+    """Serve the built frontend when a Vite dist directory is present."""
+    if not WEB_DIST_DIR.exists():
+        logger.info("Frontend dist directory not found at %s; API-only mode", WEB_DIST_DIR)
+        return
+
+    assets_dir = WEB_DIST_DIR / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    @app.get("/", include_in_schema=False)
+    async def serve_index() -> FileResponse:
+        return FileResponse(WEB_DIST_DIR / "index.html")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def serve_spa(path: str) -> Response:
+        candidate = WEB_DIST_DIR / path
+        if candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(WEB_DIST_DIR / "index.html")
 
 
 app = create_app()

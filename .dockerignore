@@ -1,0 +1,13 @@
+.git
+.github
+docs
+node_modules
+web/node_modules
+web/dist
+svc/.venv
+svc/__pycache__
+svc/.pytest_cache
+svc/data/*.db
+svc/data/*.sqlite
+svc/data/*.sqlite3
+svc/data/*.log
