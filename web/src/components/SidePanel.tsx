@@ -26,6 +26,8 @@ export default function SidePanel({
     onGroupDelete,
     targetRoutineId
 }: Props) {
+    const sortedPanels = [...panels].sort((a, b) => a.name.localeCompare(b.name));
+    const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
     const { showToast } = useToast();
 
     // group creation state
@@ -39,8 +41,6 @@ export default function SidePanel({
     const [editMemberIds, setEditMemberIds] = useState<Set<string>>(new Set());
     const [isSavingGroup, setIsSavingGroup] = useState(false);
 
-    // helpers  group creation
-
     const handlePanelToggle = (panelId: string) => {
         setSelectedPanelIds(prev => {
             const next = new Set(prev);
@@ -52,7 +52,7 @@ export default function SidePanel({
 
     const handleCreateGroup = async () => {
         if (!newGroupName.trim() || selectedPanelIds.size === 0) {
-            showToast("Please provide a name and select at least one panel", "warning");
+            showToast("Please provide a name and select at least one window", "warning");
             return;
         }
 
@@ -68,12 +68,9 @@ export default function SidePanel({
         }
     };
 
-    // helpers  group edit
-
     const startEditingGroup = (group: Group) => {
         setEditingGroupId(group.id);
         setEditGroupName(group.name);
-        // Group type from api should expose member_ids  adjust if your shape differs
         setEditMemberIds(new Set(group.member_ids));
     };
 
@@ -100,8 +97,6 @@ export default function SidePanel({
                 Array.from(editMemberIds)
             );
 
-            // success toast is already handled in AppHMI
-            // exit edit mode
             setEditingGroupId(null);
             setEditGroupName("");
             setEditMemberIds(new Set());
@@ -111,7 +106,6 @@ export default function SidePanel({
             setIsSavingGroup(false);
         }
     };
-
 
     const handleDeleteGroup = async (groupId?: string) => {
         const targetId = groupId ?? editingGroupId;
@@ -166,9 +160,9 @@ export default function SidePanel({
                             </div>
 
                             <div className="form-group">
-                                <label>Select Panels ({selectedPanelIds.size} selected)</label>
+                                <label>Select Windows ({selectedPanelIds.size} selected)</label>
                                 <div className="panel-selector">
-                                    {panels.map(panel => (
+                                    {sortedPanels.map(panel => (
                                         <label key={panel.id} className="panel-checkbox">
                                             <input
                                                 type="checkbox"
@@ -198,7 +192,7 @@ export default function SidePanel({
 
                             <h3>Existing Groups</h3>
                             <div className="groups-list">
-                                {groups.map(group => {
+                                {sortedGroups.map(group => {
                                     const isEditing = editingGroupId === group.id;
                                     return (
                                         <div key={group.id} className="group-item">
@@ -221,7 +215,7 @@ export default function SidePanel({
                                                     <div className="form-group">
                                                         <label>Edit members</label>
                                                         <div className="panel-selector">
-                                                            {panels.map(panel => (
+                                                            {sortedPanels.map(panel => (
                                                                 <label key={panel.id} className="panel-checkbox">
                                                                     <input
                                                                         type="checkbox"
@@ -261,7 +255,7 @@ export default function SidePanel({
                                             ) : (
                                                 <>
                                                     <div className="group-item-members">
-                                                        {group.member_ids.length} panel
+                                                        {group.member_ids.length} window
                                                         {group.member_ids.length !== 1 ? "s" : ""}
                                                     </div>
                                                     <div

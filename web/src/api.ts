@@ -1,5 +1,7 @@
 import { Panel, Group, AuditLogEntry, SortField, SortDir } from "./types";
-export const API_BASE = (import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000").replace(/\/$/, "");
+
+/** Empty default: same-origin when served behind Docker/nginx; set VITE_API_BASE for local Vite dev. */
+export const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
 async function http<T>(path: string, options?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
         headers: { "Content-Type": "application/json", ...(options?.headers || {}) },

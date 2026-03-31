@@ -36,46 +36,6 @@ function formatLastUpdated(timestamp: number, currentTime?: number): string {
     }
 }
 
-// Organize panels by room
-// Room 1: P01-P09 (9 walls) + SK1 (skylight) = 10 panels
-// Room 2: P10-P18 (9 walls) + SK2 (skylight) = 10 panels
-// Total: 18 wall panels + 2 skylights = 20 panels
-function organizePanels(panels: Panel[]) {
-    const room1: Panel[] = [];
-    const room2: Panel[] = [];
-
-    panels.forEach(panel => {
-        if (panel.id.startsWith('SK')) {
-            if (panel.id === 'SK1') {
-                room1.push(panel);
-            } else if (panel.id === 'SK2') {
-                room2.push(panel);
-            }
-        } else if (panel.id.startsWith('P')) {
-            const panelNum = parseInt(panel.id.replace('P', ''));
-            if (panelNum >= 1 && panelNum <= 9) {
-                room1.push(panel);
-            } else if (panelNum >= 10 && panelNum <= 18) {
-                room2.push(panel);
-            }
-            // Any panel outside P01-P18 will be ignored
-        }
-    });
-
-    // Sort by ID for consistent ordering (but keep skylights at start)
-    const sortPanels = (a: Panel, b: Panel) => {
-        const aIsSkylight = a.id.startsWith('SK');
-        const bIsSkylight = b.id.startsWith('SK');
-        if (aIsSkylight && !bIsSkylight) return -1; // Skylights first
-        if (!aIsSkylight && bIsSkylight) return 1;
-        return a.id.localeCompare(b.id);
-    };
-    room1.sort(sortPanels);
-    room2.sort(sortPanels);
-
-    return { room1, room2 };
-}
-
 function PanelTile({
     panel,
     onSet,
@@ -95,7 +55,7 @@ function PanelTile({
     const [currentTime, setCurrentTime] = React.useState(Date.now() / 1000)
     const [isInteracting, setIsInteracting] = React.useState(false)
     const interactionTimeoutRef = React.useRef<number | null>(null)
-    const isSkylight = panel.id.startsWith('SK')
+    const isSkylight = panel.name.toUpperCase().includes('SK') || panel.id.startsWith('SK')
 
     // sync localLevel when panel prop updates, but only when the user is not interacting
     React.useEffect(() => {
@@ -145,10 +105,8 @@ function PanelTile({
     const isBusy = busyId === panel.id
 
     const getControlBadge = () => {
-        if (!controlSource) return { label: 'Manual', class: 'control-badge-manual', icon: '✋' }
+        if (!controlSource || controlSource.type === 'manual') return null
         switch (controlSource.type) {
-            case 'manual':
-                return { label: 'Manual', class: 'control-badge-manual', icon: '✋' }
             case 'group':
                 return { label: 'Group', class: 'control-badge-group', icon: '▣' }
             case 'routine':
@@ -197,11 +155,13 @@ function PanelTile({
         >
             <div className="panel-tile-header">
                 <div className="panel-tile-name">{panel.name}</div>
-                <div className="panel-tile-header-right">
-                    <div className={`control-badge ${badge.class}`} title={controlSource ? `Controlled by: ${badge.label}` : `Available for: ${badge.label} control`}>
-                        <span className="control-badge-icon">{badge.icon}</span>
-                        <span className="control-badge-label">{badge.label}</span>
-                    </div>
+                    <div className="panel-tile-header-right">
+                    {badge && (
+                        <div className={`control-badge ${badge.class}`} title={`Controlled by: ${badge.label}`}>
+                            <span className="control-badge-icon">{badge.icon}</span>
+                            <span className="control-badge-label">{badge.label}</span>
+                        </div>
+                    )}
                     <div className="panel-tile-id">{panel.id}</div>
                 </div>
             </div>
@@ -297,49 +257,29 @@ function PanelTile({
 
 
 export default function RoomGrid({ panels, onSet, busyId, transitioning = new Set(), panelControls = new Map() }: Props) {
-    const { room1, room2 } = organizePanels(panels);
+    const sortedPanels = [...panels].sort((a, b) => a.name.localeCompare(b.name));
 
     return (
         <div className="room-grid-container">
-            <div className="rooms-layout">
-                {/* Room 1 */}
-                <div className="room-section">
-                    <div className="room-header">
-                        <h2 className="room-title">Left Room</h2>
-                        <div className="room-stats">
-                            <span>{room1.length} panels</span>
-                        </div>
-                    </div>
-                    <div className="room-panels-grid">
-                        {/* Skylight displayed prominently at top, centered */}
-                        {room1.filter(p => p.id.startsWith('SK')).map(panel => (
-                            <PanelTile key={panel.id} panel={panel} onSet={onSet} busyId={busyId} isTransitioning={transitioning.has(panel.id)} controlSource={panelControls.get(panel.id)} className="panel-tile-skylight-featured" />
-                        ))}
-                        {/* Wall panels in a 3x3 grid layout */}
-                        {room1.filter(p => !p.id.startsWith('SK')).map(panel => (
-                            <PanelTile key={panel.id} panel={panel} onSet={onSet} busyId={busyId} isTransitioning={transitioning.has(panel.id)} controlSource={panelControls.get(panel.id)} />
-                        ))}
+            <div className="room-section">
+                <div className="room-header">
+                    <h2 className="room-title">Windows</h2>
+                    <div className="room-stats">
+                        <span>{sortedPanels.length} windows</span>
                     </div>
                 </div>
-
-                {/* Room 2 */}
-                <div className="room-section">
-                    <div className="room-header">
-                        <h2 className="room-title">Right Room</h2>
-                        <div className="room-stats">
-                            <span>{room2.length} panels</span>
-                        </div>
-                    </div>
-                    <div className="room-panels-grid">
-                        {/* Skylight displayed prominently at top, centered */}
-                        {room2.filter(p => p.id.startsWith('SK')).map(panel => (
-                            <PanelTile key={panel.id} panel={panel} onSet={onSet} busyId={busyId} isTransitioning={transitioning.has(panel.id)} controlSource={panelControls.get(panel.id)} className="panel-tile-skylight-featured" />
-                        ))}
-                        {/* Wall panels in a 3x3 grid layout */}
-                        {room2.filter(p => !p.id.startsWith('SK')).map(panel => (
-                            <PanelTile key={panel.id} panel={panel} onSet={onSet} busyId={busyId} isTransitioning={transitioning.has(panel.id)} controlSource={panelControls.get(panel.id)} />
-                        ))}
-                    </div>
+                <div className="room-panels-grid">
+                    {sortedPanels.map(panel => (
+                        <PanelTile
+                            key={panel.id}
+                            panel={panel}
+                            onSet={onSet}
+                            busyId={busyId}
+                            isTransitioning={transitioning.has(panel.id)}
+                            controlSource={panelControls.get(panel.id)}
+                            className={(panel.name.toUpperCase().includes('SK') || panel.id.startsWith('SK')) ? "panel-tile-skylight-featured" : undefined}
+                        />
+                    ))}
                 </div>
             </div>
         </div>

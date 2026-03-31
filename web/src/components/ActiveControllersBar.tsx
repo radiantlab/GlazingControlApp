@@ -23,7 +23,7 @@ export default function ActiveControllersBar({ controlState, onCancelRoutine, on
                         <div className="active-controller-info">
                             <span className="active-controller-icon">⚙</span>
                             <span className="active-controller-name">{routine.name}</span>
-                            <span className="active-controller-count">{routine.panelIds.length} panels</span>
+                            <span className="active-controller-count">{routine.panelIds.length} windows</span>
                         </div>
                         {onCancelRoutine && (
                             <button
@@ -41,7 +41,7 @@ export default function ActiveControllersBar({ controlState, onCancelRoutine, on
                         <div className="active-controller-info">
                             <span className="active-controller-icon">▣</span>
                             <span className="active-controller-name">{group.name}</span>
-                            <span className="active-controller-count">{group.panelIds.length} panels</span>
+                            <span className="active-controller-count">{group.panelIds.length} windows</span>
                         </div>
                         {onCancelGroup && (
                             <button
