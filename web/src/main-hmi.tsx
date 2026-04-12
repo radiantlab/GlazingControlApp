@@ -6,13 +6,16 @@ import RoutineDocs from "./components/RoutineDocs";
 import { ToastProvider } from "./utils/toast";
 import "./styles-hmi.css";
 
+import Docs from "./components/Docs";
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
         <ToastProvider>
             <BrowserRouter>
                 <Routes>
                     <Route path="/" element={<AppHMI />} />
-                    <Route path="/docs" element={<RoutineDocs />} />
+                    <Route path="/docs" element={<Docs />} />
+                    <Route path="/docs/routines" element={<RoutineDocs />} />
                 </Routes>
             </BrowserRouter>
         </ToastProvider>

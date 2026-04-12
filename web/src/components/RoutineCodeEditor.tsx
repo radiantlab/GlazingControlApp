@@ -352,7 +352,7 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <label>Routine Name</label>
                     <Link
-                        to="/docs"
+                        to="/docs/routines"
                         target="_blank"
                         style={{
                             fontSize: "12px",
