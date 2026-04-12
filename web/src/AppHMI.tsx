@@ -384,6 +384,14 @@ export default function AppHMI() {
                         >
                             Manage
                         </button>
+
+                        <button
+                            className="hmi-docs-btn"
+                            onClick={() => route()}
+                            title="View Docs"
+                        >
+                            Docs
+                        </button>
                     </div>
                 </div>
             </header>
