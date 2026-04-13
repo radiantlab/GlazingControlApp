@@ -1,4 +1,5 @@
 from __future__ import annotations
+from contextlib import asynccontextmanager
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -36,6 +37,16 @@ logging.getLogger("app.service").setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 ROOT_DIR = Path(__file__).resolve().parent.parent
 WEB_DIST_DIR = Path(os.getenv("WEB_DIST_DIR", ROOT_DIR / "web" / "dist"))
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    start_sensor_workers()
+    resume_routines()
+    try:
+        yield
+    finally:
+        stop_sensor_workers()
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -109,7 +120,7 @@ def create_app() -> FastAPI:
     # Bootstrap default panels/groups if needed
     bootstrap_default_if_empty()
     
-    app = FastAPI(title="ECG Control Service", version="0.1.0")
+    app = FastAPI(title="ECG Control Service", version="0.1.0", lifespan=lifespan)
 
     # Request logging middleware (add first so it wraps everything)
     app.add_middleware(LoggingMiddleware)
@@ -151,16 +162,6 @@ def configure_frontend(app: FastAPI) -> None:
 
 
 app = create_app()
-
-@app.on_event("startup")
-async def _start_app_services() -> None:
-    start_sensor_workers()
-    resume_routines()
-
-
-@app.on_event("shutdown")
-async def _stop_sensors() -> None:
-    stop_sensor_workers()
 
 if __name__ == "__main__":
     reload_enabled = os.getenv("UVICORN_RELOAD", "false").lower() in {"1", "true", "yes", "on"}

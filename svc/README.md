@@ -106,7 +106,7 @@ The adapter automatically:
 | `HALIO_API_URL` | - | Halio API base URL (real mode only) |
 | `HALIO_SITE_ID` | - | Your Halio site UUID (real mode only) |
 | `HALIO_API_KEY` | - | Your Halio API key (real mode only) |
-| `SENSORS_CONFIG_FILE` | `svc/data/sensors_config.json` | Sensor runtime config |
+| `SENSORS_CONFIG_FILE` | `svc/data/sensors_config.json` | Sensor runtime config. If you override it, prefer an absolute path. |
 | `SVC_ENABLE_T10A_IN_SIM` | `false` | Enable T-10A polling in sim mode |
 | `SVC_ENABLE_JETI_SERIAL_IN_SIM` | `false` | Enable JETI serial polling in sim mode |
 | `SVC_ENABLE_EKO_IN_SIM` | `false` | Enable EKO C-BOX polling in sim mode |
@@ -115,14 +115,16 @@ The adapter automatically:
 
 The backend supports three real sensor paths via `svc/data/sensors_config.json`:
 
-- `t10a`: Konica Minolta T-10A via serial (9600, 7E1)
-- `jeti_spectraval`: either
+- `t10a`: Konica Minolta T-10A via USB virtual COM (9600, 7E1)
+- `jeti_spectraval`: one or more JETI devices (`spectraval 1511` or `specbos 1211-2`) via either
   - `transport: "file"` (watch a live `.cap` output path), or
   - `transport: "serial_scpi"` (direct SPECFIRM serial)
 - `eko_ms90_plus`: EKO C-BOX over Modbus RTU (RS-485, default 9600, 8N1, slave 1)
 
 See the sample config in [`svc/data/sensors_config.json`](./data/sensors_config.json) and
-the on-site wiring/runbook in [`docs/real_sensor_setup.md`](../docs/real_sensor_setup.md).
+the detailed runbook in [`docs/real_sensor_setup.md`](../docs/real_sensor_setup.md).
+
+For a shorter field checklist, use [`docs/on_site_sensor_checklist.md`](../docs/on_site_sensor_checklist.md).
 
 ### Sensor Integration (Sim Mode)
 

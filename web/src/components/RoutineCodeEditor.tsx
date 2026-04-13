@@ -12,7 +12,7 @@ type SavedRoutine = { name: string; code: string };
 const EXAMPLES: { label: string; code: string }[] = [
     {
         label: "Basic: Tint group if lux is high",
-        code: `lux = sensors.get_latest("T10A-00", "lux")
+        code: `lux = sensors.get_latest("T10A1-H1", "lux")
 log(f"Current lux: {lux}")
 
 if lux is not None and lux > 2000:
@@ -62,7 +62,7 @@ if mel_edi is not None:
     {
         label: "Color Quality: Maintain minimum CRI",
         code: `cri = sensors.get_latest("JETI-00", "cri_ra")
-lux = sensors.get_latest("T10A-00", "lux")
+lux = sensors.get_latest("T10A1-H1", "lux")
 
 log(f"CRI (Ra): {cri}, Lux: {lux}")
 
@@ -408,7 +408,7 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
                         className="routine-code-textarea"
                         value={code}
                         onChange={(e) => setCode(e.target.value)}
-                        placeholder={`# Write your python routine here\nlux = sensors.get_latest("KM1-00", "lux")\nlog(f"Lux is {lux}")`}
+                        placeholder={`# Write your python routine here\nlux = sensors.get_latest("T10A1-H1", "lux")\nlog(f"Lux is {lux}")`}
                         rows={14}
                         spellCheck={false}
                     />

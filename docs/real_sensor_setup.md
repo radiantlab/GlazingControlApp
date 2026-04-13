@@ -1,199 +1,299 @@
-# Real Sensor Setup (On Site)
+# Real Sensor Setup
 
-This runbook assumes you are on the trailer/lab PC and want real-time data in `SVC_MODE=real`.
+This runbook is for the trailer/lab PC when the app is running in `SVC_MODE=real`.
 
-## 0) Sim Preview (No Hardware)
+The current real-mode implementation supports the hardware shown in the current wiring diagram and sensor manuals:
 
-If you want to preview the exact HMI behavior before going on site, run:
+- Konica Minolta `T-10A` illuminance meters over USB/virtual COM
+- JETI `spectraval 1511` and `specbos 1211-2` over either:
+  - LiVal `.cap` file export, or
+  - direct SPECFIRM serial/virtual COM
+- EKO `MS-90+` system through the `C-BOX` Modbus RTU output
+
+## 1) Topology From The Site Schematic
+
+The latest site diagram shows three distinct PC-facing paths:
+
+- `T-10A`:
+  - receptor heads connect to the body through the Konica Minolta adapter/head chain and straight CAT5 cabling
+  - the body connects to the local PC by USB
+- `JETI spectraval/specbos`:
+  - the instrument connects directly to the local PC by USB
+  - LiVal/SPECFIRM can expose the device as a live `.cap` writer or a virtual COM port
+- `EKO MS-90+`:
+  - the MS-90 DNI sensor and optional MS-80S feed the `C-BOX`
+  - the PC talks only to the `C-BOX` output side over RS-485 Modbus RTU
+
+That matches the backend architecture now:
+
+- `T10AClient` polls the T-10A serial link and emits `lux`
+- `JetiSpecfirmClient` polls SPECFIRM directly and now parses wavelength/value ASCII pairs correctly
+- `JetiSpectravalFileWatcher` ingests LiVal `.cap` output and now handles the watched file/folder appearing after the service starts
+- `EkoCBoxModbusClient` polls C-BOX holding registers for irradiance, sun position, GPS, and temperature
+
+## 2) Before You Go On Site
+
+Bring or confirm access to:
+
+- the local trailer/lab PC
+- all required USB cables for each `T-10A` body and each `JETI` instrument
+- `T-A20`, `T-A21`, and `AC-A412` if the T-10A heads are being used in multi-point mode
+- straight CAT5 patch cables for T-10A head/adaptor runs
+- a USB-to-RS485 adapter for the EKO `C-BOX`
+- a stable `12 VDC` supply for the `C-BOX` output cable
+- a `120 ohm` termination resistor if the RS-485 run needs end termination
+- JETI Windows drivers and LiVal/SPECFIRM access on the local PC
+
+## 3) Configure The App
+
+The default runtime config file is:
+
+- `svc/data/sensors_config.json`
+
+You do not need to set `SENSORS_CONFIG_FILE` if you use that default file.
+
+If you do use a custom file, prefer an absolute path. The service also resolves common relative paths now, but absolute paths are still the least ambiguous choice on site.
+
+### Recommended startup from `svc/`
 
 ```powershell
-$env:SVC_MODE = "sim"
-uv run python main.py
-```
-
-In sim mode the service now produces live sample data for:
-
-- T-10A
-- JETI
-- EKO MS-90+
-
-The HMI will show:
-
-- live numeric metrics for every registered sensor
-- one live graph per sensor with a metric dropdown
-- live sensor logs in `Logs -> Sensor log` with CSV export
-
-## 1) Start in Real Mode
-
-From `svc/`:
-
-```bash
-set SVC_MODE=real
-set SENSORS_CONFIG_FILE=svc/data/sensors_config.json
-uv run python main.py
-```
-
-If you are using PowerShell:
-
-```powershell
+cd svc
 $env:SVC_MODE = "real"
-$env:SENSORS_CONFIG_FILE = "svc/data/sensors_config.json"
 uv run python main.py
 ```
 
-## 2) T-10A (Konica Minolta)
+### If you must use a custom sensor config file
 
-### Physical connection
+```powershell
+cd svc
+$env:SVC_MODE = "real"
+$env:SENSORS_CONFIG_FILE = "C:\path\to\sensors_config.json"
+uv run python main.py
+```
 
-1. Connect each T-10A body to the PC (USB cable T-A15 from manual).
-2. Daisy-chain receptor heads to each body using straight CAT5/10Base-T patch cables.
-3. In Windows Device Manager, note each COM port (`COMx`) for each body.
+## 4) T-10A Setup
 
-### App config (`svc/data/sensors_config.json`)
+### Physical setup
 
-Set one `t10a` entry per body:
+1. Connect the `T-10A` body to the local PC by USB.
+2. Connect each receptor head through the required T-10A head adapters.
+3. Use straight CAT5/10Base-T patch cables only.
+4. If you are doing multi-point measurement, use the external `AC-A412` power supply.
+5. Assign unique head/adaptor IDs. The T-10A manual allows IDs `00` through `29`.
 
-- `port`: the COM port for that body (`COM3`, `COM4`, etc.)
-- `heads`: one entry per head (`head_no`, `sensor_id`, `label`)
-- optional protocol tuning is under `protocol`
+### What to check on the PC
 
-### Verify
+1. Open Windows Device Manager.
+2. Look under `Ports (COM & LPT)`.
+3. Record the COM port used by each T-10A body.
 
-- `GET /sensors` should show `kind: "t10a"` with each head sensor ID.
-- `GET /metrics/latest` should show `metric: "lux"` for each head.
+### Config fields
 
-## 3) JETI spectraval
+In `t10a`:
 
-Two supported real transports:
+- `port`: COM port for the body, for example `COM3`
+- `heads[].head_no`: the configured head/adaptor ID used by that body
+- `heads[].sensor_id`: app-facing sensor ID, for example `T10A1-H1`
+- `heads[].label`: human readable name shown in the UI
 
-## A) File transport (recommended if LiVal is already used)
+### T-10A watch-outs
 
-### Physical/software path
+- Do not use crossover Ethernet cables between adapters and heads.
+- Multi-head mode needs external power.
+- If the configured head numbers do not match the physical adapter IDs, the service will poll the wrong head or get no data.
+- USB COM assignments can move if you plug the body into a different USB port on the PC.
 
-1. Connect spectraval to PC by USB (or Bluetooth/LAN per JETI docs).
-2. In JETI software workflow, ensure measurements are continuously saved to a `.cap` output file/folder.
+## 5) JETI Setup
 
-### App config
+The app supports both `spectraval 1511` and `specbos 1211-2`.
 
-In `jeti_spectraval` entry:
+Use one config entry per physical JETI device.
+
+### Option A: LiVal `.cap` file export
+
+Use this when LiVal is already part of the operator workflow.
+
+#### Physical/software setup
+
+1. Install the JETI USB drivers first if the PC does not already have them.
+2. Connect the device to the PC by USB.
+3. In LiVal, configure continuous saving/export to a known `.cap` file or folder.
+4. Make sure the app `output_path` points to that same file or folder.
+
+#### Config fields
+
+In `jeti_spectraval`:
 
 - `transport: "file"`
-- `output_path`: file or directory watched by backend
-- `watch_interval_s`: watcher polling interval
+- `output_path`: path to the live `.cap` file or the folder that will receive rotating `.cap` files
+- `watch_interval_s`: how often the backend checks for new data
 
-### Verify
+#### File-mode watch-outs
 
-- `GET /metrics/latest` should show `JETI-xx` metrics (`lux`, CCT, CRI, melanopic EDI, etc.).
+- The backend can now recover if LiVal creates the file or folder after the service starts.
+- The path still has to match exactly. If LiVal writes to a different folder, the app will stay empty.
+- File mode is the safest option when operators already use LiVal for acquisition.
 
-## B) Direct serial SCPI transport (SPECFIRM)
+### Option B: Direct SPECFIRM serial polling
 
-### Physical connection
+Use this when you want the backend to talk to the JETI device directly with no LiVal file export step.
 
-1. Connect spectraval by USB.
-2. Find COM port in Device Manager.
+#### Physical setup
 
-### App config
+1. Install the JETI USB drivers if needed.
+2. Connect the device to the PC by USB.
+3. Find the COM port in Device Manager.
 
-Set `transport: "serial_scpi"` and fill:
+#### Config fields
 
-- `port`
-- `baudrate` (default `921600` for spectraval 1511)
-- optional: `tint_ms`, `avg_count`, `wavelength_start_nm`, `wavelength_end_nm`, `wavelength_step_nm`
+In `jeti_spectraval`:
 
-### Verify
+- `transport: "serial_scpi"`
+- `port`: COM port
+- `baudrate`: optional, but verify it
+  - `spectraval 1511`: `921600`
+  - `specbos 1211-2`: `115200`
+- `tint_ms`: integration time in milliseconds
+- `avg_count`: measurement averaging count
 
-- `GET /metrics/latest` returns `JETI-xx` metrics.
+#### Direct-serial watch-outs
 
-## 4) EKO MS-90+ (via C-BOX Modbus RTU)
+- The driver now parses SPECFIRM format `2` correctly as `wavelength<TAB>value` pairs. That fix is required for valid real metrics.
+- If you use a `specbos` device and omit `baudrate`, the service now defaults it to `115200`.
+- If serial polling fails immediately, verify the COM port and baudrate before changing anything else.
 
-Backend reads the C-BOX directly over RS-485 Modbus RTU.
+## 6) EKO MS-90+ / C-BOX Setup
 
-### Physical wiring (C-BOX output cable)
+The PC talks to the `C-BOX`, not directly to the `MS-90` or `MS-80S`.
 
-Use a USB-to-RS485 interface and 12V supply:
+### C-BOX output-side wiring to the PC
 
-1. `Brown` -> +12V supply
-2. `White` -> supply ground (0V)
-3. `Blue` -> Modbus `A` / `+` (to RS485 adapter A/+)
-4. `Black` -> Modbus `B` / `-` (to RS485 adapter B/-)
-5. `Grey` -> NC
+Per the C-BOX manual output cable:
 
-At network end, keep a 120 ohm termination resistor across A/B if needed by your RS-485 topology.
+1. `Brown` -> `+12 V` supply
+2. `White` -> supply ground / `0 V`
+3. `Blue` -> Modbus `A` / `+`
+4. `Black` -> Modbus `B` / `-`
+5. `Grey` -> not connected
 
-### C-BOX sensor-side wiring
+Use a `0.5 A` fuse on the supply as recommended by the manual.
 
-MS-90 and MS-80S wiring to C-BOX should follow EKO terminal table in `docs/SensorDocs/c-box-manual.pdf`.
+At the end of the RS-485 run, add a `120 ohm` termination resistor across `A/B` if your topology needs termination.
 
-### App config
+### C-BOX sensor-side terminals
 
-In `eko_ms90_plus` entry:
+Per the EKO C-BOX manual:
 
-- `port`: COM port of USB-RS485 adapter
-- `baudrate`: default `9600`
-- `slave_address`: default `1`
-- `float_byte_order`: default `ABCD` (change if values look byte-swapped)
+- `MS-80S`
+  - terminal `3`: white / `0 V`
+  - terminal `4`: brown / `12 VDC out`
+  - terminal `5`: black / Modbus `B`
+  - terminal `6`: blue / Modbus `A`
+  - terminal `7`: grey / Modbus ground
+- `MS-90`
+  - terminal `11`: brown / DNI `+`
+  - terminal `12`: white / DNI `-`
+  - terminal `15`: blue / `12 VDC out`
+  - terminal `16`: black / `0 VDC out`
 
-### Verify
+### Config fields
 
-- `GET /metrics/latest` for `EKO-xx` should include:
-  - `dni_w_m2`
-  - `ghi_w_m2`
-  - `dhi_w_m2`
-  - `sun_elevation_deg`, `sun_azimuth_deg`
-  - `latitude_deg`, `longitude_deg`
-  - `board_temp_c`
+In `eko_ms90_plus`:
 
-## 5) Quick Acceptance Check
+- `port`: COM port of the USB-RS485 adapter
+- `baudrate`: usually `9600`
+- `slave_address`: usually `1`
+- `float_byte_order`: default `ABCD`
 
-After all wiring/config:
+### EKO watch-outs
 
-1. Start backend in real mode.
-2. `GET /sensors` returns all configured sensor IDs.
-3. `GET /metrics/latest` updates for:
-   - T-10A head lux
-   - JETI metrics
-   - EKO irradiance metrics
-4. Open HMI and confirm each sensor card shows live numbers and one live graph.
-5. In HMI `Logs -> Sensor log`, verify new rows appear every polling cycle.
-6. Export CSV from sensor log tab and confirm file includes timestamp, sensor ID, kind, metric, and value.
-7. Run 5-10 minutes and confirm timestamps continue advancing.
+- If you get no Modbus response, `A/B` may be swapped on the USB-RS485 adapter labeling. Swap the pair and test again.
+- If values are present but obviously wrong, try `float_byte_order` values in this order:
+  - `ABCD`
+  - `CDAB`
+  - `BADC`
+  - `DCBA`
+- The C-BOX will expose `DHI` only when the MS-90/MS-80S system is wired and operating as expected.
 
-## 6) How The System Works Per Sensor
+## 7) What To Verify On The Local PC
+
+After wiring and config:
+
+1. Start the backend in `real` mode.
+2. Confirm the service sees all configured sensors:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/sensors
+```
+
+3. Confirm live metrics are arriving:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/metrics/latest
+```
+
+4. Open the HMI in the browser and verify:
+   - every sensor card shows current values
+   - every sensor graph updates
+   - `Logs -> Sensor log` fills with new rows
+5. Export a CSV from the sensor log tab and confirm it contains:
+   - timestamp
+   - sensor ID
+   - sensor kind
+   - sensor label
+   - metric
+   - value
+
+## 8) Expected Real Metrics
 
 ### T-10A
 
-- Real mode: `T10AClient` opens COM port (`7E1`), sends command frames, parses lux per head.
-- Sim mode: `T10ASimClient` generates realistic lux per configured head.
-- Metric source: `lux` is directly measured (real) or generated (sim), and is not computed from other sensors.
+- `lux`
 
 ### JETI
 
-- Real mode:
-  - `transport=file`: watcher reads `.cap` output.
-  - `transport=serial_scpi`: direct SCPI serial polling.
-- Sim mode:
-  - sim writer creates CAP rows; watcher reads them.
-- Metric source:
-  - direct: `lux` (plus raw spectrum coming from the JETI path).
-  - computed from spectrum: CIE xy, alpha-opic irradiances, alpha-opic EDI, CCT, Duv, CRI, CFI, `lux_calc`, `sample_interval_s`.
+- `lux`
+- `lux_calc`
+- `cie1931_x`
+- `cie1931_y`
+- `cct_ohno_k`
+- `cct_robertson_k`
+- `duv_ohno`
+- `duv_robertson`
+- `cri_ra`
+- `cfi_rf`
+- alpha-opic irradiance and EDI metrics
+- `sample_interval_s` in file-watcher mode when consecutive timestamps are available
 
-### EKO MS-90+ / C-BOX
+### EKO C-BOX
 
-- Real mode: `EkoCBoxModbusClient` polls Modbus holding registers.
-- Sim mode: `EkoMs90PlusSimClient` generates the equivalent metric set.
-- Metric source: values are direct register telemetry in real mode (`GHI`/`DNI`/`DHI`/temperature/GPS/sun geometry), and generated in sim mode.
+- `ghi_w_m2`
+- `dni_w_m2`
+- `dhi_w_m2`
+- `board_temp_c`
+- `sensor_temp_c`
+- `gps_timestamp_s`
+- `gps_satellites`
+- `latitude_deg`
+- `longitude_deg`
+- `sun_elevation_deg`
+- `sun_azimuth_deg`
 
-## 7) Where Data Is Stored (Real + Sim)
+## 9) Data Storage
 
-- Persistent store: SQLite at `svc/data/audit.db`.
-- Tables:
-  - sensor metadata: `sensors`
-  - time-series readings: `sensor_readings`
-- Write path: sensor worker threads call `insert_sensor_reading(...)` for every emitted metric in both real and sim modes.
-- Read path:
-  - live latest: `/metrics/latest`
-  - graph history: `/metrics/history`
-  - logs tab source: `/logs/sensors`
-  - CSV export: `/logs/sensors/export` (generated on-demand for download; not permanently stored as CSV by the backend).
-- Extra file output:
-  - JETI file-mode sim writes `.cap` files under the configured output path (typically `svc/data/jeti_sim_output`), then watcher ingestion writes those measurements into SQLite.
+Sensor metadata and time-series readings are stored in:
+
+- `svc/data/audit.db`
+
+Relevant tables:
+
+- `sensors`
+- `sensor_readings`
+
+The UI reads that data through:
+
+- `GET /sensors`
+- `GET /metrics/latest`
+- `GET /metrics/history`
+- `GET /logs/sensors`
+- `GET /logs/sensors/export`

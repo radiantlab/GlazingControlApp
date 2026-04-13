@@ -6,7 +6,7 @@ from typing import Protocol, Iterable
 
 @dataclass
 class SensorReading:
-    sensor_id: str      # e.g. "KM1-00"
+    sensor_id: str      # e.g. "T10A1-H1"
     metric: str         # e.g. "lux"
     value: float
     ts: float           # unix timestamp
@@ -25,7 +25,7 @@ class SensorClient(Protocol):
         Poll the device once and return zero or more readings.
 
         For T-10A this might return one reading per head:
-          KM1-00 lux, KM1-01 lux, ...
+          T10A1-H1 lux, T10A1-H2 lux, ...
 
         For JETI this might return multiple metrics from the spectrum for a single sensor.
         """

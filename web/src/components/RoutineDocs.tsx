@@ -43,7 +43,7 @@ export default function RoutineDocs() {
                     <h3 style={{ marginTop: 0, color: "var(--btn-blue)" }}>sensors</h3>
                     <ul style={{ lineHeight: "1.6", margin: 0, paddingLeft: "20px" }}>
                         <li><code>sensors.list()</code>: Returns a list of dictionaries containing all known sensors.</li>
-                        <li><code>sensors.get_latest(sensor_id, metric)</code>: Returns the latest numerical value for a given sensor ID and metric (e.g., <code>lux</code>, <code>melanopic_edi</code>), or <code>None</code>.</li>
+                        <li><code>sensors.get_latest(sensor_id, metric)</code>: Returns the latest numerical value for a given sensor ID and metric (e.g., <code>lux</code>, <code>melanopic_edi_lx</code>), or <code>None</code>.</li>
                     </ul>
                 </div>
 
@@ -70,7 +70,7 @@ export default function RoutineDocs() {
                     Instead of using the standard <code>print()</code> function, please use the provided <code>log()</code> function. For example:
                 </p>
                 <div style={{ backgroundColor: "#1e1e1e", padding: "16px", borderRadius: "8px", fontFamily: "monospace", margin: "16px 0", color: "#d4d4d4" }}>
-                    lux_value = sensors.get_latest("KM1-00", "lux")<br />
+                    lux_value = sensors.get_latest("T10A1-H1", "lux")<br />
                     log(f"Current lux is {'{'}lux_value{'}'}")
                 </div>
                 <p style={{ lineHeight: "1.6" }}>
@@ -97,7 +97,7 @@ export default function RoutineDocs() {
                     <p style={{ lineHeight: "1.6", marginBottom: "12px", color: "var(--hmi-text-muted)" }}>A simple threshold check. Best run on an <strong>Interval</strong>.</p>
                     <div style={{ backgroundColor: "#1e1e1e", padding: "16px", borderRadius: "8px", fontFamily: "monospace", color: "#d4d4d4", overflowX: "auto" }}>
                         <pre style={{ margin: 0 }}>
-                            {`lux = sensors.get_latest("KM1-00", "lux")
+                            {`lux = sensors.get_latest("T10A1-H1", "lux")
 log(f"Current lux: {lux}")
 
 if lux is not None and lux > 80:
@@ -149,7 +149,8 @@ for s in sensor_list:
                         <p style={{ lineHeight: "1.6", marginBottom: "8px" }}>Provides basic illuminance (lux) readings.</p>
                         <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Common Sensor IDs:</h4>
                         <ul style={{ margin: "0 0 12px 0", paddingLeft: "20px" }}>
-                            <li><code>KM1-00</code> - Konica Minolta T-10A</li>
+                            <li><code>T10A1-H1</code> - T-10A body 1, head 1</li>
+                            <li><code>T10A2-H4</code> - T-10A body 2, head 4</li>
                         </ul>
                         <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Available Metrics:</h4>
                         <ul style={{ margin: 0, paddingLeft: "20px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "4px" }}>
@@ -159,12 +160,12 @@ for s in sensor_list:
                 </details>
 
                 <details style={{ backgroundColor: "var(--hmi-panel-bg)", padding: "16px", borderRadius: "8px", border: "1px solid var(--hmi-border)", marginBottom: "16px", cursor: "pointer" }}>
-                    <summary style={{ color: "var(--btn-blue)", fontSize: "16px", fontWeight: "bold", outline: "none" }}>JETI Spectraval 1501 Spectroradiometer (jeti_spectraval)</summary>
+                    <summary style={{ color: "var(--btn-blue)", fontSize: "16px", fontWeight: "bold", outline: "none" }}>JETI Spectraval / Specbos (jeti_spectraval)</summary>
                     <div style={{ marginTop: "16px", paddingLeft: "20px", cursor: "default" }}>
-                        <p style={{ lineHeight: "1.6", marginBottom: "8px" }}>Provides advanced colorimetry, illuminance, and non-visual (melanopic) lighting metrics.</p>
+                        <p style={{ lineHeight: "1.6", marginBottom: "8px" }}>Provides advanced colorimetry, illuminance, and non-visual lighting metrics from JETI spectraval or specbos devices.</p>
                         <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Common Sensor IDs:</h4>
                         <ul style={{ margin: "0 0 12px 0", paddingLeft: "20px" }}>
-                            <li><code>JT1-00</code> - JETI Spectraval</li>
+                            <li><code>JETI-00</code> - first configured JETI device</li>
                         </ul>
                         <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Available Metrics:</h4>
                         <ul style={{ margin: 0, paddingLeft: "20px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "4px" }}>
@@ -198,7 +199,7 @@ for s in sensor_list:
                         <p style={{ lineHeight: "1.6", marginBottom: "8px" }}>Outdoor environmental sensor providing global, direct, and diffuse solar irradiance, as well as sun position data.</p>
                         <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Common Sensor IDs:</h4>
                         <ul style={{ margin: "0 0 12px 0", paddingLeft: "20px" }}>
-                            <li><code>EK1-00</code> - EKO MS-90+</li>
+                            <li><code>EKO-00</code> - EKO MS-90+ / C-BOX</li>
                         </ul>
                         <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Available Metrics:</h4>
                         <ul style={{ margin: 0, paddingLeft: "20px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "4px" }}>

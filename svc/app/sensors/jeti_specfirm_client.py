@@ -106,14 +106,19 @@ class JetiSpecfirmClient(SensorClient):
             logger.warning("JETI[%s] NAK for command %s", self.id, command)
         return raw
 
-    def _extract_floats(self, raw: bytes) -> list[float]:
-        # Remove common control bytes (ACK, BEL, NAK) before tokenizing.
-        text = (
+    @staticmethod
+    def _clean_text(raw: bytes) -> str:
+        return (
             raw.replace(b"\x06", b" ")
             .replace(b"\x07", b" ")
             .replace(b"\x15", b" ")
+            .replace(b"\x03", b" ")
             .decode("latin-1", errors="ignore")
         )
+
+    def _extract_floats(self, raw: bytes) -> list[float]:
+        # Remove common control bytes (ACK, BEL, NAK) before tokenizing.
+        text = self._clean_text(raw)
         vals: list[float] = []
         for token in _FLOAT_RE.findall(text):
             try:
@@ -121,6 +126,47 @@ class JetiSpecfirmClient(SensorClient):
             except ValueError:
                 continue
         return vals
+
+    def _extract_spectrum_values(self, raw: bytes) -> list[float]:
+        """
+        Extract only spectral values from a SPECFIRM ASCII response.
+
+        Format 2 returns wavelength/value pairs, one per line. For example:
+          380<TAB>277.81<CR>
+          381<TAB>299.34<CR>
+        """
+        text = self._clean_text(raw)
+        pair_values: list[float] = []
+        wavelength_tolerance = max(self._w_step, 1)
+
+        for line in text.splitlines():
+            tokens = _FLOAT_RE.findall(line)
+            if len(tokens) < 2:
+                continue
+            try:
+                wavelength = float(tokens[0])
+                value = float(tokens[1])
+            except ValueError:
+                continue
+
+            if (
+                (self._w_start - wavelength_tolerance)
+                <= wavelength
+                <= (self._w_end + wavelength_tolerance)
+            ):
+                pair_values.append(value)
+
+        if pair_values:
+            if self._expected_samples > 0:
+                return pair_values[: self._expected_samples]
+            return pair_values
+
+        spectral = self._extract_floats(raw)
+        if self._expected_samples > 0 and len(spectral) > (self._expected_samples + 10):
+            return spectral[-self._expected_samples :]
+        if self._expected_samples > 0 and len(spectral) >= self._expected_samples:
+            return spectral[: self._expected_samples]
+        return spectral
 
     def _configure_if_needed(self) -> None:
         if self._configured:
@@ -143,12 +189,7 @@ class JetiSpecfirmClient(SensorClient):
                 f"*MEASure:REFErence {self._tint_ms} {self._avg_count} 2",
                 timeout_s=6.0,
             )
-            spectral = self._extract_floats(raw_spectrum)
-            if self._expected_samples > 0 and len(spectral) > (self._expected_samples + 10):
-                # Keep the tail where spectrum values usually appear if extra tokens are present.
-                spectral = spectral[-self._expected_samples :]
-            elif self._expected_samples > 0 and len(spectral) >= self._expected_samples:
-                spectral = spectral[: self._expected_samples]
+            spectral = self._extract_spectrum_values(raw_spectrum)
 
             if len(spectral) < 10:
                 logger.warning(
@@ -182,4 +223,10 @@ class JetiSpecfirmClient(SensorClient):
         except Exception as e:
             logger.error("JETI[%s] serial poll failed: %s", self.id, e)
             return []
+
+    def close(self) -> None:
+        try:
+            self.ser.close()
+        except Exception:
+            pass
 

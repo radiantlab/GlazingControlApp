@@ -21,7 +21,8 @@ Secondary: email to partner or instructor
 ## Getting Started
 An overview of the file structure:
 - `docs/` for design notes and meeting minutes
-- `sim/` for an API simulator used off site
+- `docs/real_sensor_setup.md` and `docs/on_site_sensor_checklist.md` for real sensor deployment
+- `facilities/` for site-specific facility notes
 - `web/` for the researcher UI (Contains a README specific  to the web interface)
 - `svc/` for the control service and queue (Contains a README specific to the backend service)
 

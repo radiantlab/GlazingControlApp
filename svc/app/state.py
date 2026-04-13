@@ -427,7 +427,7 @@ def _ensure_sensor_db() -> None:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS sensors (
-                id TEXT PRIMARY KEY,           -- e.g. 'KM1-00'
+                id TEXT PRIMARY KEY,           -- e.g. 'T10A1-H1'
                 kind TEXT NOT NULL,           -- e.g. 't10a', 'jeti', 'eko'
                 label TEXT NOT NULL,          -- human-readable name
                 location TEXT,                -- optional (e.g. 'Desk', 'Window center')
@@ -441,7 +441,7 @@ def _ensure_sensor_db() -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 sensor_id TEXT NOT NULL,
                 ts REAL NOT NULL,            -- Unix timestamp
-                metric TEXT NOT NULL,        -- e.g. 'lux', 'melanopic_edi'
+                metric TEXT NOT NULL,        -- e.g. 'lux', 'melanopic_edi_lx'
                 value REAL NOT NULL,
                 FOREIGN KEY(sensor_id) REFERENCES sensors(id)
             )

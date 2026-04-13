@@ -17,15 +17,15 @@ logger = logging.getLogger(__name__)
 @dataclass
 class T10AHeadConfig:
     head_no: int        # 0, 1, 2, 3 ...
-    sensor_id: str      # "KM1-00", "KM1-01", etc.
+    sensor_id: str      # "T10A1-H1", "T10A1-H2", etc.
     label: str          # for DB metadata
     location: str | None = None
 
 
 class T10AClient(SensorClient):
     """
-    Driver for a single Konica Minolta T-10A body with 1-4 sensor heads.
-    One instance = one COM port = one meter (up to 4 heads daisy-chained).
+    Driver for a single Konica Minolta T-10A body with one or more sensor heads.
+    One instance = one COM port = one meter.
 
     Based on T-10A Communication Specifications:
       - 9600 baud, 7 data bits, even parity, 1 stop bit.
@@ -219,3 +219,9 @@ class T10AClient(SensorClient):
                 logger.error(f"T10A[{self.id}] poll failed for head {head.head_no}: {e}")
 
         return readings
+
+    def close(self) -> None:
+        try:
+            self.ser.close()
+        except Exception:
+            pass

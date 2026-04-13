@@ -260,3 +260,9 @@ class EkoCBoxModbusClient(SensorClient):
             )
         return out
 
+    def close(self) -> None:
+        try:
+            self.ser.close()
+        except Exception:
+            pass
+

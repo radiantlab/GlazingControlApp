@@ -73,22 +73,12 @@ class JetiSpectravalFileWatcher(SensorClient):
         else:
             self._input_abs = os.path.normpath(os.path.join(self._svc_root, input_path))
 
+        self._path_looks_like_file = self._input_abs.lower().endswith(".cap")
         self._file_pos = 0
         self._last_measurement_ts: float | None = None
-
-        if os.path.exists(self._input_abs):
-            if os.path.isdir(self._input_abs):
-                self._is_dir = True
-                self._current_file = self._get_newest_cap_file(self._input_abs)
-            else:
-                self._is_dir = False
-                self._current_file = self._input_abs
-        else:
-            self._is_dir = False
-            self._current_file = None
-
-        if self._current_file and os.path.exists(self._current_file):
-            self._file_pos = os.path.getsize(self._current_file)
+        self._is_dir = False
+        self._current_file: str | None = None
+        self._refresh_source_state(start_at_end=True)
 
         logger.info(
             "JetiSpectravalFileWatcher watching %s (dir=%s) -> current %s pos %s",
@@ -113,18 +103,42 @@ class JetiSpectravalFileWatcher(SensorClient):
             logger.error(f"Error scanning folder {folder}: {e}")
             return None
 
+    def _set_current_file(self, new_file: str | None, *, start_at_end: bool) -> None:
+        if new_file == self._current_file:
+            return
+
+        self._current_file = new_file
+        self._last_measurement_ts = None
+        if new_file and os.path.exists(new_file):
+            self._file_pos = os.path.getsize(new_file) if start_at_end else 0
+        else:
+            self._file_pos = 0
+
+    def _refresh_source_state(self, *, start_at_end: bool) -> None:
+        if os.path.isdir(self._input_abs):
+            self._is_dir = True
+            newest = self._get_newest_cap_file(self._input_abs)
+            self._set_current_file(newest, start_at_end=start_at_end)
+            return
+
+        if os.path.isfile(self._input_abs):
+            self._is_dir = False
+            self._set_current_file(self._input_abs, start_at_end=start_at_end)
+            return
+
+        self._is_dir = not self._path_looks_like_file
+        if self._current_file and not os.path.exists(self._current_file):
+            self._set_current_file(None, start_at_end=False)
+
     def poll(self) -> Iterable[SensorReading]:
         """Check for new lines in the watched file."""
-        if self._is_dir:
-            newest = self._get_newest_cap_file(self._input_abs)
-            if newest and newest != self._current_file:
-                logger.info(f"Watcher: switching to new file {newest}")
-                self._current_file = newest
-                self._file_pos = 0
-                self._last_measurement_ts = None
+        previous_file = self._current_file
+        self._refresh_source_state(start_at_end=False)
+        if self._current_file and self._current_file != previous_file:
+            logger.info("Watcher: switched to file %s", self._current_file)
 
         if not self._current_file or not os.path.exists(self._current_file):
-            return
+            return []
 
         try:
             current_size = os.path.getsize(self._current_file)
@@ -132,7 +146,7 @@ class JetiSpectravalFileWatcher(SensorClient):
                 self._file_pos = 0
 
             if current_size == self._file_pos:
-                return
+                return []
 
             logger.debug(f"Watcher: size changed {self._file_pos} -> {current_size}")
 
@@ -142,7 +156,7 @@ class JetiSpectravalFileWatcher(SensorClient):
                 self._file_pos = f.tell()
 
             if not new_data:
-                return
+                return []
 
             lines = new_data.split("\n")
             for line in lines:

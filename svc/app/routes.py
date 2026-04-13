@@ -458,7 +458,7 @@ def get_latest_metrics() -> List[SensorReadingResponse]:
     tags=["Sensors"],
 )
 def get_metric_history(
-    sensor_id: str = Query(..., description="Sensor ID, e.g. KM1-00"),
+    sensor_id: str = Query(..., description="Sensor ID, e.g. T10A1-H1"),
     metric: str = Query(..., description="Metric name, e.g. 'lux'"),
     ts_from: float = Query(..., description="Start timestamp (unix seconds)"),
     ts_to: float = Query(..., description="End timestamp (unix seconds)"),

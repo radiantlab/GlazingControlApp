@@ -22,17 +22,46 @@ from .t10a_sim_client import T10ASimClient
 
 logger = logging.getLogger(__name__)
 
-# Path to sensor config file; override via env if desired.
-# __file__ is app/sensors/manager.py -> need svc root (parent of app)
 _SVC_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SENSORS_CONFIG_FILE = os.getenv(
-    "SENSORS_CONFIG_FILE",
-    os.path.join(_SVC_DIR, "data", "sensors_config.json"),
-)
+_REPO_DIR = os.path.dirname(_SVC_DIR)
+_DEFAULT_SENSORS_CONFIG_FILE = os.path.join(_SVC_DIR, "data", "sensors_config.json")
 
 _workers: list[threading.Thread] = []
 _clients: list[SensorClient] = []
 _stop_flag = False
+
+
+def _resolve_runtime_path(raw_path: str) -> str:
+    """Resolve relative runtime paths against common service entry points."""
+    if os.path.isabs(raw_path):
+        return os.path.normpath(raw_path)
+
+    for base_dir in (os.getcwd(), _SVC_DIR, _REPO_DIR):
+        candidate = os.path.normpath(os.path.join(base_dir, raw_path))
+        if os.path.exists(candidate):
+            return candidate
+
+    return os.path.normpath(os.path.join(_SVC_DIR, raw_path))
+
+
+def _get_sensors_config_file() -> str:
+    return _resolve_runtime_path(
+        os.getenv("SENSORS_CONFIG_FILE", _DEFAULT_SENSORS_CONFIG_FILE)
+    )
+
+
+def _default_jeti_baudrate(dev_cfg: dict) -> int:
+    explicit_baudrate = dev_cfg.get("baudrate")
+    if explicit_baudrate not in (None, ""):
+        return int(explicit_baudrate)
+
+    fingerprint = " ".join(
+        str(dev_cfg.get(key, ""))
+        for key in ("device_id", "sensor_id", "label", "device_model", "model")
+    ).lower()
+    if "specbos" in fingerprint:
+        return 115200
+    return 921600
 
 
 def _load_config() -> dict:
@@ -45,11 +74,12 @@ def _load_config() -> dict:
       "eko_ms90_plus": [ ... ]
     }
     """
-    if not os.path.exists(SENSORS_CONFIG_FILE):
-        logger.warning(f"No sensors_config.json found at {SENSORS_CONFIG_FILE}")
+    config_path = _get_sensors_config_file()
+    if not os.path.exists(config_path):
+        logger.warning("No sensors_config.json found at %s", config_path)
         return {"t10a": [], "jeti_spectraval": [], "eko_ms90_plus": []}
 
-    with open(SENSORS_CONFIG_FILE, "r", encoding="utf-8") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -168,7 +198,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                 logger.warning("Skip JETI serial_scpi %s: missing 'port'", sensor_id)
                 continue
 
-            baudrate = int(dev_cfg.get("baudrate", 921600))
+            baudrate = _default_jeti_baudrate(dev_cfg)
             timeout_s = float(dev_cfg.get("timeout_s", 1.0))
             tint_ms = float(dev_cfg.get("tint_ms", 100.0))
             avg_count = int(dev_cfg.get("avg_count", 1))
@@ -353,11 +383,17 @@ def _worker_loop(client: SensorClient, interval_s: float) -> None:
     global _stop_flag
     logger.info(f"Sensor worker started for {client} with interval {interval_s}s")
     while not _stop_flag:
-        readings: List[SensorReading] = list(client.poll())
+        try:
+            readings: List[SensorReading] = list(client.poll())
+        except Exception as e:
+            logger.exception("Sensor worker poll failed for %s: %s", client, e)
+            readings = []
         if readings:
             logger.debug(f"Manager: received {len(readings)} readings from {client}")
         for r in readings:
             insert_sensor_reading(r.sensor_id, r.ts, r.metric, r.value)
+        if _stop_flag:
+            break
         time.sleep(interval_s)
 
 
@@ -368,6 +404,8 @@ def start_sensor_workers() -> None:
     """
     global _workers, _clients, _stop_flag
     _stop_flag = False
+    _workers = []
+    _clients = []
 
     clients_with_interval = _make_clients_from_config()
     _clients = [c for c, _ in clients_with_interval]
@@ -386,5 +424,19 @@ def start_sensor_workers() -> None:
 
 def stop_sensor_workers() -> None:
     """Called on shutdown to stop threads cleanly."""
-    global _stop_flag
+    global _stop_flag, _workers, _clients
     _stop_flag = True
+
+    for worker in _workers:
+        worker.join(timeout=2.0)
+
+    for client in _clients:
+        close = getattr(client, "close", None)
+        if callable(close):
+            try:
+                close()
+            except Exception as e:
+                logger.warning("Failed closing sensor client %s: %s", client, e)
+
+    _workers = []
+    _clients = []
