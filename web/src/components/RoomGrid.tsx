@@ -15,10 +15,10 @@ function formatLastUpdated(timestamp: number, currentTime?: number): string {
     if (!timestamp || timestamp === 0) {
         return "Never";
     }
-    
+
     const now = currentTime || (Date.now() / 1000); // Use provided currentTime or get current
     const diff = now - timestamp;
-    
+
     if (diff < 5) {
         return "Just now";
     } else if (diff < 60) {
@@ -229,11 +229,6 @@ function PanelTile({
                                 const el = document.getElementById(`range-${panel.id}`) as HTMLInputElement | null
                                 if (el) el.value = String(v)
                                 setLocalLevel(v)
-                                try {
-                                    await onSet(panel.id, v)
-                                } catch (e) {
-                                    setLocalLevel(panel.level)
-                                }
                             }}
                         >
                             {v}

@@ -224,13 +224,23 @@ docs/TintSpecificAPIPages.pdf
 web/node_modules/
 web/dist/
 
+# Service runtime/state data
 svc/data/audit.json
+svc/data/audit.db
+svc/data/*.db-journal
+svc/data/*.db-wal
+svc/data/*.db-shm
 svc/data/panels.json
 svc/data/panels_state.json
 svc/data/panels_config.json
-#svc/svc/data/window_mapping.json
-# Note: panels_config.json is tracked (structural data)
-# panels_state.json is ignored (runtime state)
+svc/data/routines/
 
-svc/data/audit.db
-# audit.db is a SQLite database for the audit log, changes on run time, so ignore it for now
+# JETI simulator output (configured as either file or directory)
+svc/data/jeti_sim_output
+svc/data/jeti_sim_output/
+
+# Vendor manuals, extracted text, and ad hoc sensor docs used for local AI context
+/docs/SensorDocs/
+
+# Local temporary research repo / scratch workspace
+/.tmp_luox/

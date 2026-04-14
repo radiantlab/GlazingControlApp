@@ -1,12 +1,12 @@
 from __future__ import annotations
+from contextlib import asynccontextmanager
+from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv()  # Load .env file before importing app modules
 
 import time
 import logging
 import json
 import os
-from pathlib import Path
 from typing import Callable
 import uvicorn
 from fastapi import FastAPI, Request, Response
@@ -14,8 +14,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+
+# Load svc/.env before importing app modules that read env at import-time.
+_SVC_DIR = Path(__file__).resolve().parent
+load_dotenv(dotenv_path=_SVC_DIR / ".env")
+
 from app.routes import router
 from app.state import bootstrap_default_if_empty, initialize_database
+from app.sensors.manager import start_sensor_workers, stop_sensor_workers
+from app.routines.manager import resume_routines
 
 # Configure logging to show all INFO level logs from our modules
 logging.basicConfig(
@@ -30,6 +37,16 @@ logging.getLogger("app.service").setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 ROOT_DIR = Path(__file__).resolve().parent.parent
 WEB_DIST_DIR = Path(os.getenv("WEB_DIST_DIR", ROOT_DIR / "web" / "dist"))
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    start_sensor_workers()
+    resume_routines()
+    try:
+        yield
+    finally:
+        stop_sensor_workers()
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -103,7 +120,7 @@ def create_app() -> FastAPI:
     # Bootstrap default panels/groups if needed
     bootstrap_default_if_empty()
     
-    app = FastAPI(title="ECG Control Service", version="0.1.0")
+    app = FastAPI(title="ECG Control Service", version="0.1.0", lifespan=lifespan)
 
     # Request logging middleware (add first so it wraps everything)
     app.add_middleware(LoggingMiddleware)
@@ -111,7 +128,7 @@ def create_app() -> FastAPI:
     # CORS for local web dev
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost", "http://127.0.0.1"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -147,4 +164,7 @@ def configure_frontend(app: FastAPI) -> None:
 app = create_app()
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    reload_enabled = os.getenv("UVICORN_RELOAD", "false").lower() in {"1", "true", "yes", "on"}
+    host = os.getenv("SVC_HOST", "127.0.0.1")
+    port = int(os.getenv("SVC_PORT", "8000"))
+    uvicorn.run("main:app", host=host, port=port, reload=reload_enabled)

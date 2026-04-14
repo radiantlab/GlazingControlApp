@@ -218,7 +218,7 @@ React + Vite front-end with an HMI-style control screen.
   - Stays a fixed max size in the middle of the screen  
   - Tabs styled to match the Manage side panel tabs:  
     - **Audit log** – table of command history  
-    - **Sensor log** – placeholder for future sensor telemetry  
+    - **Sensor log** – live sensor telemetry with filtering and CSV export
   - Props:  
     - `isOpen` / `onClose`  
     - `auditLogs`, `loading`, `error`  

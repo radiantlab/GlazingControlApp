@@ -7,25 +7,25 @@
     --hmi-surface-hover: #353d52;
     --hmi-border: #3a4458;
     --hmi-border-light: #4a5568;
-    
+
     --hmi-text: #e8eaed;
     --hmi-text-muted: #9ca3af;
     --hmi-text-dim: #6b7280;
-    
+
     --hmi-primary: #2563eb;
     --hmi-primary-hover: #3b82f6;
     --hmi-accent: #0ea5e9;
-    
+
     --hmi-success: #10b981;
     --hmi-warning: #f59e0b;
     --hmi-danger: #ef4444;
-    
+
     --hmi-tint-clear: #e0f2fe;
     --hmi-tint-light: #7dd3fc;
     --hmi-tint-med: #0ea5e9;
     --hmi-tint-dark: #0369a1;
     --hmi-tint-max: #0c4a6e;
-    
+
     --hmi-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
     --hmi-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
@@ -34,7 +34,8 @@
     box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
     margin: 0;
     padding: 0;
     height: 100%;
@@ -163,7 +164,7 @@ body {
 }
 
 /* When active controllers bar is present, push header down */
-.active-controllers-bar ~ .hmi-header {
+.active-controllers-bar~.hmi-header {
     top: 60px;
 }
 
@@ -185,15 +186,15 @@ body {
         padding: 16px 20px;
         gap: 16px;
     }
-    
+
     .hmi-main {
         padding: 20px;
     }
-    
+
     .active-controllers-bar {
         padding: 12px 20px;
     }
-    
+
     .rooms-layout {
         gap: 20px;
     }
@@ -203,7 +204,7 @@ body {
     .hmi-main.with-side-panel {
         margin-right: 420px;
     }
-    
+
     .side-panel {
         width: 420px;
     }
@@ -214,15 +215,15 @@ body {
         padding: 14px 16px;
         gap: 12px;
     }
-    
+
     .hmi-main {
         padding: 16px;
     }
-    
+
     .hmi-status {
         gap: 16px;
     }
-    
+
     .active-controllers-bar {
         padding: 10px 16px;
     }
@@ -247,7 +248,7 @@ body {
     content: '';
     position: absolute;
     inset: 12px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 100%);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 100%);
     border-radius: 4px;
 }
 
@@ -319,6 +320,40 @@ body {
 
 .hmi-main.with-side-panel {
     margin-right: 500px;
+}
+
+.hmi-main-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--hmi-border);
+    background: var(--hmi-bg-alt);
+    border-radius: 10px 10px 0 0;
+    overflow-x: auto;
+}
+
+.hmi-main-tab {
+    flex: 0 0 auto;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--hmi-text-muted);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 10px 18px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.hmi-main-tab:hover {
+    color: var(--hmi-text);
+    background: var(--hmi-surface);
+}
+
+.hmi-main-tab.active {
+    color: var(--hmi-primary);
+    border-bottom-color: var(--hmi-primary);
+    background: var(--hmi-surface);
 }
 
 .hmi-manage-btn {
@@ -533,9 +568,12 @@ body {
 }
 
 @keyframes panel-transition-pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.3), var(--hmi-shadow);
     }
+
     50% {
         box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.5), var(--hmi-shadow);
     }
@@ -547,10 +585,13 @@ body {
 }
 
 .panel-tile-skylight-featured {
-    grid-column: 1 / -1; /* Span all columns on its own row */
+    grid-column: 1 / -1;
+    /* Span all columns on its own row */
     justify-self: center;
-    max-width: 420px; /* Slightly wider to accommodate header elements */
-    margin: 0 auto; /* Center horizontally */
+    max-width: 420px;
+    /* Slightly wider to accommodate header elements */
+    margin: 0 auto;
+    /* Center horizontally */
     width: 100%;
     box-sizing: border-box;
 }
@@ -833,8 +874,13 @@ body {
 }
 
 @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 .side-panel {
@@ -857,6 +903,7 @@ body {
     from {
         transform: translateX(100%);
     }
+
     to {
         transform: translateX(0);
     }
@@ -1022,7 +1069,7 @@ select:focus {
 input:disabled,
 textarea:disabled,
 select:disabled {
-    background: rgba(255,255,255,0.02);
+    background: rgba(255, 255, 255, 0.02);
     color: var(--hmi-text-dim);
     border-color: var(--hmi-border);
     opacity: 0.7;
@@ -1031,14 +1078,14 @@ select:disabled {
 
 input[type="number"] {
     -moz-appearance: textfield;
-    padding-right: 10px; 
+    padding-right: 10px;
 }
 
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
 
 select {
     background-image: linear-gradient(45deg, transparent 50%, var(--hmi-text) 50%), linear-gradient(135deg, var(--hmi-text) 50%, transparent 50%), linear-gradient(var(--hmi-surface), var(--hmi-surface));
@@ -1048,9 +1095,9 @@ select {
     padding-right: 40px;
 }
 
-    select::-ms-expand {
-        display: none;
-    }
+select::-ms-expand {
+    display: none;
+}
 
 .hmi-control-inline {
     display: inline-flex;
@@ -1067,7 +1114,7 @@ select {
 .panel-tile .form-group input,
 .panel-tile .form-group select,
 .panel-tile .form-group textarea {
-    background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.02));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(0, 0, 0, 0.02));
     border-color: var(--hmi-border);
 }
 
@@ -1309,7 +1356,7 @@ select option[disabled] {
     background: var(--hmi-surface);
     border: 2px solid var(--hmi-border);
     border-radius: 12px;
-    padding: 16px;
+    padding: 12px 16px;
     width: 100%;
     box-sizing: border-box;
     overflow-x: hidden;
@@ -1319,8 +1366,8 @@ select option[disabled] {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
-    padding-bottom: 12px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
     border-bottom: 1px solid var(--hmi-border);
 }
 
@@ -1338,29 +1385,28 @@ select option[disabled] {
 
 .room-compact-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     width: 100%;
     box-sizing: border-box;
 }
 
-@media (max-width: 1400px) {
-    .room-compact-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
-
 .room-compact-skylight-featured {
-    grid-column: 1 / -1; /* Span all columns on its own row */
+    grid-column: 1 / -1;
+    /* Span all columns on its own row */
     justify-self: center;
-    max-width: 180px; /* Increased width for better visibility */
-    min-width: 160px; /* Ensure minimum readable size */
-    margin: 0 auto; /* Center horizontally */
-    aspect-ratio: 1.4; /* Make it slightly wider than tall for better proportions */
+    max-width: 180px;
+    /* Increased width for better visibility */
+    min-width: 160px;
+    /* Ensure minimum readable size */
+    margin: 0 auto;
+    /* Center horizontally */
+    aspect-ratio: 2.5;
+    /* Make it much wider than tall for proportions */
 }
 
 .room-compact-panel {
-    aspect-ratio: 1;
+    aspect-ratio: 1.6;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1368,7 +1414,7 @@ select option[disabled] {
     background: var(--hmi-bg-alt);
     border: 1px solid var(--hmi-border);
     border-radius: 6px;
-    padding: 8px;
+    padding: 4px;
     transition: all 0.15s ease;
 }
 
@@ -1391,14 +1437,14 @@ select option[disabled] {
 }
 
 .room-compact-panel-id {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--hmi-text-muted);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .room-compact-panel-status {
     width: 100%;
-    padding: 4px;
+    padding: 2px;
     border-radius: 4px;
     text-align: center;
     font-size: 11px;
@@ -1444,29 +1490,29 @@ select option[disabled] {
     .hmi-main.with-side-panel {
         margin-right: 400px;
     }
-    
+
     .side-panel {
         width: 400px;
     }
-    
+
     .room-compact-grid {
         grid-template-columns: repeat(4, 1fr);
     }
-    
+
     .hmi-header-inner {
         padding: 12px 16px;
         gap: 12px;
     }
-    
+
     .hmi-main {
         padding: 16px;
     }
-    
+
     .hmi-status {
         gap: 12px;
         flex-wrap: wrap;
     }
-    
+
     .hmi-status-item {
         flex-shrink: 0;
     }
@@ -1476,34 +1522,34 @@ select option[disabled] {
     .hmi-main.with-side-panel {
         margin-right: 0;
     }
-    
+
     .side-panel {
         width: 100%;
         max-width: 480px;
     }
-    
+
     .room-grid-compact {
         grid-template-columns: 1fr;
     }
-    
+
     .hmi-header-inner {
         padding: 12px 16px;
         flex-wrap: wrap;
         gap: 12px;
     }
-    
+
     .hmi-main {
         padding: 12px;
     }
-    
+
     .hmi-status {
         gap: 8px;
     }
-    
+
     .hmi-brand {
         gap: 12px;
     }
-    
+
     .hmi-brand-text h1 {
         font-size: 18px;
     }
@@ -1630,19 +1676,72 @@ select option[disabled] {
     padding: 0;
 }
 
-    .group-card .room-header {
-        padding: 10px 16px;
-        border-bottom: 1px solid var(--hmi-border);
-    }
+.group-card .room-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--hmi-border);
+}
 
-    .group-card .room-panels-grid {
-        padding-top: 12px;
-        padding-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
+.group-card .room-panels-grid {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* Sensor visibility and graph controls */
+.sensor-visibility-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sensor-visibility-chip {
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--hmi-border);
+    background: var(--hmi-bg-alt);
+    color: var(--hmi-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.sensor-visibility-chip:hover {
+    border-color: var(--hmi-border-light);
+    color: var(--hmi-text);
+    background: var(--hmi-surface);
+}
+
+.sensor-visibility-chip.active {
+    border-color: var(--hmi-primary);
+    color: #bfdbfe;
+    background: rgba(37, 99, 235, 0.18);
+}
+
+.sensor-graph-controls {
+    margin-top: 10px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-right: 4px;
+}
+
+.sensor-graph-select {
+    min-width: 260px;
+    max-width: 100%;
+    width: min(420px, 100%);
+    padding: 8px 10px;
+    border: 1px solid var(--hmi-border);
+    border-radius: 8px;
+    background: var(--hmi-bg-alt);
+    color: var(--hmi-text);
+}
 
 
 /* Logs panel styling */
@@ -1794,7 +1893,7 @@ select option[disabled] {
     padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid var(--hmi-warning);
-    background: linear-gradient( 135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.02) );
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.02));
     color: var(--hmi-text);
     font-size: 13px;
 }
@@ -1804,7 +1903,7 @@ select option[disabled] {
     padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid var(--hmi-danger);
-    background: linear-gradient( 135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02) );
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02));
     color: var(--hmi-text);
     font-size: 13px;
 }
@@ -1823,31 +1922,31 @@ select option[disabled] {
     font-size: 13px;
 }
 
-    .logs-table thead {
-        background: linear-gradient(180deg, var(--hmi-surface) 0%, var(--hmi-bg-alt) 100%);
-    }
+.logs-table thead {
+    background: linear-gradient(180deg, var(--hmi-surface) 0%, var(--hmi-bg-alt) 100%);
+}
 
-    .logs-table th,
-    .logs-table td {
-        padding: 8px 10px;
-        text-align: left;
-        border-bottom: 1px solid var(--hmi-border);
-    }
+.logs-table th,
+.logs-table td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--hmi-border);
+}
 
-    .logs-table th {
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--hmi-text-muted);
-        user-select: none;
-        cursor: pointer;
-        white-space: nowrap;
-    }
+.logs-table th {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--hmi-text-muted);
+    user-select: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
 
-        .logs-table th span {
-            vertical-align: middle;
-        }
+.logs-table th span {
+    vertical-align: middle;
+}
 
 .logs-sort-indicator {
     display: inline-block;
@@ -1923,6 +2022,32 @@ select option[disabled] {
     border: 1px dashed var(--hmi-border);
 }
 
+.logs-sensor-tabs {
+    width: 100%;
+    display: flex;
+    gap: 0;
+    flex-wrap: nowrap;
+    margin-bottom: 14px;
+    border-bottom: 2px solid var(--hmi-border);
+    background: var(--hmi-bg-alt);
+    overflow-x: auto;
+}
+
+.logs-sensor-tabs .side-panel-tab {
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    border: none;
+    border-radius: 0;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+}
+
+.logs-sensor-tabs .side-panel-tab.active {
+    color: var(--hmi-primary);
+    border-bottom-color: var(--hmi-primary);
+    background: var(--hmi-surface);
+}
+
 /* Centered logs modal */
 
 .logs-modal {
@@ -1955,11 +2080,11 @@ select option[disabled] {
     color: #f9fafb;
 }
 
-    .logs-modal-header h2 {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 600;
-    }
+.logs-modal-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
 
 .logs-modal-close {
     border: none;
@@ -1971,9 +2096,9 @@ select option[disabled] {
     border-radius: 999px;
 }
 
-    .logs-modal-close:hover {
-        background: rgba(15, 23, 42, 0.45);
-    }
+.logs-modal-close:hover {
+    background: rgba(15, 23, 42, 0.45);
+}
 
 
 .logs-modal-tabs {
@@ -1992,10 +2117,10 @@ select option[disabled] {
     cursor: pointer;
 }
 
-    .logs-modal-tab.active {
-        background: rgba(37, 99, 235, 0.18);
-        color: var(--hmi-primary);
-    }
+.logs-modal-tab.active {
+    background: rgba(37, 99, 235, 0.18);
+    color: var(--hmi-primary);
+}
 
 
 .logs-panel-content {
@@ -2033,6 +2158,7 @@ select option[disabled] {
         transform: translateX(100%);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;
@@ -2045,10 +2171,492 @@ select option[disabled] {
         left: 12px;
         max-width: none;
     }
-    
+
     .toast {
         min-width: auto;
         max-width: none;
     }
 }
 
+
+/* ========================================
+   Routine Code Editor
+   ======================================== */
+
+/* Sub-tabs: Steps | Code */
+.routine-sub-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    background: var(--hmi-bg-alt);
+    border-radius: 8px;
+    padding: 3px;
+    border: 1px solid var(--hmi-border);
+}
+
+.routine-sub-tab {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--hmi-text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.routine-sub-tab:hover {
+    color: var(--hmi-text);
+}
+
+.routine-sub-tab.active {
+    background: var(--hmi-primary);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+/* Editor layout */
+.routine-code-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Toolbar above textarea */
+.routine-editor-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.routine-editor-toolbar label {
+    margin-bottom: 0 !important;
+}
+
+.routine-examples-toggle {
+    padding: 4px 10px;
+    background: var(--hmi-surface);
+    border: 1px solid var(--hmi-border);
+    border-radius: 6px;
+    color: var(--hmi-accent);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.routine-examples-toggle:hover {
+    background: var(--hmi-surface-hover);
+    border-color: var(--hmi-accent);
+}
+
+/* Example snippets */
+.routine-examples {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px dashed var(--hmi-border);
+    border-radius: 8px;
+    background: var(--hmi-bg-alt);
+}
+
+.routine-example-btn {
+    text-align: left;
+    padding: 8px 12px;
+    background: var(--hmi-surface);
+    border: 1px solid var(--hmi-border);
+    border-radius: 6px;
+    color: var(--hmi-text);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.routine-example-btn:hover {
+    background: var(--hmi-surface-hover);
+    border-color: var(--hmi-primary);
+    color: var(--hmi-primary);
+}
+
+/* Code textarea */
+.routine-textarea-wrapper {
+    position: relative;
+}
+
+.routine-code-textarea {
+    width: 100%;
+    min-height: 220px;
+    padding: 14px 16px;
+    background: #0d1117;
+    color: #c9d1d9;
+    border: 2px solid var(--hmi-border);
+    border-radius: 8px;
+    font-family: "JetBrains Mono", "Fira Code", "Source Code Pro", "Consolas", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    tab-size: 2;
+    white-space: pre;
+    overflow-x: auto;
+    box-sizing: border-box;
+}
+
+.routine-code-textarea:focus {
+    border-color: var(--hmi-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15), 0 0 20px rgba(37, 99, 235, 0.08);
+}
+
+.routine-code-textarea::placeholder {
+    color: #484f58;
+}
+
+.routine-code-textarea:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Mode toggle & controls */
+.routine-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.routine-mode-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--hmi-bg-alt);
+    border-radius: 8px;
+    padding: 3px;
+    border: 1px solid var(--hmi-border);
+}
+
+.routine-mode-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--hmi-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.routine-mode-btn:hover:not(:disabled) {
+    color: var(--hmi-text);
+}
+
+.routine-mode-btn.active {
+    background: var(--hmi-surface);
+    color: var(--hmi-text);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.routine-mode-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Interval config */
+.routine-interval-config {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    background: var(--hmi-bg-alt);
+    border: 1px solid var(--hmi-border);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--hmi-text-muted);
+}
+
+.routine-interval-config label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0 !important;
+    text-transform: none !important;
+    font-size: 13px !important;
+}
+
+.routine-interval-input {
+    width: 80px;
+    padding: 6px 8px !important;
+    font-size: 13px !important;
+}
+
+.routine-indefinite-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.routine-indefinite-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--hmi-primary);
+    cursor: pointer;
+}
+
+.routine-max-hint {
+    font-size: 11px;
+    color: var(--hmi-text-dim);
+    font-style: italic;
+}
+
+/* Action buttons */
+.routine-action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.routine-action-buttons .side-panel-action-btn {
+    flex: 2;
+    margin-top: 0;
+}
+
+.routine-action-buttons .side-panel-secondary-btn {
+    flex: 1;
+    margin-top: 0;
+}
+
+.routine-stop-btn {
+    flex: 2;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--hmi-danger) 0%, #b91c1c 100%);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.routine-stop-btn:hover {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* Status bar */
+.routine-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--hmi-bg-alt);
+    border: 1px solid var(--hmi-border);
+    border-radius: 8px;
+}
+
+.routine-status-badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+}
+
+.routine-status-idle {
+    color: var(--hmi-text-muted);
+}
+
+.routine-status-scheduled {
+    color: var(--hmi-warning);
+}
+
+.routine-status-running {
+    color: var(--hmi-success);
+    animation: status-pulse 1.5s ease-in-out infinite;
+}
+
+.routine-status-error {
+    color: var(--hmi-danger);
+}
+
+.routine-status-done {
+    color: var(--hmi-primary);
+}
+
+@keyframes status-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.routine-iteration-count {
+    font-size: 11px;
+    color: var(--hmi-text-muted);
+    margin-left: auto;
+}
+
+/* Console output */
+.routine-console {
+    border: 2px solid var(--hmi-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.routine-console-header {
+    padding: 8px 12px;
+    background: var(--hmi-bg-alt);
+    border-bottom: 1px solid var(--hmi-border);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--hmi-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.routine-console-body {
+    max-height: 200px;
+    min-height: 80px;
+    overflow-y: auto;
+    padding: 10px 14px;
+    background: #0d1117;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.routine-console-empty {
+    color: #484f58;
+    font-style: italic;
+}
+
+.routine-console-line {
+    color: #c9d1d9;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.routine-console-line.error {
+    color: #f85149;
+}
+
+.routine-console-line.success {
+    color: #3fb950;
+}
+
+/* Saved routines */
+.routine-saved-section {
+    border: 1px solid var(--hmi-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.routine-saved-header {
+    padding: 8px 12px;
+    background: var(--hmi-bg-alt);
+    border-bottom: 1px solid var(--hmi-border);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--hmi-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.routine-saved-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.routine-saved-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--hmi-border);
+    transition: background 0.1s ease;
+}
+
+.routine-saved-item:last-child {
+    border-bottom: none;
+}
+
+.routine-saved-item:hover {
+    background: var(--hmi-bg-alt);
+}
+
+.routine-saved-name {
+    font-size: 13px;
+    color: var(--hmi-text);
+    font-weight: 500;
+}
+
+.routine-saved-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.routine-saved-load {
+    padding: 4px 10px;
+    background: var(--hmi-surface);
+    border: 1px solid var(--hmi-border);
+    border-radius: 5px;
+    color: var(--hmi-primary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.routine-saved-load:hover {
+    background: var(--hmi-surface-hover);
+    border-color: var(--hmi-primary);
+}
+
+.routine-saved-load:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.routine-saved-delete {
+    padding: 4px 8px;
+    background: var(--hmi-surface);
+    border: 1px solid var(--hmi-border);
+    border-radius: 5px;
+    color: var(--hmi-danger);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.routine-saved-delete:hover {
+    background: var(--hmi-surface-hover);
+    border-color: var(--hmi-danger);
+}
+
+.routine-saved-delete:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.routine-saved-empty {
+    padding: 16px 12px;
+    text-align: center;
+    color: var(--hmi-text-muted);
+    font-size: 12px;
+    font-style: italic;
+}

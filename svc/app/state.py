@@ -98,6 +98,9 @@ def initialize_database() -> None:
     _migrate_from_legacy_panels_json()
     _ensure_panel_state_db()
     _ensure_groups_db()
+    _ensure_sensor_db()
+    _ensure_routines_db()
+    _ensure_saved_routines_db()
     _migrate_json_state_to_db()
     _migrate_groups_json_to_db()
 
@@ -385,6 +388,287 @@ def _ensure_groups_db() -> None:
         )
 
 
+def _ensure_routines_db() -> None:
+    """Create the SQLite table for routines if it does not exist."""
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS routines (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                code TEXT NOT NULL,
+                mode TEXT NOT NULL,
+                interval_ms INTEGER,
+                run_at_ts REAL,
+                indefinite BOOLEAN NOT NULL DEFAULT 0,
+                status TEXT NOT NULL
+            )
+            """
+        )
+
+
+def _ensure_saved_routines_db() -> None:
+    """Create the SQLite table for saved routines if it does not exist."""
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS saved_routines (
+                name TEXT PRIMARY KEY,
+                code TEXT NOT NULL
+            )
+            """
+        )
+
+# --- SENSOR TABLES ---------------------------------------------------------
+
+def _ensure_sensor_db() -> None:
+    """Create tables for sensor metadata and readings if they do not exist."""
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sensors (
+                id TEXT PRIMARY KEY,           -- e.g. 'T10A1-H1'
+                kind TEXT NOT NULL,           -- e.g. 't10a', 'jeti', 'eko'
+                label TEXT NOT NULL,          -- human-readable name
+                location TEXT,                -- optional (e.g. 'Desk', 'Window center')
+                config_json TEXT NOT NULL     -- raw config for this sensor
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sensor_readings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sensor_id TEXT NOT NULL,
+                ts REAL NOT NULL,            -- Unix timestamp
+                metric TEXT NOT NULL,        -- e.g. 'lux', 'melanopic_edi_lx'
+                value REAL NOT NULL,
+                FOREIGN KEY(sensor_id) REFERENCES sensors(id)
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_sensor_readings_sensor_metric_ts
+            ON sensor_readings (sensor_id, metric, ts)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_sensor_readings_ts
+            ON sensor_readings (ts)
+            """
+        )
+
+
+def register_sensor(
+    sensor_id: str,
+    kind: str,
+    label: str,
+    location: str | None,
+    config: dict,
+) -> None:
+    """
+    Idempotently register a sensor; if it already exists we just update its metadata.
+    """
+    _ensure_sensor_db()
+    cfg_json = json.dumps(config)
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO sensors (id, kind, label, location, config_json)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                kind=excluded.kind,
+                label=excluded.label,
+                location=excluded.location,
+                config_json=excluded.config_json
+            """,
+            (sensor_id, kind, label, location, cfg_json),
+        )
+
+
+def insert_sensor_reading(
+    sensor_id: str,
+    ts: float,
+    metric: str,
+    value: float,
+) -> None:
+    """Insert a single reading for a sensor."""
+    _ensure_sensor_db()
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO sensor_readings (sensor_id, ts, metric, value)
+            VALUES (?, ?, ?, ?)
+            """,
+            (sensor_id, ts, metric, value),
+        )
+
+
+def fetch_latest_readings() -> list[dict]:
+    """
+    Return the latest value per (sensor_id, metric).
+    """
+    _ensure_sensor_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        rows = conn.execute(
+            """
+            SELECT r.sensor_id, r.metric, r.value, r.ts
+            FROM sensor_readings r
+            JOIN (
+                SELECT sensor_id, metric, MAX(ts) AS max_ts
+                FROM sensor_readings
+                GROUP BY sensor_id, metric
+            ) latest
+            ON r.sensor_id = latest.sensor_id
+           AND r.metric    = latest.metric
+           AND r.ts        = latest.max_ts
+            ORDER BY r.sensor_id, r.metric
+            """
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def fetch_readings(
+    sensor_id: str,
+    metric: str,
+    ts_from: float,
+    ts_to: float,
+) -> list[dict]:
+    """Fetch time series for one sensor + metric in [ts_from, ts_to]."""
+    _ensure_sensor_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        rows = conn.execute(
+            """
+            SELECT sensor_id, metric, value, ts
+            FROM sensor_readings
+            WHERE sensor_id = ?
+              AND metric    = ?
+              AND ts BETWEEN ? AND ?
+            ORDER BY ts
+            """,
+            (sensor_id, metric, ts_from, ts_to),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def fetch_sensor_log_entries(
+    *,
+    limit: int = 500,
+    offset: int = 0,
+    sensor_id: str | None = None,
+    metric: str | None = None,
+    ts_from: float | None = None,
+    ts_to: float | None = None,
+    input_sort_field: str = "ts",
+    input_sort_dir: str = "desc",
+) -> list[dict]:
+    """
+    Fetch sensor readings as log entries with sensor metadata.
+
+    Returns rows containing:
+      sensor_id, sensor_kind, sensor_label, metric, value, ts
+    """
+    _ensure_sensor_db()
+
+    sort_fields = {
+        "ts": "r.ts",
+        "sensor_id": "r.sensor_id",
+        "metric": "r.metric",
+        "value": "r.value",
+        "sensor_kind": "s.kind",
+        "sensor_label": "s.label",
+    }
+    sort_col = sort_fields.get(input_sort_field, "r.ts")
+    sort_dir = "ASC" if str(input_sort_dir).lower() == "asc" else "DESC"
+
+    where_clauses: list[str] = []
+    params: list[object] = []
+
+    if sensor_id:
+        where_clauses.append("r.sensor_id = ?")
+        params.append(sensor_id)
+    if metric:
+        where_clauses.append("r.metric = ?")
+        params.append(metric)
+    if ts_from is not None:
+        where_clauses.append("r.ts >= ?")
+        params.append(ts_from)
+    if ts_to is not None:
+        where_clauses.append("r.ts <= ?")
+        params.append(ts_to)
+
+    where_sql = ""
+    if where_clauses:
+        where_sql = "WHERE " + " AND ".join(where_clauses)
+
+    query = f"""
+        SELECT
+            r.sensor_id,
+            s.kind AS sensor_kind,
+            s.label AS sensor_label,
+            r.metric,
+            r.value,
+            r.ts
+        FROM sensor_readings r
+        LEFT JOIN sensors s ON s.id = r.sensor_id
+        {where_sql}
+        ORDER BY {sort_col} {sort_dir}, r.id {sort_dir}
+        LIMIT ? OFFSET ?
+    """
+    params.extend([limit, offset])
+
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        rows = conn.execute(query, tuple(params)).fetchall()
+        return [dict(row) for row in rows]
+
+
+def list_sensors() -> list[dict]:
+    """Return all registered sensors."""
+    _ensure_sensor_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        rows = conn.execute(
+            "SELECT id, kind, label, location, config_json FROM sensors"
+        ).fetchall()
+        result: list[dict] = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["config"] = json.loads(d.pop("config_json") or "{}")
+            except Exception:
+                d["config"] = {}
+            result.append(d)
+        return result
+
+
+def prune_sensors_to_ids(sensor_ids: list[str]) -> None:
+    """
+    Remove sensors and readings not present in `sensor_ids`.
+
+    This keeps the UI/logs aligned with the active `sensors_config.json`
+    and removes stale entries (for example old test sensors).
+    """
+    _ensure_sensor_db()
+    unique_ids = sorted(set(sensor_ids))
+    with _db_connection() as conn:
+        if not unique_ids:
+            conn.execute("DELETE FROM sensor_readings")
+            conn.execute("DELETE FROM sensors")
+            return
+
+        placeholders = ",".join(["?"] * len(unique_ids))
+        conn.execute(
+            f"DELETE FROM sensor_readings WHERE sensor_id NOT IN ({placeholders})",
+            tuple(unique_ids),
+        )
+        conn.execute(
+            f"DELETE FROM sensors WHERE id NOT IN ({placeholders})",
+            tuple(unique_ids),
+        )
+
+
+
 def _migrate_json_state_to_db() -> None:
     """Migrate panel state from JSON file to SQLite database if JSON exists and DB is empty."""
     _ensure_panel_state_db()
@@ -622,3 +906,93 @@ def audit(
             result=result,
         )
     )
+
+# --- ROUTINE TABLES --------------------------------------------------------
+
+def save_routine(
+    routine_id: str,
+    name: str,
+    code: str,
+    mode: str,
+    interval_ms: int | None,
+    run_at_ts: float | None,
+    indefinite: bool,
+    status: str
+) -> None:
+    _ensure_routines_db()
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO routines 
+            (id, name, code, mode, interval_ms, run_at_ts, indefinite, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (routine_id, name, code, mode, interval_ms, run_at_ts, 1 if indefinite else 0, status)
+        )
+
+
+def get_routine(routine_id: str) -> dict | None:
+    _ensure_routines_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        row = conn.execute(
+            "SELECT * FROM routines WHERE id = ?", (routine_id,)
+        ).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        d["indefinite"] = bool(d["indefinite"])
+        return d
+
+
+def update_routine_status(routine_id: str, status: str) -> None:
+    _ensure_routines_db()
+    with _db_connection() as conn:
+        conn.execute(
+            "UPDATE routines SET status = ? WHERE id = ?",
+            (status, routine_id)
+        )
+
+
+def delete_routine(routine_id: str) -> None:
+    _ensure_routines_db()
+    with _db_connection() as conn:
+        conn.execute(
+            "DELETE FROM routines WHERE id = ?", (routine_id,)
+        )
+
+
+def list_routines() -> list[dict]:
+    _ensure_routines_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        rows = conn.execute("SELECT * FROM routines").fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            d["indefinite"] = bool(d["indefinite"])
+            result.append(d)
+        return result
+
+
+def save_saved_routine(name: str, code: str) -> None:
+    _ensure_saved_routines_db()
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO saved_routines (name, code)
+            VALUES (?, ?)
+            """,
+            (name, code)
+        )
+
+
+def list_saved_routines() -> list[dict]:
+    _ensure_saved_routines_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        rows = conn.execute("SELECT name, code FROM saved_routines ORDER BY name").fetchall()
+        return [dict(r) for r in rows]
+
+
+def delete_saved_routine(name: str) -> None:
+    _ensure_saved_routines_db()
+    with _db_connection() as conn:
+        conn.execute("DELETE FROM saved_routines WHERE name = ?", (name,))

@@ -174,7 +174,7 @@ You should see the control interface
 # Use the app
 
 1. The header shows service status  
-2. Pick a group set a level press `Set group`  
+2. Pick a group set a level press `Tint Group`  
 3. Move a slider on any panel and press `Apply`  
 4. Press `Refresh` in the header to reload state
 

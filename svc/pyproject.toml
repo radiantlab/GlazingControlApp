@@ -12,6 +12,10 @@ dependencies = [
     "pytest==8.3.3",
     "python-dotenv==1.0.1",
     "requests==2.32.3",
+    "pyserial>=3.5",
+    "numpy==2.4.2",
+    "scipy==1.17.0",
+    "colour-science==0.4.7",
 ]
 
 [project.optional-dependencies]
@@ -27,4 +31,3 @@ packages = ["app"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-

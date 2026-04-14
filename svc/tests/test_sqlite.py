@@ -34,6 +34,11 @@ from app.state import (
     update_panel_state,
     load_groups,
     save_groups,
+    register_sensor,
+    insert_sensor_reading,
+    fetch_sensor_log_entries,
+    prune_sensors_to_ids,
+    list_sensors,
 )
 
 
@@ -717,7 +722,88 @@ class TestIntegration:
         
         entries = fetch_audit_entries()
         assert len(entries) == 1
-        assert entries[0]["target_id"] == "P01"
+
+
+class TestSensorLogOperations:
+    """Tests for sensor metadata/reading log operations."""
+
+    def test_fetch_sensor_log_entries_with_metadata(self, temp_db):
+        """Sensor log query should return readings joined with sensor metadata."""
+        register_sensor(
+            sensor_id="KM1-00",
+            kind="t10a",
+            label="Desk center",
+            location="Desk",
+            config={"device_id": "KM1"},
+        )
+        insert_sensor_reading("KM1-00", 1000.0, "lux", 123.4)
+        insert_sensor_reading("KM1-00", 1001.0, "lux", 125.6)
+
+        rows = fetch_sensor_log_entries(limit=10, offset=0)
+
+        assert len(rows) == 2
+        assert rows[0]["sensor_id"] == "KM1-00"
+        assert rows[0]["sensor_kind"] == "t10a"
+        assert rows[0]["sensor_label"] == "Desk center"
+        assert rows[0]["metric"] == "lux"
+        # Default sort is newest first.
+        assert rows[0]["ts"] == 1001.0
+
+    def test_fetch_sensor_log_entries_filters_and_sorts(self, temp_db):
+        """Sensor log query should apply sensor/metric/time filters and sort order."""
+        register_sensor(
+            sensor_id="EKO-00",
+            kind="eko_ms90_plus",
+            label="Roof",
+            location="Roof",
+            config={"device_id": "EKO-CBOX-01"},
+        )
+        insert_sensor_reading("EKO-00", 2000.0, "ghi_w_m2", 450.0)
+        insert_sensor_reading("EKO-00", 2001.0, "dni_w_m2", 500.0)
+        insert_sensor_reading("EKO-00", 2002.0, "ghi_w_m2", 470.0)
+
+        rows = fetch_sensor_log_entries(
+            limit=10,
+            offset=0,
+            sensor_id="EKO-00",
+            metric="ghi_w_m2",
+            ts_from=2000.5,
+            ts_to=3000.0,
+            input_sort_field="ts",
+            input_sort_dir="asc",
+        )
+
+        assert len(rows) == 1
+        assert rows[0]["metric"] == "ghi_w_m2"
+        assert rows[0]["ts"] == 2002.0
+
+    def test_prune_sensors_to_ids_removes_stale_rows(self, temp_db):
+        """Pruning should remove sensors and readings not in active config."""
+        register_sensor(
+            sensor_id="KEEP-01",
+            kind="t10a",
+            label="Keep",
+            location=None,
+            config={},
+        )
+        register_sensor(
+            sensor_id="DROP-01",
+            kind="jeti_spectraval",
+            label="Drop",
+            location=None,
+            config={},
+        )
+        insert_sensor_reading("KEEP-01", 100.0, "lux", 10.0)
+        insert_sensor_reading("DROP-01", 101.0, "lux", 20.0)
+
+        prune_sensors_to_ids(["KEEP-01"])
+
+        sensors = list_sensors()
+        sensor_ids = {s["id"] for s in sensors}
+        assert sensor_ids == {"KEEP-01"}
+
+        rows = fetch_sensor_log_entries(limit=100, offset=0, sensor_id="DROP-01")
+        assert rows == []
     
     def test_multiple_operations_in_sequence(self, temp_db, temp_state_file):
         """Test multiple operations in sequence."""

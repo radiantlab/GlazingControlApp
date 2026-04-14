@@ -88,7 +88,7 @@ export default function App() {
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGroupLevel(Number(e.target.value))}
                         />
                         <button onClick={setGroup} disabled={!groupId || busy === groupId}>
-                            {busy === groupId ? "Setting..." : "Set group"}
+                            {busy === groupId ? "Setting..." : "Tint Group"}
                         </button>
 
                         <div className="chips">
