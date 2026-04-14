@@ -6,7 +6,7 @@ The current real-mode implementation supports the hardware shown in the current 
 
 - Konica Minolta `T-10A` illuminance meters over USB/virtual COM
 - JETI `spectraval 1511` and `specbos 1211-2` over either:
-  - LiVal `.cap` file export, or
+  - file-based `.cap` ingestion from the PC measurement workflow, or
   - direct SPECFIRM serial/virtual COM
 - EKO `MS-90+` system through the `C-BOX` Modbus RTU output
 
@@ -15,20 +15,24 @@ The current real-mode implementation supports the hardware shown in the current 
 The latest site diagram shows three distinct PC-facing paths:
 
 - `T-10A`:
+  - the diagram shows `sensor heads`, `adapter head`, and `body`
   - receptor heads connect to the body through the Konica Minolta adapter/head chain and straight CAT5 cabling
   - the body connects to the local PC by USB
 - `JETI spectraval/specbos`:
-  - the instrument connects directly to the local PC by USB
-  - LiVal/SPECFIRM can expose the device as a live `.cap` writer or a virtual COM port
+  - the diagram shows `Spectravals (1511)` and `Specbos 1211`
+  - each instrument connects directly to the local PC by USB
+  - the schematic confirms the USB hardware path; the backend can then use either a file-based `.cap` workflow or direct SPECFIRM serial
 - `EKO MS-90+`:
+  - the diagram shows a solar-station assembly with `MS-80S`, `MS-90+ DNI`, `C-BOX`, `DAC`, and power supply
   - the MS-90 DNI sensor and optional MS-80S feed the `C-BOX`
   - the PC talks only to the `C-BOX` output side over RS-485 Modbus RTU
+  - the app does not configure a separate DAC interface; the backend-facing link is still the `C-BOX` output path
 
 That matches the backend architecture now:
 
 - `T10AClient` polls the T-10A serial link and emits `lux`
 - `JetiSpecfirmClient` polls SPECFIRM directly and now parses wavelength/value ASCII pairs correctly
-- `JetiSpectravalFileWatcher` ingests LiVal `.cap` output and now handles the watched file/folder appearing after the service starts
+- `JetiSpectravalFileWatcher` ingests file-based `.cap` output and now handles the watched file/folder appearing after the service starts
 - `EkoCBoxModbusClient` polls C-BOX holding registers for irradiance, sun position, GPS, and temperature
 
 ## 2) Before You Go On Site
@@ -42,7 +46,9 @@ Bring or confirm access to:
 - a USB-to-RS485 adapter for the EKO `C-BOX`
 - a stable `12 VDC` supply for the `C-BOX` output cable
 - a `120 ohm` termination resistor if the RS-485 run needs end termination
-- JETI Windows drivers and LiVal/SPECFIRM access on the local PC
+- JETI Windows drivers and either:
+  - the PC software that will write the `.cap` output path, or
+  - SPECFIRM access for direct serial polling
 
 ## 3) Configure The App
 
@@ -73,147 +79,139 @@ uv run python main.py
 
 ## 4) T-10A Setup
 
-### Physical setup
+The app supports one practical connection path for `T-10A`: head chain to T-10A body, then body to PC by USB.
 
-1. Connect the `T-10A` body to the local PC by USB.
-2. Connect each receptor head through the required T-10A head adapters.
-3. Use straight CAT5/10Base-T patch cables only.
-4. If you are doing multi-point measurement, use the external `AC-A412` power supply.
-5. Assign unique head/adaptor IDs. The T-10A manual allows IDs `00` through `29`.
+### Method A: Single-head T-10A to PC
 
-### What to check on the PC
+1. Place the `T-10A` body near the local PC.
+2. Connect the receptor head to the T-10A body using the correct Konica Minolta head/adaptor hardware.
+3. If any CAT5 segment is used in the chain, use straight CAT5/10Base-T patch cable only.
+4. Connect the T-10A body to the PC by USB.
+5. Power on the T-10A body and confirm it is detected by Windows.
+6. Open Device Manager and record the assigned COM port under `Ports (COM & LPT)`.
+7. Update `svc/data/sensors_config.json`:
+   - set `t10a[].port` to the actual COM port
+   - set `heads[].head_no` to the physical head/adaptor ID
+   - keep `heads[].sensor_id` and `heads[].label` aligned with the physical head location
+8. Start the backend and confirm the T-10A sensor reports `lux`.
 
-1. Open Windows Device Manager.
-2. Look under `Ports (COM & LPT)`.
-3. Record the COM port used by each T-10A body.
+### Method B: Multi-head T-10A to PC
 
-### Config fields
-
-In `t10a`:
-
-- `port`: COM port for the body, for example `COM3`
-- `heads[].head_no`: the configured head/adaptor ID used by that body
-- `heads[].sensor_id`: app-facing sensor ID, for example `T10A1-H1`
-- `heads[].label`: human readable name shown in the UI
+1. Place the `T-10A` body near the local PC.
+2. Connect each receptor head through the required `T-A20` / `T-A21` adapter chain.
+3. Use straight CAT5/10Base-T patch cable between the multi-point components.
+4. Connect the `AC-A412` external power supply for the multi-head setup.
+5. Assign a unique physical ID to each head/adaptor. The supported range is `00` through `29`.
+6. Connect the T-10A body to the PC by USB.
+7. Open Device Manager and record the COM port for that T-10A body.
+8. Update `svc/data/sensors_config.json`:
+   - set the device `port`
+   - set each `heads[].head_no` to the actual physical ID
+   - keep each `sensor_id` and `label` tied to the installed head location
+9. Start the backend and verify every configured T-10A head appears in `GET /sensors`.
+10. Confirm each head produces `lux` in `GET /metrics/latest`.
 
 ### T-10A watch-outs
 
-- Do not use crossover Ethernet cables between adapters and heads.
+- Do not use crossover Ethernet cables.
 - Multi-head mode needs external power.
-- If the configured head numbers do not match the physical adapter IDs, the service will poll the wrong head or get no data.
-- USB COM assignments can move if you plug the body into a different USB port on the PC.
+- If `head_no` does not match the physical head/adaptor ID, the service will poll the wrong head or no head.
+- USB COM assignments can change if you move the USB cable to a different PC port.
 
 ## 5) JETI Setup
 
 The app supports both `spectraval 1511` and `specbos 1211-2`.
 
-Use one config entry per physical JETI device.
+There are two supported connection methods in the app: file-based ingestion and direct serial polling. The physical cable to the PC is USB in both cases.
 
-### Option A: LiVal `.cap` file export
+### Method A: JETI over USB with file-based `.cap` ingestion
 
-Use this when LiVal is already part of the operator workflow.
+Use this when the measurement workflow on the PC writes JETI `.cap` output that the backend can watch.
 
-#### Physical/software setup
+1. Install the JETI USB driver on the local PC if it is not already installed.
+2. Connect the JETI device to the PC by USB.
+3. Open the JETI software on the PC and confirm the device is detected.
+4. Configure the JETI software to save or export measurements to a known `.cap` file or to a folder that receives rotating `.cap` files.
+5. Record the exact file path or folder path being written on the PC.
+6. Update `svc/data/sensors_config.json`:
+   - set `jeti_spectraval[].transport` to `"file"`
+   - set `jeti_spectraval[].output_path` to that exact file or folder
+   - set `watch_interval_s` if you want faster or slower pickup
+7. Start the backend in real mode.
+8. Trigger or wait for a fresh JETI measurement so the `.cap` output updates.
+9. Confirm the app begins receiving JETI metrics in `GET /metrics/latest`.
 
-1. Install the JETI USB drivers first if the PC does not already have them.
-2. Connect the device to the PC by USB.
-3. In LiVal, configure continuous saving/export to a known `.cap` file or folder.
-4. Make sure the app `output_path` points to that same file or folder.
+### Method B: JETI over USB virtual COM with direct SPECFIRM polling
 
-#### Config fields
+Use this when you want the backend to talk to the JETI device directly instead of reading exported files.
 
-In `jeti_spectraval`:
+1. Install the JETI USB driver on the local PC if needed.
+2. Connect the JETI device to the PC by USB.
+3. Open Device Manager and find the JETI virtual COM port under `Ports (COM & LPT)`.
+4. Record the COM port.
+5. Decide which device model is connected:
+   - `spectraval 1511` typically uses `921600`
+   - `specbos 1211-2` typically uses `115200`
+6. Update `svc/data/sensors_config.json`:
+   - set `jeti_spectraval[].transport` to `"serial_scpi"`
+   - set `jeti_spectraval[].port` to the JETI COM port
+   - set `jeti_spectraval[].baudrate` to the correct device baud rate
+   - set `tint_ms` and `avg_count` if the measurement timing needs adjustment
+7. Start the backend in real mode.
+8. Confirm the JETI sensor appears in `GET /sensors`.
+9. Confirm the JETI sensor reports `lux` and spectral/color metrics in `GET /metrics/latest`.
 
-- `transport: "file"`
-- `output_path`: path to the live `.cap` file or the folder that will receive rotating `.cap` files
-- `watch_interval_s`: how often the backend checks for new data
+### JETI watch-outs
 
-#### File-mode watch-outs
-
-- The backend can now recover if LiVal creates the file or folder after the service starts.
-- The path still has to match exactly. If LiVal writes to a different folder, the app will stay empty.
-- File mode is the safest option when operators already use LiVal for acquisition.
-
-### Option B: Direct SPECFIRM serial polling
-
-Use this when you want the backend to talk to the JETI device directly with no LiVal file export step.
-
-#### Physical setup
-
-1. Install the JETI USB drivers if needed.
-2. Connect the device to the PC by USB.
-3. Find the COM port in Device Manager.
-
-#### Config fields
-
-In `jeti_spectraval`:
-
-- `transport: "serial_scpi"`
-- `port`: COM port
-- `baudrate`: optional, but verify it
-  - `spectraval 1511`: `921600`
-  - `specbos 1211-2`: `115200`
-- `tint_ms`: integration time in milliseconds
-- `avg_count`: measurement averaging count
-
-#### Direct-serial watch-outs
-
-- The driver now parses SPECFIRM format `2` correctly as `wavelength<TAB>value` pairs. That fix is required for valid real metrics.
-- If you use a `specbos` device and omit `baudrate`, the service now defaults it to `115200`.
-- If serial polling fails immediately, verify the COM port and baudrate before changing anything else.
+- The schematic confirms USB to the PC. The file-vs-serial choice is a software integration choice, not a different physical cable path.
+- File mode only works if the configured `output_path` exactly matches the real file or folder on the PC.
+- The backend can now recover if the watched `.cap` file or folder appears after startup, but the path still has to be correct.
+- Direct serial mode requires the correct COM port and baudrate before anything else will work.
+- The backend now parses SPECFIRM format `2` correctly as `wavelength<TAB>value` pairs.
 
 ## 6) EKO MS-90+ / C-BOX Setup
 
-The PC talks to the `C-BOX`, not directly to the `MS-90` or `MS-80S`.
+The app supports one real connection path for EKO: the sensors wire into the `C-BOX`, and the PC talks only to the `C-BOX` output side over RS-485 through a USB adapter.
 
-### C-BOX output-side wiring to the PC
+### Method A: MS-90 plus optional MS-80S into C-BOX, then C-BOX to PC
 
-Per the C-BOX manual output cable:
-
-1. `Brown` -> `+12 V` supply
-2. `White` -> supply ground / `0 V`
-3. `Blue` -> Modbus `A` / `+`
-4. `Black` -> Modbus `B` / `-`
-5. `Grey` -> not connected
-
-Use a `0.5 A` fuse on the supply as recommended by the manual.
-
-At the end of the RS-485 run, add a `120 ohm` termination resistor across `A/B` if your topology needs termination.
-
-### C-BOX sensor-side terminals
-
-Per the EKO C-BOX manual:
-
-- `MS-80S`
-  - terminal `3`: white / `0 V`
-  - terminal `4`: brown / `12 VDC out`
-  - terminal `5`: black / Modbus `B`
-  - terminal `6`: blue / Modbus `A`
-  - terminal `7`: grey / Modbus ground
-- `MS-90`
-  - terminal `11`: brown / DNI `+`
-  - terminal `12`: white / DNI `-`
-  - terminal `15`: blue / `12 VDC out`
-  - terminal `16`: black / `0 VDC out`
-
-### Config fields
-
-In `eko_ms90_plus`:
-
-- `port`: COM port of the USB-RS485 adapter
-- `baudrate`: usually `9600`
-- `slave_address`: usually `1`
-- `float_byte_order`: default `ABCD`
+1. Mount the `C-BOX` where the EKO sensors can reach its terminals and where the PC-side output cable can reach the USB-to-RS485 adapter.
+2. Wire the `MS-90` sensor into the `C-BOX` sensor-side terminals:
+   - terminal `11`: brown / DNI `+`
+   - terminal `12`: white / DNI `-`
+   - terminal `15`: blue / `12 VDC out`
+   - terminal `16`: black / `0 VDC out`
+3. If `MS-80S` is installed, wire it into the `C-BOX` sensor-side terminals:
+   - terminal `3`: white / `0 V`
+   - terminal `4`: brown / `12 VDC out`
+   - terminal `5`: black / Modbus `B`
+   - terminal `6`: blue / Modbus `A`
+   - terminal `7`: grey / Modbus ground
+4. Wire the `C-BOX` output cable to its power supply and to the USB-to-RS485 adapter:
+   - `Brown` -> `+12 V`
+   - `White` -> `0 V / ground`
+   - `Blue` -> Modbus `A / +`
+   - `Black` -> Modbus `B / -`
+   - `Grey` -> not connected
+5. Use a `0.5 A` fuse on the `12 VDC` supply line.
+6. If the RS-485 run is at the end of the bus and needs termination, add a `120 ohm` resistor across `A/B`.
+7. Plug the USB-to-RS485 adapter into the local PC.
+8. Open Device Manager and record the COM port for that USB-to-RS485 adapter.
+9. Update `svc/data/sensors_config.json`:
+   - set `eko_ms90_plus[].port` to the adapter COM port
+   - confirm `baudrate` is usually `9600`
+   - confirm `slave_address` is usually `1`
+   - leave `float_byte_order` at `ABCD` unless testing shows otherwise
+10. Start the backend in real mode.
+11. Confirm the EKO sensor appears in `GET /sensors`.
+12. Confirm `ghi_w_m2`, `dni_w_m2`, `dhi_w_m2`, and sun-position metrics appear in `GET /metrics/latest`.
 
 ### EKO watch-outs
 
-- If you get no Modbus response, `A/B` may be swapped on the USB-RS485 adapter labeling. Swap the pair and test again.
-- If values are present but obviously wrong, try `float_byte_order` values in this order:
-  - `ABCD`
-  - `CDAB`
-  - `BADC`
-  - `DCBA`
-- The C-BOX will expose `DHI` only when the MS-90/MS-80S system is wired and operating as expected.
+- The PC does not connect directly to `MS-90` or `MS-80S`.
+- If there is no Modbus response, swap RS-485 `A/B` at the adapter.
+- If values are present but obviously wrong, try `float_byte_order` values in this order: `ABCD`, `CDAB`, `BADC`, `DCBA`.
+- `DHI` depends on the MS-90/MS-80S system being wired and operating correctly through the C-BOX.
 
 ## 7) What To Verify On The Local PC
 

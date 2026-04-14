@@ -117,7 +117,7 @@ The backend supports three real sensor paths via `svc/data/sensors_config.json`:
 
 - `t10a`: Konica Minolta T-10A via USB virtual COM (9600, 7E1)
 - `jeti_spectraval`: one or more JETI devices (`spectraval 1511` or `specbos 1211-2`) via either
-  - `transport: "file"` (watch a live `.cap` output path), or
+  - `transport: "file"` (watch a live `.cap` file or folder written by the PC measurement workflow), or
   - `transport: "serial_scpi"` (direct SPECFIRM serial)
 - `eko_ms90_plus`: EKO C-BOX over Modbus RTU (RS-485, default 9600, 8N1, slave 1)
 

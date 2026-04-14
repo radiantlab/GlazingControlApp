@@ -2,38 +2,37 @@
 
 Use this at the trailer/lab PC after the hardware is physically installed.
 
-## Before Powering The App
+## Connection Order
 
-- Confirm each `T-10A` body is connected to the PC by USB.
-- Confirm every `T-10A` head/adaptor chain uses straight CAT5.
-- Confirm T-10A multi-head setups have external power.
-- Confirm each JETI device is connected to the PC by USB.
-- Confirm the EKO `C-BOX` has:
-  - `12 VDC` power
-  - USB-to-RS485 adapter connected
-  - `A/B` wired to the adapter
-- Confirm LiVal or SPECFIRM is installed if the JETI path depends on it.
+1. Connect each `T-10A` head chain to its T-10A body.
+2. If a T-10A body has multiple heads, connect external power to that setup.
+3. Connect each `T-10A` body to the PC by USB.
+4. Connect each JETI device to the PC by USB.
+5. If the JETI path will use file mode, confirm the PC software is configured to write a live `.cap` file or folder.
+6. If the JETI path will use direct serial mode, confirm the JETI USB driver is installed and a COM port appears in Windows.
+7. Connect the EKO `MS-90` and optional `MS-80S` to the `C-BOX`.
+8. Connect `C-BOX` output power and RS-485 wiring.
+9. Connect the USB-to-RS485 adapter from the `C-BOX` output side to the PC.
 
 ## Windows Checks
 
 1. Open Device Manager.
-2. Record COM ports for:
-   - each `T-10A`
-   - each `JETI`
-   - the USB-RS485 adapter used by the `C-BOX`
-3. If a JETI device is missing, install the JETI USB drivers and reconnect it.
+2. Record the COM port for each `T-10A` body.
+3. Record the COM port for each JETI device that will use direct serial mode.
+4. Record the COM port for the USB-RS485 adapter used by the `C-BOX`.
+5. If a JETI device is missing, install the JETI USB driver and reconnect it.
 
 ## Update `svc/data/sensors_config.json`
 
-- `t10a[].port` -> actual T-10A COM port
-- `t10a[].heads[].head_no` -> actual physical T-10A adaptor/head ID
-- `jeti_spectraval[].transport` -> `file` or `serial_scpi`
-- `jeti_spectraval[].output_path` -> LiVal `.cap` file/folder if using file mode
-- `jeti_spectraval[].port` -> actual JETI COM port if using serial mode
-- `jeti_spectraval[].baudrate`
-  - `921600` for `spectraval 1511`
-  - `115200` for `specbos 1211-2`
-- `eko_ms90_plus[].port` -> COM port of the USB-RS485 adapter
+1. Set `t10a[].port` to the actual T-10A COM port.
+2. Set `t10a[].heads[].head_no` to the actual physical T-10A adaptor/head ID.
+3. Set `jeti_spectraval[].transport` to either `file` or `serial_scpi`.
+4. If JETI uses file mode, set `jeti_spectraval[].output_path` to the actual live `.cap` file or folder.
+5. If JETI uses serial mode, set `jeti_spectraval[].port` to the JETI COM port.
+6. If JETI uses serial mode, set `jeti_spectraval[].baudrate`:
+   - `921600` for `spectraval 1511`
+   - `115200` for `specbos 1211-2`
+7. Set `eko_ms90_plus[].port` to the COM port of the USB-RS485 adapter.
 
 ## Start The Backend
 
@@ -65,6 +64,8 @@ Then open the HMI and confirm:
 - `Logs -> Sensor log` is filling with new rows
 - sensor CSV export works
 
+For the full step-by-step connection instructions for each sensor and each supported method, use [`docs/real_sensor_setup.md`](./real_sensor_setup.md).
+
 ## If Something Fails
 
 - No T-10A data:
@@ -73,7 +74,7 @@ Then open the HMI and confirm:
   - verify straight CAT5 and external power for multi-point mode
 - No JETI data:
   - re-check driver install
-  - confirm LiVal is writing to the configured `output_path`, or
+  - confirm the PC measurement software is writing to the configured `output_path`, or
   - confirm COM port and baudrate for serial mode
 - No EKO data:
   - swap RS-485 `A/B`
