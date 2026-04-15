@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
     server: {
@@ -10,5 +10,11 @@ export default defineConfig({
                 main: "./index.html"
             }
         }
+    },
+    test: {
+        environment: "jsdom",
+        setupFiles: "./src/test/setup.ts",
+        clearMocks: true,
+        restoreMocks: true
     }
 });
