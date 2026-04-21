@@ -1,6 +1,9 @@
-import React, { useState } from "react";
-import type { Panel, Group } from "../types";
+import React, { useRef, useState } from "react";
+
+import type { Group, GroupLayout, Panel } from "../types";
+import { normalizeGroupLayout } from "../utils/groupLayout";
 import { useToast } from "../utils/toast";
+import GroupLayoutEditor from "./GroupLayoutEditor";
 import RoutineCodeEditor from "./RoutineCodeEditor";
 
 type Props = {
@@ -9,11 +12,31 @@ type Props = {
     onClose: () => void;
     panels: Panel[];
     groups: Group[];
-    onGroupCreate: (name: string, memberIds: string[]) => Promise<void>;
-    onGroupUpdate?: (groupId: string, name: string, memberIds: string[]) => Promise<void>;
+    onGroupCreate: (name: string, memberIds: string[], layout: GroupLayout | null) => Promise<void>;
+    onGroupUpdate?: (groupId: string, name: string, memberIds: string[], layout: GroupLayout | null) => Promise<void>;
     onGroupDelete?: (groupId: string) => Promise<void>;
     targetRoutineId?: string | null;
 };
+
+const MIN_SIDE_PANEL_WIDTH = 420;
+const MAX_SIDE_PANEL_WIDTH = 900;
+
+function togglePanelSelection(
+    previous: Set<string>,
+    panelId: string,
+): Set<string> {
+    const next = new Set(previous);
+    if (next.has(panelId)) next.delete(panelId);
+    else next.add(panelId);
+    return next;
+}
+
+function clampSidePanelWidth(width: number): number {
+    const viewportLimit = typeof window === "undefined"
+        ? MAX_SIDE_PANEL_WIDTH
+        : Math.max(MIN_SIDE_PANEL_WIDTH, window.innerWidth - 48);
+    return Math.max(MIN_SIDE_PANEL_WIDTH, Math.min(width, MAX_SIDE_PANEL_WIDTH, viewportLimit));
+}
 
 export default function SidePanel({
     isOpen,
@@ -24,30 +47,28 @@ export default function SidePanel({
     onGroupCreate,
     onGroupUpdate,
     onGroupDelete,
-    targetRoutineId
+    targetRoutineId,
 }: Props) {
-    const sortedPanels = [...panels].sort((a, b) => a.name.localeCompare(b.name));
     const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
     const { showToast } = useToast();
+    const [panelWidth, setPanelWidth] = useState(520);
+    const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
 
-    // group creation state
     const [newGroupName, setNewGroupName] = useState("");
     const [selectedPanelIds, setSelectedPanelIds] = useState<Set<string>>(new Set());
+    const [newGroupLayout, setNewGroupLayout] = useState<GroupLayout | null>(null);
     const [isCreatingGroup, setIsCreatingGroup] = useState(false);
 
-    // group edit state
     const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
     const [editGroupName, setEditGroupName] = useState("");
     const [editMemberIds, setEditMemberIds] = useState<Set<string>>(new Set());
+    const [editGroupLayout, setEditGroupLayout] = useState<GroupLayout | null>(null);
     const [isSavingGroup, setIsSavingGroup] = useState(false);
 
-    const handlePanelToggle = (panelId: string) => {
-        setSelectedPanelIds(prev => {
-            const next = new Set(prev);
-            if (next.has(panelId)) next.delete(panelId);
-            else next.add(panelId);
-            return next;
-        });
+    const handleCreatePanelToggle = (panelId: string) => {
+        const next = togglePanelSelection(selectedPanelIds, panelId);
+        setSelectedPanelIds(next);
+        setNewGroupLayout(normalizeGroupLayout(Array.from(next), newGroupLayout));
     };
 
     const handleCreateGroup = async () => {
@@ -58,9 +79,11 @@ export default function SidePanel({
 
         setIsCreatingGroup(true);
         try {
-            await onGroupCreate(newGroupName.trim(), Array.from(selectedPanelIds));
+            const memberIds = Array.from(selectedPanelIds);
+            await onGroupCreate(newGroupName.trim(), memberIds, normalizeGroupLayout(memberIds, newGroupLayout));
             setNewGroupName("");
             setSelectedPanelIds(new Set());
+            setNewGroupLayout(null);
         } catch {
             // AppHMI shows error toast
         } finally {
@@ -72,15 +95,13 @@ export default function SidePanel({
         setEditingGroupId(group.id);
         setEditGroupName(group.name);
         setEditMemberIds(new Set(group.member_ids));
+        setEditGroupLayout(normalizeGroupLayout(group.member_ids, group.layout));
     };
 
     const handleEditPanelToggle = (panelId: string) => {
-        setEditMemberIds(prev => {
-            const next = new Set(prev);
-            if (next.has(panelId)) next.delete(panelId);
-            else next.add(panelId);
-            return next;
-        });
+        const next = togglePanelSelection(editMemberIds, panelId);
+        setEditMemberIds(next);
+        setEditGroupLayout(normalizeGroupLayout(Array.from(next), editGroupLayout));
     };
 
     const handleSaveGroupChanges = async () => {
@@ -91,17 +112,19 @@ export default function SidePanel({
 
         setIsSavingGroup(true);
         try {
+            const memberIds = Array.from(editMemberIds);
             await onGroupUpdate(
                 editingGroupId,
                 editGroupName.trim(),
-                Array.from(editMemberIds)
+                memberIds,
+                normalizeGroupLayout(memberIds, editGroupLayout),
             );
-
             setEditingGroupId(null);
             setEditGroupName("");
             setEditMemberIds(new Set());
+            setEditGroupLayout(null);
         } catch {
-            // toast already shown in AppHMI
+            // AppHMI shows error toast
         } finally {
             setIsSavingGroup(false);
         }
@@ -120,9 +143,10 @@ export default function SidePanel({
                 setEditingGroupId(null);
                 setEditGroupName("");
                 setEditMemberIds(new Set());
+                setEditGroupLayout(null);
             }
         } catch {
-            // error toast already from AppHMI
+            // AppHMI shows error toast
         }
     };
 
@@ -130,6 +154,30 @@ export default function SidePanel({
         setEditingGroupId(null);
         setEditGroupName("");
         setEditMemberIds(new Set());
+        setEditGroupLayout(null);
+    };
+
+    const startResizing = (event: React.MouseEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        resizeRef.current = { startX: event.clientX, startWidth: panelWidth };
+        document.body.classList.add("side-panel-resizing");
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+            const state = resizeRef.current;
+            if (!state) return;
+            setPanelWidth(clampSidePanelWidth(state.startWidth + state.startX - moveEvent.clientX));
+        };
+
+        const stopResizing = () => {
+            resizeRef.current = null;
+            document.body.classList.remove("side-panel-resizing");
+            document.removeEventListener("mousemove", handleMouseMove);
+            document.removeEventListener("mouseup", stopResizing);
+        };
+
+        document.addEventListener("mousemove", handleMouseMove);
+        document.addEventListener("mouseup", stopResizing);
     };
 
     if (!isOpen) return null;
@@ -137,11 +185,22 @@ export default function SidePanel({
     return (
         <>
             <div className="side-panel-overlay" onClick={onClose} />
-            <div className="side-panel" onClick={(e) => e.stopPropagation()}>
+            <div
+                className="side-panel"
+                style={{ width: `min(${panelWidth}px, calc(100vw - 24px))` }}
+                onClick={event => event.stopPropagation()}
+            >
+                <div
+                    className="side-panel-resize-handle"
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Resize side panel"
+                    onMouseDown={startResizing}
+                />
                 <div className="side-panel-header">
                     <h2>{mode === "groups" ? "Groups" : "Routines"}</h2>
                     <button className="side-panel-close" onClick={onClose} aria-label="Close panel">
-                        ✕
+                        X
                     </button>
                 </div>
 
@@ -154,36 +213,23 @@ export default function SidePanel({
                                 <input
                                     type="text"
                                     value={newGroupName}
-                                    onChange={e => setNewGroupName(e.target.value)}
+                                    onChange={event => setNewGroupName(event.target.value)}
                                     placeholder="e.g., West Windows"
                                 />
                             </div>
 
-                            <div className="form-group">
-                                <label>Select Windows ({selectedPanelIds.size} selected)</label>
-                                <div className="panel-selector">
-                                    {sortedPanels.map(panel => (
-                                        <label key={panel.id} className="panel-checkbox">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedPanelIds.has(panel.id)}
-                                                onChange={() => handlePanelToggle(panel.id)}
-                                            />
-                                            <span>{panel.name}</span>
-                                            <span className="panel-id">{panel.id}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
+                            <GroupLayoutEditor
+                                panels={panels}
+                                selectedPanelIds={selectedPanelIds}
+                                onTogglePanel={handleCreatePanelToggle}
+                                layout={newGroupLayout}
+                                onLayoutChange={setNewGroupLayout}
+                            />
 
                             <button
                                 className="side-panel-action-btn"
                                 onClick={handleCreateGroup}
-                                disabled={
-                                    isCreatingGroup ||
-                                    !newGroupName.trim() ||
-                                    selectedPanelIds.size === 0
-                                }
+                                disabled={isCreatingGroup || !newGroupName.trim() || selectedPanelIds.size === 0}
                             >
                                 {isCreatingGroup ? "Creating..." : "Create Group"}
                             </button>
@@ -194,6 +240,7 @@ export default function SidePanel({
                             <div className="groups-list">
                                 {sortedGroups.map(group => {
                                     const isEditing = editingGroupId === group.id;
+
                                     return (
                                         <div key={group.id} className="group-item">
                                             <div className="group-item-header">
@@ -201,53 +248,38 @@ export default function SidePanel({
                                                     <input
                                                         type="text"
                                                         value={editGroupName}
-                                                        onChange={e => setEditGroupName(e.target.value)}
+                                                        onChange={event => setEditGroupName(event.target.value)}
                                                         placeholder="Group name"
                                                     />
                                                 ) : (
-                                                    <strong>{group.name}</strong>
+                                                    <div className="group-item-title">
+                                                        <strong>{group.name}</strong>
+                                                        <span className="group-item-layout-status">
+                                                            {group.layout ? "Custom 2D layout" : "Auto layout"}
+                                                        </span>
+                                                    </div>
                                                 )}
                                                 <span className="group-item-id">{group.id}</span>
                                             </div>
 
                                             {isEditing ? (
                                                 <>
-                                                    <div className="form-group">
-                                                        <label>Edit members</label>
-                                                        <div className="panel-selector">
-                                                            {sortedPanels.map(panel => (
-                                                                <label key={panel.id} className="panel-checkbox">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={editMemberIds.has(panel.id)}
-                                                                        onChange={() =>
-                                                                            handleEditPanelToggle(panel.id)
-                                                                        }
-                                                                    />
-                                                                    <span>{panel.name}</span>
-                                                                    <span className="panel-id">
-                                                                        {panel.id}
-                                                                    </span>
-                                                                </label>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ display: "flex", gap: 8 }}>
+                                                    <GroupLayoutEditor
+                                                        panels={panels}
+                                                        selectedPanelIds={editMemberIds}
+                                                        onTogglePanel={handleEditPanelToggle}
+                                                        layout={editGroupLayout}
+                                                        onLayoutChange={setEditGroupLayout}
+                                                    />
+                                                    <div className="group-item-actions">
                                                         <button
                                                             className="side-panel-action-btn"
                                                             onClick={handleSaveGroupChanges}
-                                                            disabled={
-                                                                !editingGroupId ||
-                                                                !editGroupName.trim() ||
-                                                                isSavingGroup
-                                                            }
+                                                            disabled={!editGroupName.trim() || isSavingGroup}
                                                         >
                                                             {isSavingGroup ? "Saving..." : "Save Changes"}
                                                         </button>
-                                                        <button
-                                                            className="side-panel-secondary-btn"
-                                                            onClick={cancelEditing}
-                                                        >
+                                                        <button className="side-panel-secondary-btn" onClick={cancelEditing}>
                                                             Cancel
                                                         </button>
                                                     </div>
@@ -255,16 +287,9 @@ export default function SidePanel({
                                             ) : (
                                                 <>
                                                     <div className="group-item-members">
-                                                        {group.member_ids.length} window
-                                                        {group.member_ids.length !== 1 ? "s" : ""}
+                                                        {group.member_ids.length} window{group.member_ids.length !== 1 ? "s" : ""}
                                                     </div>
-                                                    <div
-                                                        style={{
-                                                            display: "flex",
-                                                            gap: 8,
-                                                            marginTop: 8
-                                                        }}
-                                                    >
+                                                    <div className="group-item-actions">
                                                         <button
                                                             className="side-panel-secondary-btn"
                                                             onClick={() => startEditingGroup(group)}

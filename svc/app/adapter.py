@@ -3,7 +3,8 @@ import os
 import time
 import logging
 from typing import Any, List, Dict, Optional
-from .models import Panel, Group, TintLevel
+from .group_layout import normalize_group_layout
+from .models import Panel, Group, GroupLayout, TintLevel
 from .config import (
     HALIO_API_URL,
     HALIO_API_KEY,
@@ -446,7 +447,7 @@ class RealAdapter:
         """
         return self._send_group_tint(group_id, level)
 
-    def create_group(self, name: str, member_ids: List[str]) -> Group:
+    def create_group(self, name: str, member_ids: List[str], layout: GroupLayout | None = None) -> Group:
         created = self._create_group_request(name, member_ids)
         if not created:
             raise RuntimeError("failed to create Halio group")
@@ -466,4 +467,5 @@ class RealAdapter:
             id=group_id,
             name=created.get("name", name),
             member_ids=member_ids,
+            layout=normalize_group_layout(member_ids, layout),
         )

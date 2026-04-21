@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, Optional, Literal, Dict
-from pydantic import BaseModel, Field, conint
+from pydantic import BaseModel, Field, conint, model_serializer
 
 TintLevel = conint(ge=0, le=100)
 
@@ -13,11 +13,59 @@ class Panel(BaseModel):
     last_change_ts: float = Field(default=0.0, description="Unix timestamp of last level change")
 
 
+class GroupLayoutItem(BaseModel):
+    """Saved 2D position for one panel inside a group layout."""
+    panel_id: str = Field(description="Panel identifier included in the group")
+    row: conint(ge=1) = Field(description="1-based row position in the 2D layout")
+    column: conint(ge=1) = Field(description="1-based column position in the 2D layout")
+
+
+class GroupLayoutDivider(BaseModel):
+    """Saved divider segment inside a group layout."""
+    row: conint(ge=1) = Field(description="1-based row position for the divider segment")
+    column: conint(ge=1) = Field(description="1-based column position for the divider segment")
+
+
+class GroupLayoutDividers(BaseModel):
+    """Saved divider segments for a group layout."""
+    vertical: List[GroupLayoutDivider] = Field(default_factory=list)
+    horizontal: List[GroupLayoutDivider] = Field(default_factory=list)
+
+
+class GroupLayout(BaseModel):
+    """Optional 2D layout metadata for a group."""
+    columns: conint(ge=1) = Field(
+        default=4,
+        description="Preferred number of columns to use when rendering the group layout",
+    )
+    rows: Optional[conint(ge=1)] = Field(
+        default=None,
+        description="Optional persisted row count when the layout includes empty rows",
+    )
+    items: List[GroupLayoutItem] = Field(
+        default_factory=list,
+        description="Saved row/column positions for group member panels",
+    )
+    dividers: Optional[GroupLayoutDividers] = Field(
+        default=None,
+        description="Optional vertical and horizontal dividers for the 2D layout",
+    )
+
+    @model_serializer(mode="wrap")
+    def serialize_without_empty_metadata(self, handler):
+        data = handler(self)
+        return {key: value for key, value in data.items() if value is not None}
+
+
 class Group(BaseModel):
     """Group represents a collection of panels that can be controlled together."""
     id: str = Field(description="Group identifier (e.g., G-facade, G-1)")
     name: str = Field(description="Human-readable group name")
     member_ids: List[str] = Field(default_factory=list, description="List of panel IDs in this group")
+    layout: Optional[GroupLayout] = Field(
+        default=None,
+        description="Optional saved 2D layout for arranging panels in the UI",
+    )
 
 
 class CommandRequest(BaseModel):
@@ -60,12 +108,20 @@ class GroupCreate(BaseModel):
     """Request to create a new group."""
     name: str = Field(description="Name for the new group")
     member_ids: List[str] = Field(default_factory=list, description="Panel IDs to include in the group")
+    layout: Optional[GroupLayout] = Field(
+        default=None,
+        description="Optional saved 2D layout for the group's panels",
+    )
 
 
 class GroupUpdate(BaseModel):
     """Request to update an existing group."""
     name: Optional[str] = Field(default=None, description="New name for the group (optional)")
     member_ids: Optional[List[str]] = Field(default=None, description="New list of panel IDs (optional)")
+    layout: Optional[GroupLayout] = Field(
+        default=None,
+        description="Updated 2D layout for the group's panels (optional)",
+    )
 
 
 class DeleteGroupResponse(BaseModel):

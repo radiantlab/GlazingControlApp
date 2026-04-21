@@ -50,6 +50,29 @@ describe("api", () => {
         });
     });
 
+    it("sends group layout metadata in group create requests", async () => {
+        fetchMock.mockResolvedValue(
+            jsonResponse({ id: "G-3", name: "West", member_ids: ["P01"], layout: { columns: 2, items: [] } }),
+        );
+
+        await api.createGroup("West", ["P01"], {
+            columns: 2,
+            items: [{ panel_id: "P01", row: 1, column: 2 }],
+        });
+
+        const [path, options] = fetchMock.mock.calls[0];
+        expect(path).toBe("/groups");
+        expect(options).toMatchObject({ method: "POST" });
+        expect(JSON.parse(String(options?.body))).toEqual({
+            name: "West",
+            member_ids: ["P01"],
+            layout: {
+                columns: 2,
+                items: [{ panel_id: "P01", row: 1, column: 2 }],
+            },
+        });
+    });
+
     it("surfaces HTTP status codes in thrown errors", async () => {
         fetchMock.mockResolvedValue(
             new Response("dwell time not met", {

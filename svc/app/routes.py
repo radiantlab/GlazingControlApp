@@ -123,7 +123,7 @@ def set_level(
 def create_group(body: GroupCreate, service: ControlService = Depends(get_service)) -> Group:
     """Create a new group."""
     try:
-        return service.create_group(body.name, body.member_ids)
+        return service.create_group(body.name, body.member_ids, body.layout)
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -148,7 +148,7 @@ def update_group(
 ) -> Group:
     """Update an existing group."""
     try:
-        return service.update_group(group_id, body.name, body.member_ids)
+        return service.update_group(group_id, body.name, body.member_ids, body.layout)
     except KeyError:
         raise HTTPException(status_code=404, detail="group not found")
     except RuntimeError as e:

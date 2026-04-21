@@ -8,9 +8,19 @@ interface LiveGraphProps {
     color?: string;
     label?: string;
     height?: number;
+    toolbar?: React.ReactNode;
+    className?: string;
 }
 
-export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300 }: LiveGraphProps) {
+export default function LiveGraph({
+    sensorId,
+    metric,
+    color = "#8884d8",
+    label,
+    height = 300,
+    toolbar,
+    className = "",
+}: LiveGraphProps) {
     const [data, setData] = useState<SensorReadingResponse[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -35,25 +45,30 @@ export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, 
         return () => clearInterval(interval);
     }, [sensorId, metric]);
 
-    if (loading && !data.length) {
-        return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: "#666" }}>Loading graph...</div>;
-    }
-
-    if (!data.length) {
-        return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: "#666" }}>No data available</div>;
-    }
-
     const formatTime = (ts: number) => {
         const d = new Date(ts * 1000);
         return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
-    return (
-        <div className="room-section" style={{ marginTop: 20 }}>
-            <div className="room-header">
-                <h2 className="room-title">{label || `${sensorId} - ${metric}`}</h2>
-            </div>
-            <div style={{ height, padding: "10px 20px 20px 0" }}>
+    const renderGraphBody = () => {
+        if (loading && !data.length) {
+            return (
+                <div className="live-graph-empty" style={{ height }}>
+                    Loading graph...
+                </div>
+            );
+        }
+
+        if (!data.length) {
+            return (
+                <div className="live-graph-empty" style={{ height }}>
+                    No data available
+                </div>
+            );
+        }
+
+        return (
+            <div className="live-graph-chart" style={{ height }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data}>
                         <defs>
@@ -76,7 +91,7 @@ export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, 
                         />
                         <Tooltip
                             contentStyle={{ backgroundColor: '#222', border: '1px solid #444', borderRadius: 4, color: '#fff' }}
-                            labelFormatter={(label) => new Date(label * 1000).toLocaleString()}
+                            labelFormatter={(tooltipLabel) => new Date(Number(tooltipLabel) * 1000).toLocaleString()}
                             formatter={(value: number | undefined) => [value != null ? value.toFixed(1) : "N/A", metric]}
                         />
                         <Area
@@ -90,6 +105,16 @@ export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, 
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
+        );
+    };
+
+    return (
+        <div className={`room-section live-graph-section ${className}`}>
+            <div className="room-header live-graph-header">
+                <h2 className="room-title">{label || `${sensorId} - ${metric}`}</h2>
+                {toolbar && <div className="live-graph-toolbar">{toolbar}</div>}
+            </div>
+            {renderGraphBody()}
         </div>
     );
 }

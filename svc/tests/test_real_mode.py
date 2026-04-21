@@ -1,4 +1,5 @@
 from app.adapter import RealAdapter
+from app.models import Group
 from app.service import ControlService
 
 
@@ -33,6 +34,39 @@ def test_real_group_acceptance_with_unknown_members(monkeypatch):
     assert ok is True
     assert applied == []
     assert msg == "group updated"
+
+
+def test_service_list_groups_overlays_saved_layout(monkeypatch):
+    monkeypatch.setattr("app.service.MODE", "real")
+
+    class FakeRealAdapter:
+        def list_panels(self):
+            return []
+
+        def list_groups(self):
+            return [Group(id="halio-group", name="West", member_ids=["window-1"])]
+
+    monkeypatch.setattr("app.service.RealAdapter", FakeRealAdapter)
+    monkeypatch.setattr(
+        "app.service.load_groups",
+        lambda: {
+            "halio-group": Group(
+                id="halio-group",
+                name="West",
+                member_ids=["window-1"],
+                layout={"columns": 2, "items": [{"panel_id": "window-1", "row": 1, "column": 2}]},
+            )
+        },
+    )
+
+    service = ControlService()
+    groups = service.list_groups()
+
+    assert len(groups) == 1
+    assert groups[0].layout.model_dump() == {
+        "columns": 2,
+        "items": [{"panel_id": "window-1", "row": 1, "column": 2}],
+    }
 
 
 def test_list_groups_uses_group_details_for_member_ids(monkeypatch):
@@ -194,10 +228,21 @@ def test_create_group_uses_halio_post_shape(monkeypatch):
     monkeypatch.setattr("app.adapter.requests.get", fake_get)
 
     adapter = RealAdapter()
-    group = adapter.create_group("My Group", ["window-1", "window-2"])
+    group = adapter.create_group(
+        "My Group",
+        ["window-1", "window-2"],
+        {"columns": 2, "items": [{"panel_id": "window-2", "row": 1, "column": 1}]},
+    )
 
     assert captured_payloads == [
         {"group": {"name": "My Group", "windows": ["window-1", "window-2"]}}
     ]
     assert group.id == "group-9"
     assert group.member_ids == ["window-1", "window-2"]
+    assert group.layout.model_dump() == {
+        "columns": 2,
+        "items": [
+            {"panel_id": "window-1", "row": 1, "column": 2},
+            {"panel_id": "window-2", "row": 1, "column": 1},
+        ],
+    }

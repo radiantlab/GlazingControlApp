@@ -394,7 +394,12 @@ class TestGroupOperations:
     def test_save_groups_creates_groups(self, temp_db):
         """save_groups should create group entries."""
         groups = {
-            "G-1": Group(id="G-1", name="Group 1", member_ids=["P01", "P02"]),
+            "G-1": Group(
+                id="G-1",
+                name="Group 1",
+                member_ids=["P01", "P02"],
+                layout={"columns": 2, "items": [{"panel_id": "P01", "row": 1, "column": 2}]},
+            ),
             "G-2": Group(id="G-2", name="Group 2", member_ids=["P03", "P04"]),
         }
         
@@ -405,6 +410,13 @@ class TestGroupOperations:
         assert len(loaded_groups) == 2
         assert loaded_groups["G-1"].name == "Group 1"
         assert loaded_groups["G-1"].member_ids == ["P01", "P02"]
+        assert loaded_groups["G-1"].layout.model_dump() == {
+            "columns": 2,
+            "items": [
+                {"panel_id": "P01", "row": 1, "column": 2},
+                {"panel_id": "P02", "row": 2, "column": 1},
+            ],
+        }
         assert loaded_groups["G-2"].name == "Group 2"
         assert loaded_groups["G-2"].member_ids == ["P03", "P04"]
     
@@ -547,6 +559,7 @@ class TestDatabaseInitialization:
             assert "id" in columns
             assert "name" in columns
             assert "member_ids" in columns
+            assert "layout_json" in columns
     
     def test_ensure_groups_db_is_idempotent(self, temp_db):
         """_ensure_groups_db should be safe to call multiple times."""
@@ -573,7 +586,15 @@ class TestMigration:
                 "P01": {"id": "P01", "name": "Panel 1"},
             },
             "groups": {
-                "G-1": {"id": "G-1", "name": "Group 1", "member_ids": ["P01", "P02"]},
+                "G-1": {
+                    "id": "G-1",
+                    "name": "Group 1",
+                    "member_ids": ["P01", "P02"],
+                    "layout": {
+                        "columns": 2,
+                        "items": [{"panel_id": "P01", "row": 1, "column": 2}],
+                    },
+                },
                 "G-2": {"id": "G-2", "name": "Group 2", "member_ids": ["P03"]},
             },
         }
@@ -592,6 +613,13 @@ class TestMigration:
         assert len(groups) == 2
         assert groups["G-1"].name == "Group 1"
         assert groups["G-1"].member_ids == ["P01", "P02"]
+        assert groups["G-1"].layout.model_dump() == {
+            "columns": 2,
+            "items": [
+                {"panel_id": "P01", "row": 1, "column": 2},
+                {"panel_id": "P02", "row": 2, "column": 1},
+            ],
+        }
         assert groups["G-2"].name == "Group 2"
         assert groups["G-2"].member_ids == ["P03"]
     

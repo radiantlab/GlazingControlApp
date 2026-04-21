@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react"
 import { api } from "./api";
-import { Panel, Group, AuditLogEntry } from "./types"
+import { Panel, Group, GroupLayout, AuditLogEntry } from "./types"
 import { mockApi } from "./mockData";
 import RoomGrid from "./components/RoomGrid";
-import RoomGridCompact from "./components/RoomGridCompact";
+import GroupLayoutView from "./components/GroupLayoutView";
 import SidePanel from "./components/SidePanel";
 import ActiveControllersBar from "./components/ActiveControllersBar";
 import { controlManager, type ControlSource } from "./utils/controlManager";
@@ -168,6 +168,7 @@ export default function AppHMI() {
     const { showToast } = useToast();
     const [groupId, setGroupId] = useState<string>("");
     const [groupLevel, setGroupLevel] = useState<number>(50);
+    const [controlViewMode, setControlViewMode] = useState<"flat" | "grouped">("flat");
     const [logsPanelOpen, setLogsPanelOpen] = useState<boolean>(false);
     const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
     const [logsLoading, setLogsLoading] = useState<boolean>(false);
@@ -195,10 +196,7 @@ export default function AppHMI() {
             setSensors(s);
             setLatestMetrics(m);
 
-            // set default group only once, without stomping user choice
-            if (g.length) {
-                setGroupId(prev => prev || g[0].id);
-            }
+            setGroupId(prev => (g.some(group => group.id === prev) ? prev : (g[0]?.id || "")));
 
             setHealth(`${h.status} • ${h.mode}`);
             setUsingMock(false);
@@ -211,9 +209,7 @@ export default function AppHMI() {
                 setSensors([]);
                 setLatestMetrics([]);
 
-                if (g.length) {
-                    setGroupId(prev => prev || g[0].id);
-                }
+                setGroupId(prev => (g.some(group => group.id === prev) ? prev : (g[0]?.id || "")));
 
                 setHealth(`${h.status} • ${h.mode} (mock)`);
                 setUsingMock(true);
@@ -352,13 +348,12 @@ export default function AppHMI() {
         }
     }
 
-    async function updateGroup(groupId: string, name: string, memberIds: string[]) {
+    async function updateGroup(groupId: string, name: string, memberIds: string[], layout: GroupLayout | null) {
         try {
             if (usingMock) {
-                // simple mock behavior  update in mockApi if you want
-                await mockApi.createGroup(name, memberIds);
+                await mockApi.updateGroup(groupId, name, memberIds, layout);
             } else {
-                await api.updateGroup(groupId, name, memberIds);
+                await api.updateGroup(groupId, name, memberIds, layout);
             }
             await refresh();
             showToast(`Group "${name}" updated`, "success");
@@ -377,8 +372,7 @@ export default function AppHMI() {
 
         try {
             if (usingMock) {
-                // remove from mockGroups and mockPanelState manually if you want
-                await api.deleteGroup(groupId); // or make a mockApi.deleteGroup
+                await mockApi.deleteGroup(groupId);
             } else {
                 await api.deleteGroup(groupId);
             }
@@ -392,12 +386,12 @@ export default function AppHMI() {
     }
 
 
-    async function createGroup(name: string, memberIds: string[]) {
+    async function createGroup(name: string, memberIds: string[], layout: GroupLayout | null) {
         try {
             if (usingMock) {
-                await mockApi.createGroup(name, memberIds);
+                await mockApi.createGroup(name, memberIds, layout);
             } else {
-                await api.createGroup(name, memberIds);
+                await api.createGroup(name, memberIds, layout);
             }
             await refresh();
             showToast(`Group "${name}" created successfully`, "success");
@@ -586,7 +580,7 @@ export default function AppHMI() {
                 </div>
             </header>
 
-            <main className={`hmi-main ${sidePanelOpen ? 'with-side-panel' : ''}`}>
+            <main className="hmi-main">
                 <div className="hmi-main-tabs">
                     <button
                         className={`hmi-main-tab ${mainTab === "control" ? "active" : ""}`}
@@ -618,9 +612,9 @@ export default function AppHMI() {
 
                                 <select
                                     id="hmi-group-select"
+                                    className="hmi-control-select hmi-group-select"
                                     value={groupId}
                                     onChange={e => setGroupId(e.target.value)}
-                                    style={{ padding: '4px 8px' }}
                                 >
                                     <option value="">Select a group</option>
                                     {groups.map(g => (
@@ -636,26 +630,52 @@ export default function AppHMI() {
                                     max={100}
                                     value={groupLevel}
                                     onChange={e => setGroupLevel(Math.max(0, Math.min(100, Number(e.target.value))))}
-                                    style={{ width: 80, padding: '4px 8px' }}
+                                    className="hmi-control-input hmi-group-level-input"
                                 />
 
                                 <button
-                                    className="hmi-manage-btn"
+                                    className="hmi-manage-btn hmi-control-action-btn"
                                     onClick={() => groupId && setGroup(groupId, groupLevel)}
                                     disabled={!groupId || busy === groupId}
                                     title="Set selected group level"
-                                    style={{ padding: '4px 10px' }}
                                 >
-                                    {busy === groupId ? 'Setting…' : 'Tint Group'}
+                                    {busy === groupId ? 'Setting...' : 'Tint Group'}
                                 </button>
 
 
                             </div>
                         </div>
 
-                        {/* room grids */}
-                        {sidePanelOpen ? (
-                            <RoomGridCompact panels={panels} transitioning={transitioning} panelControls={controlState.panelControls} />
+                        <div className="room-section control-view-card">
+                            <div className="room-header">
+                                <h2 className="room-title">Panel organization</h2>
+                            </div>
+                            <div className="control-view-toggle" role="tablist" aria-label="Panel organization view">
+                                <button
+                                    className={`control-view-toggle-btn ${controlViewMode === "flat" ? "active" : ""}`}
+                                    onClick={() => setControlViewMode("flat")}
+                                >
+                                    List View
+                                </button>
+                                <button
+                                    className={`control-view-toggle-btn ${controlViewMode === "grouped" ? "active" : ""}`}
+                                    onClick={() => setControlViewMode("grouped")}
+                                >
+                                    Group View
+                                </button>
+                            </div>
+                        </div>
+
+                        {controlViewMode === "grouped" ? (
+                            <GroupLayoutView
+                                panels={panels}
+                                groups={groupId ? groups.filter(group => group.id === groupId) : []}
+                                onSet={setPanel}
+                                busyId={busy}
+                                transitioning={transitioning}
+                                panelControls={controlState.panelControls}
+                                emptyMessage={groupId ? "The selected group has no windows to display." : "Select a group in Group control to display its 2D layout."}
+                            />
                         ) : (
                             <RoomGrid
                                 panels={panels}
@@ -732,10 +752,33 @@ export default function AppHMI() {
                         || availableGraphMetrics[0]
                         || "";
                     const sensorKindLabel = SENSOR_KIND_LABELS[sensor.kind] || sensor.kind;
+                    const graphMetricSelector = availableGraphMetrics.length > 1 ? (
+                        <div className="sensor-graph-controls-inline">
+                            <label className="hmi-status-label" htmlFor={`sensor-graph-metric-${sensor.id}`}>Graph metric</label>
+                            <select
+                                id={`sensor-graph-metric-${sensor.id}`}
+                                className="sensor-graph-select"
+                                value={selectedGraphMetric}
+                                onChange={(e) => {
+                                    const nextMetric = e.target.value;
+                                    setGraphMetricBySensor(prev => ({ ...prev, [sensor.id]: nextMetric }));
+                                }}
+                            >
+                                {availableGraphMetrics.map(metric => (
+                                    <option key={`${sensor.id}-graph-${metric}`} value={metric}>
+                                        {METRIC_LABELS[metric] || metric}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : null;
 
                     return (
-                        <React.Fragment key={sensor.id}>
-                            <div className="room-section" style={{ marginTop: 20 }}>
+                        <div
+                            key={sensor.id}
+                            className={`sensor-dashboard-row ${selectedGraphMetric ? "" : "metrics-only"}`}
+                        >
+                            <div className="room-section sensor-metrics-panel">
                                 <div className="room-header">
                                     <h2 className="room-title">{`${sensor.label || sensor.id} - Latest metrics`}</h2>
                                     <div className="room-stats">
@@ -744,16 +787,16 @@ export default function AppHMI() {
                                         <span style={{ marginLeft: 8 }}>{orderedMetricNames.length} metrics</span>
                                     </div>
                                 </div>
-                                <div style={{ padding: "12px 16px", display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
+                                <div className="sensor-metrics-grid">
                                     {orderedMetricNames.length === 0 && (
-                                        <div style={{ gridColumn: "1 / span 2", color: "#9ca3af" }}>
+                                        <div className="sensor-metrics-empty">
                                             Waiting for sensor data...
                                         </div>
                                     )}
                                     {orderedMetricNames.map(metric => (
                                         <React.Fragment key={`${sensor.id}-${metric}`}>
-                                            <div style={{ color: "#e5e7eb" }}>{METRIC_LABELS[metric] || metric}</div>
-                                            <div style={{ color: "#f9fafb", fontVariantNumeric: "tabular-nums" }}>
+                                            <div className="sensor-metric-name">{METRIC_LABELS[metric] || metric}</div>
+                                            <div className="sensor-metric-value">
                                                 {formatMetricValue(metric, metricMap.get(metric) as number)}
                                             </div>
                                         </React.Fragment>
@@ -761,42 +804,18 @@ export default function AppHMI() {
                                 </div>
                             </div>
 
-                            {selectedGraphMetric && availableGraphMetrics.length > 1 && (
-                                <>
-                                    <div className="sensor-graph-controls">
-                                        <label className="hmi-status-label">Graph metric</label>
-                                        <select
-                                            className="sensor-graph-select"
-                                            value={selectedGraphMetric}
-                                            onChange={(e) => {
-                                                const nextMetric = e.target.value;
-                                                setGraphMetricBySensor(prev => ({ ...prev, [sensor.id]: nextMetric }));
-                                            }}
-                                        >
-                                            {availableGraphMetrics.map(metric => (
-                                                <option key={`${sensor.id}-graph-${metric}`} value={metric}>
-                                                    {METRIC_LABELS[metric] || metric}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <LiveGraph
-                                        sensorId={sensor.id}
-                                        metric={selectedGraphMetric}
-                                        label={`${sensor.label || sensor.id} - ${METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric}`}
-                                        color={sensorGraphColor(sensor.kind)}
-                                    />
-                                </>
-                            )}
-                            {selectedGraphMetric && availableGraphMetrics.length <= 1 && (
+                            {selectedGraphMetric && (
                                 <LiveGraph
                                     sensorId={sensor.id}
                                     metric={selectedGraphMetric}
                                     label={`${sensor.label || sensor.id} - ${METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric}`}
                                     color={sensorGraphColor(sensor.kind)}
+                                    height={360}
+                                    toolbar={graphMetricSelector}
+                                    className="sensor-graph-panel"
                                 />
                             )}
-                        </React.Fragment>
+                        </div>
                     );
                 })}
 

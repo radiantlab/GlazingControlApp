@@ -1,4 +1,4 @@
-import { Panel, Group, AuditLogEntry, SortField, SortDir } from "./types";
+import { Panel, Group, GroupLayout, AuditLogEntry, SortField, SortDir } from "./types";
 
 /** Empty default: same-origin when served behind Docker/nginx; set VITE_API_BASE for local Vite dev. */
 export const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
@@ -26,15 +26,15 @@ export const api = {
     health: () => http<{ status: string; mode: string }>("/health"),
     panels: () => http<Panel[]>("/panels"),
     groups: () => http<Group[]>("/groups"),
-    createGroup: (name: string, memberIds: string[]) =>
+    createGroup: (name: string, memberIds: string[], layout?: GroupLayout | null) =>
         http<Group>("/groups", {
             method: "POST",
-            body: JSON.stringify({ name, member_ids: memberIds })
+            body: JSON.stringify({ name, member_ids: memberIds, layout: layout ?? null })
         }),
-    updateGroup: (groupId: string, name: string, memberIds: string[]) =>
+    updateGroup: (groupId: string, name: string, memberIds: string[], layout?: GroupLayout | null) =>
         http<Group>(`/groups/${groupId}`, {
             method: "PATCH",
-            body: JSON.stringify({ name, member_ids: memberIds })
+            body: JSON.stringify({ name, member_ids: memberIds, layout: layout ?? null })
         }),
     deleteGroup: (groupId: string) =>
         http<unknown>(`/groups/${groupId}`, {
