@@ -2,7 +2,8 @@ from __future__ import annotations
 import time
 import threading
 from typing import Dict, List
-from .models import Panel, Group, TintLevel, Snapshot
+from .group_layout import normalize_group_layout
+from .models import Panel, Group, GroupLayout, TintLevel, Snapshot
 from .state import load_snapshot, save_snapshot
 
 class Simulator:
@@ -85,7 +86,7 @@ class Simulator:
         # do not join threads  let the API return quickly
         return applied
 
-    def create_group(self, name: str, member_ids: List[str]) -> Group:
+    def create_group(self, name: str, member_ids: List[str], layout: GroupLayout | None = None) -> Group:
         # generate a simple id like G-1 G-2 ...
         existing_ids = set(self.snap.groups.keys())
         n = 1
@@ -95,18 +96,19 @@ class Simulator:
 
         # filter to only valid panel ids
         valid_ids = [pid for pid in member_ids if pid in self.snap.panels]
+        normalized_layout = normalize_group_layout(valid_ids, layout)
 
-        group = Group(id=gid, name=name, member_ids=valid_ids)
+        group = Group(id=gid, name=name, member_ids=valid_ids, layout=normalized_layout)
         self.snap.groups[gid] = group
 
         save_snapshot(self.snap)
         return group
-
     def update_group(
         self,
         group_id: str,
         name: str | None,
         member_ids: List[str] | None,
+        layout: GroupLayout | None = None,
     ) -> Group:
         if group_id not in self.snap.groups:
             raise KeyError(group_id)
@@ -120,6 +122,9 @@ class Simulator:
             # normalize to only existing panels
             new_ids = [pid for pid in member_ids if pid in self.snap.panels]
             g.member_ids = list(new_ids)
+            g.layout = normalize_group_layout(g.member_ids, layout or g.layout)
+        elif layout is not None:
+            g.layout = normalize_group_layout(g.member_ids, layout)
 
         save_snapshot(self.snap)
         return g

@@ -1,4 +1,5 @@
-import {Panel, Group} from "./types"
+import { Panel, Group, GroupLayout } from "./types"
+import { normalizeGroupLayout } from "./utils/groupLayout";
 
 
 // Mock panels data - 18 wall panels (P01-P18) and 2 skylights (SK1, SK2) = 20 total
@@ -34,12 +35,17 @@ export const mockGroups: Group[] = [
     {
         id: "G-facade",
         name: "Facade",
-        member_ids: Array.from({ length: 18 }, (_, i) => `P${String(i + 1).padStart(2, '0')}`)
+        member_ids: Array.from({ length: 18 }, (_, i) => `P${String(i + 1).padStart(2, '0')}`),
+        layout: normalizeGroupLayout(
+            Array.from({ length: 18 }, (_, i) => `P${String(i + 1).padStart(2, '0')}`),
+            { columns: 6, items: [] },
+        ),
     },
     {
         id: "G-skylights",
         name: "Skylights",
-        member_ids: ["SK1", "SK2"]
+        member_ids: ["SK1", "SK2"],
+        layout: normalizeGroupLayout(["SK1", "SK2"], { columns: 2, items: [] }),
     }
 ];
 
@@ -60,7 +66,7 @@ export const mockApi = {
         return [...mockGroups];
     },
     
-    async createGroup(name: string, memberIds: string[]): Promise<Group> {
+    async createGroup(name: string, memberIds: string[], layout?: GroupLayout | null): Promise<Group> {
         await delay(300);
         // Generate unique group ID
         const existingIds = new Set(mockGroups.map(g => g.id));
@@ -79,7 +85,8 @@ export const mockApi = {
         const newGroup: Group = {
             id: groupId,
             name,
-            member_ids: validPanelIds
+            member_ids: validPanelIds,
+            layout: normalizeGroupLayout(validPanelIds, layout ?? null),
         };
         mockGroups.push(newGroup);
         return newGroup;
@@ -160,7 +167,7 @@ export const mockApi = {
     },
 
 
-    async updateGroup(id: string, name?: string, memberIds?: string[]): Promise<Group> {
+    async updateGroup(id: string, name?: string, memberIds?: string[], layout?: GroupLayout | null): Promise<Group> {
         await delay(300);
         const g = mockGroups.find(gr => gr.id === id);
         if (!g) throw new Error("group not found");
@@ -170,6 +177,7 @@ export const mockApi = {
             const valid = memberIds.filter(pid => mockPanelState.some(p => p.id === pid));
             g.member_ids = [...valid];
         }
+        g.layout = normalizeGroupLayout(g.member_ids, layout ?? g.layout ?? null);
         return { ...g };
     },
 

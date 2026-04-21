@@ -5,6 +5,7 @@ import time
 import sqlite3
 from contextlib import contextmanager
 from typing import Dict, List, Tuple, Any, Iterator, Optional, Callable
+from .group_layout import normalize_group_layout
 from .models import Panel, Group, Snapshot, AuditEntry
 from .config import PANELS_FILE, PANELS_CONFIG_FILE, PANELS_STATE_FILE, AUDIT_DB_FILE
 
@@ -143,13 +144,14 @@ def _migrate_from_legacy_panels_json() -> None:
                 if isinstance(group_data, dict):
                     conn.execute(
                         """
-                        INSERT INTO groups (id, name, member_ids)
-                        VALUES (?, ?, ?)
+                        INSERT INTO groups (id, name, member_ids, layout_json)
+                        VALUES (?, ?, ?, ?)
                         """,
                         (
                             group_id,
                             group_data.get("name", f"Group {group_id}"),
                             json.dumps(group_data.get("member_ids", [])),
+                            json.dumps(group_data.get("layout")) if group_data.get("layout") is not None else None,
                         ),
                     )
 
@@ -214,19 +216,25 @@ def load_groups() -> Dict[str, Group]:
     _ensure_groups_db()  # Only ensure table exists, no migration
 
     with _db_connection() as conn:
-        rows = conn.execute("SELECT id, name, member_ids FROM groups").fetchall()
+        rows = conn.execute("SELECT id, name, member_ids, layout_json FROM groups").fetchall()
         
         groups = {}
         for row in rows:
-            group_id, name, member_ids_json = row
+            group_id, name, member_ids_json, layout_json = row
             try:
                 member_ids = json.loads(member_ids_json) if member_ids_json else []
             except Exception:
                 member_ids = []
+            try:
+                layout_data = json.loads(layout_json) if layout_json else None
+                layout = normalize_group_layout(member_ids, layout_data) if layout_data else None
+            except Exception:
+                layout = None
             groups[group_id] = Group(
                 id=group_id,
                 name=name,
                 member_ids=member_ids,
+                layout=layout,
             )
         
         return groups
@@ -243,12 +251,18 @@ def save_groups(groups: Dict[str, Group]) -> None:
         
         # Insert all groups
         for group_id, group in groups.items():
+            layout = normalize_group_layout(group.member_ids, group.layout)
             conn.execute(
                 """
-                INSERT INTO groups (id, name, member_ids)
-                VALUES (?, ?, ?)
+                INSERT INTO groups (id, name, member_ids, layout_json)
+                VALUES (?, ?, ?, ?)
                 """,
-                (group.id, group.name, json.dumps(group.member_ids)),
+                (
+                    group.id,
+                    group.name,
+                    json.dumps(group.member_ids),
+                    json.dumps(layout.model_dump(exclude_none=True)) if layout is not None else None,
+                ),
             )
 
 
@@ -382,10 +396,14 @@ def _ensure_groups_db() -> None:
             CREATE TABLE IF NOT EXISTS groups (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
-                member_ids TEXT NOT NULL
+                member_ids TEXT NOT NULL,
+                layout_json TEXT
             )
             """
         )
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(groups)").fetchall()}
+        if "layout_json" not in columns:
+            conn.execute("ALTER TABLE groups ADD COLUMN layout_json TEXT")
 
 
 def _ensure_routines_db() -> None:
@@ -763,13 +781,14 @@ def _migrate_groups_json_to_db() -> None:
             if isinstance(group_data, dict):
                 conn.execute(
                     """
-                    INSERT INTO groups (id, name, member_ids)
-                    VALUES (?, ?, ?)
+                    INSERT INTO groups (id, name, member_ids, layout_json)
+                    VALUES (?, ?, ?, ?)
                     """,
                     (
                         group_id,
                         group_data.get("name", f"Group {group_id}"),
                         json.dumps(group_data.get("member_ids", [])),
+                        json.dumps(group_data.get("layout")) if group_data.get("layout") is not None else None,
                     ),
                 )
         conn.commit()
