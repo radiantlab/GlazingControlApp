@@ -386,10 +386,11 @@ export default function AppHMI() {
                             Manage
                         </button>
 
-                        <Link to="/docs">
+                        <Link to="/docs"
+                        >
                             <button
-                                className="hmi-docs-btn"
-                                title="View Docs"
+                            className="hmi-manage-btn"
+                            title="View Docs"
                             >
                                 Docs
                             </button>
