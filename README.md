@@ -63,7 +63,6 @@ This project was built by Team 76 for the OSU Radiant Lab.
 - **Carlos Vasquez** - [vasqueca@oregonstate.edu](mailto:vasqueca@oregonstate.edu)
 - **Ian McKee** - [mckeei@oregonstate.edu](mailto:mckeei@oregonstate.edu)
 - **Tyler Vincent** - [vincenty@oregonstate.edu](mailto:vincenty@oregonstate.edu)
-- **Alexander Ulbrich** - [alexander.ulbrich@oregonstate.edu](mailto:alexander.ulbrich@oregonstate.edu)
 
 **Feedback & Contributions:**
 Please open an issue on GitHub or reach out to the team directly via email. For internal team communication, refer to Discord channel Team 76.
