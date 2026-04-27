@@ -8,21 +8,21 @@
 
 ## Overview
 
-The **Glazing Control App** is the custom software backbone for the **[Daylighting Innovation and Analysis Lab (DIAL)](https://www.clotildepierson.com/facilities/dial)** at Oregon State University. DIAL is a state-of-the-art, off-grid capable mobile research facility designed to study the impact of daylighting on human health and productivity.
+The **Glazing Control App** is the custom software backbone for the **[Daylighting Innovation and Analysis Lab (DIAL)](https://www.clotildepierson.com/facilities/dial)** at Oregon State University. DIAL is an off-the-grid mobile university research facility designed to study the impact of daylighting on human health and productivity.
 
-This app provides researchers and facility managers with a local-first system to intuitively manage, schedule, and monitor the facility's Halio electrochromic smart-glazing.
+This app provides researchers and facility managers with a local-first system to intuitively manage, schedule, and monitor the facility's Halio electrochromic glazing.
 
 **The Problem:** Architectural researchers in DIAL need a reliable, study-friendly way to control two symmetrical test rooms (each with 9 windows and 1 skylight) without relying on external internet connections, especially when the mobile lab is deployed in remote or off-grid locations.
 
-**The Solution:** By combining live status monitoring with an automated scheduling engine, this system provides precise environmental control—enabling seamless daylighting research, minimizing glare, and enhancing occupant comfort, all while operating entirely locally.
+**The Solution:** By combining live status monitoring with an automated scheduling engine, the local software system provides precise environmental control.
 
 ## Key Features
 
-- **Local-First Reliability:** Operates entirely on the local trailer network, ensuring 100% uptime and responsiveness without depending on external internet access—perfect for off-grid deployments.
+- **Local-First Reliability:** Operates entirely on the local trailer network, provides responsiveness without depending on external internet access.
 - **Smart Scheduling Engine:** Create study-friendly, automated routines that adjust pane tinting based on time of day, minimizing manual intervention during research experiments.
 - **Live System Status:** Get real-time monitoring and visualization of all 18 Halio facade panels and 2 skylights from a single, unified dashboard.
-- **Sensor Integration Ready:** Built to complement DIAL's advanced suite of indoor and rooftop environmental sensors (including JETI spectroradiometers and EKO pyranometers).
-- **Safe Manual Override:** Need an immediate change? Easily take direct control of individual panels with our safety-first manual override protocols.
+- **Sensor Integration Ready:** Built to analyze and manage DIAL's advanced setup of indoor and rooftop environmental sensors (including JETI spectroradiometers and EKO pyranometers).
+- **Safe Manual Override:** The safety-first manual override protocols allow the researchers to take direct control of individual panels.
 
 ![Sensor Integration](docs/images/sensors.png)
 *DIAL's advanced sensor suite provides real-time environmental data to the control system.*
@@ -33,7 +33,7 @@ To run the local control service and researcher UI on your machine:
 
 **Prerequisites:**
 - [Node.js](https://nodejs.org/) (v18+)
-- [Docker](https://www.docker.com/) (Optional, for full stack environment)
+- [Docker](https://www.docker.com/) (for full stack environment, optional)
 
 **Getting Started:**
 
@@ -48,7 +48,7 @@ To run the local control service and researcher UI on your machine:
    ```bash
    npm run watch -- both
    ```
-   *(Alternatively, run `npm run watch -- frontend` or `npm run watch -- backend` to run them individually).*
+   *(To run separately, use `npm run watch -- frontend` or `npm run watch -- backend` on each).*
 
 3. **Access the Application:**
    Open your browser and navigate to `http://localhost:3000` (or the port specified in your console output) to view the researcher UI.
