@@ -27,7 +27,8 @@ Use this at the trailer/lab PC after the hardware is physically installed.
 1. Set `t10a[].port` to the actual T-10A COM port.
 2. Set `t10a[].heads[].head_no` to the actual physical T-10A adaptor/head ID.
 3. Set `jeti_spectraval[].transport` to either `file` or `serial_scpi`.
-4. If JETI uses file mode, set `jeti_spectraval[].output_path` to the actual live `.cap` file or folder.
+4. If JETI uses file mode, set `jeti_spectraval[].output_path` to the actual live `.cap` file.
+   **REQUIREMENT**: When configuring multiple JETI sensors (Spectraval or Specbos) in file mode, you MUST configure the Jeti software to export each sensor's data to a distinct file name (e.g., `spectraval_1.cap`, `specbos.cap`). Do not point multiple sensors to the same file, as this will cause data collisions.
 5. If JETI uses serial mode, set `jeti_spectraval[].port` to the JETI COM port.
 6. If JETI uses serial mode, set `jeti_spectraval[].baudrate`:
    - `921600` for `spectraval 1511`

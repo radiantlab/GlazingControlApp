@@ -77,16 +77,40 @@
   ],
   "jeti_spectraval": [
     {
-      "sensor_id": "JETI-00",
-      "device_id": "JETI",
+      "sensor_id": "SPECTRAVAL-1",
+      "device_id": "JETI-SV-1",
       "transport": "file",
       "template_path": "data/251118_Jeti_Spectraval_Data.cap",
-      "output_path": "data/jeti_sim_output",
+      "output_path": "data/spectraval_1.cap",
       "watch_interval_s": 1,
       "interval_s": 5,
       "loop": true,
-      "label": "Jeti Spectraval",
-      "location": null
+      "label": "Spectraval #1",
+      "location": "Inside"
+    },
+    {
+      "sensor_id": "SPECTRAVAL-2",
+      "device_id": "JETI-SV-2",
+      "transport": "file",
+      "template_path": "data/251118_Jeti_Spectraval_Data.cap",
+      "output_path": "data/spectraval_2.cap",
+      "watch_interval_s": 1,
+      "interval_s": 5,
+      "loop": true,
+      "label": "Spectraval #2",
+      "location": "Outside"
+    },
+    {
+      "sensor_id": "SPECBOS-1",
+      "device_id": "JETI-SB-1",
+      "transport": "file",
+      "template_path": "data/251118_Jeti_Spectraval_Data.cap",
+      "output_path": "data/specbos.cap",
+      "watch_interval_s": 1,
+      "interval_s": 5,
+      "loop": true,
+      "label": "Specbos 1211",
+      "location": "Reference"
     }
   ],
   "eko_ms90_plus": [
