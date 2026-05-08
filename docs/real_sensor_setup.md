@@ -8,7 +8,7 @@ The current real-mode implementation supports the hardware shown in the current 
 - JETI `spectraval 1511` and `specbos 1211-2` over either:
   - file-based `.cap` ingestion from the PC measurement workflow, or
   - direct SPECFIRM serial/virtual COM
-- EKO `MS-90+` system through the `C-BOX` Modbus RTU output
+- EKO `MS-90+` system through the `C-BOX` Ethernet Modbus TCP interface
 
 ## 1) Topology From The Site Schematic
 
@@ -25,15 +25,16 @@ The latest site diagram shows three distinct PC-facing paths:
 - `EKO MS-90+`:
   - the diagram shows a solar-station assembly with `MS-80S`, `MS-90+ DNI`, `C-BOX`, `DAC`, and power supply
   - the MS-90 DNI sensor and optional MS-80S feed the `C-BOX`
-  - the PC talks only to the `C-BOX` output side over RS-485 Modbus RTU
-  - the app does not configure a separate DAC interface; the backend-facing link is still the `C-BOX` output path
+  - the PC talks to the `C-BOX` over Ethernet using Modbus TCP
+  - the app does not use the old USB-to-RS485 / COM-port EKO path anymore
+  - the app does not configure a separate DAC interface; the backend-facing link is the `C-BOX` Ethernet interface
 
 That matches the backend architecture now:
 
 - `T10AClient` polls the T-10A serial link and emits `lux`
 - `JetiSpecfirmClient` polls SPECFIRM directly and now parses wavelength/value ASCII pairs correctly
 - `JetiSpectravalFileWatcher` ingests file-based `.cap` output and now handles the watched file/folder appearing after the service starts
-- `EkoCBoxModbusClient` polls C-BOX holding registers for irradiance, sun position, GPS, and temperature
+- `EkoCBoxModbusTcpClient` polls C-BOX holding registers for irradiance, sun position, GPS, and temperature
 
 ## 2) Before You Go On Site
 
@@ -43,9 +44,9 @@ Bring or confirm access to:
 - all required USB cables for each `T-10A` body and each `JETI` instrument
 - `T-A20`, `T-A21`, and `AC-A412` if the T-10A heads are being used in multi-point mode
 - straight CAT5 patch cables for T-10A head/adaptor runs
-- a USB-to-RS485 adapter for the EKO `C-BOX`
-- a stable `12 VDC` supply for the `C-BOX` output cable
-- a `120 ohm` termination resistor if the RS-485 run needs end termination
+- Ethernet access from the local PC/network to the EKO `C-BOX`
+- the C-BOX IP address, usually `192.168.2.20` on the site network
+- confirmation that the C-BOX web UI is reachable from the site computer
 - JETI Windows drivers and either:
   - the PC software that will write the `.cap` output path, or
   - SPECFIRM access for direct serial polling
@@ -171,45 +172,55 @@ Use this when you want the backend to talk to the JETI device directly instead o
 
 ## 6) EKO MS-90+ / C-BOX Setup
 
-The app supports one real connection path for EKO: the sensors wire into the `C-BOX`, and the PC talks only to the `C-BOX` output side over RS-485 through a USB adapter.
+The app supports one real connection path for EKO: the sensors wire into the `C-BOX`, and the PC talks to the `C-BOX` over Ethernet using Modbus TCP. The old USB-to-RS485 / COM-port method is not used by the app.
 
-### Method A: MS-90 plus optional MS-80S into C-BOX, then C-BOX to PC
+### Method A: MS-90 plus optional MS-80S into C-BOX, then C-BOX Ethernet to PC/network
 
-1. Mount the `C-BOX` where the EKO sensors can reach its terminals and where the PC-side output cable can reach the USB-to-RS485 adapter.
-2. Wire the `MS-90` sensor into the `C-BOX` sensor-side terminals:
-   - terminal `11`: brown / DNI `+`
-   - terminal `12`: white / DNI `-`
-   - terminal `15`: blue / `12 VDC out`
-   - terminal `16`: black / `0 VDC out`
-3. If `MS-80S` is installed, wire it into the `C-BOX` sensor-side terminals:
-   - terminal `3`: white / `0 V`
-   - terminal `4`: brown / `12 VDC out`
-   - terminal `5`: black / Modbus `B`
-   - terminal `6`: blue / Modbus `A`
-   - terminal `7`: grey / Modbus ground
-4. Wire the `C-BOX` output cable to its power supply and to the USB-to-RS485 adapter:
-   - `Brown` -> `+12 V`
-   - `White` -> `0 V / ground`
-   - `Blue` -> Modbus `A / +`
-   - `Black` -> Modbus `B / -`
-   - `Grey` -> not connected
-5. Use a `0.5 A` fuse on the `12 VDC` supply line.
-6. If the RS-485 run is at the end of the bus and needs termination, add a `120 ohm` resistor across `A/B`.
-7. Plug the USB-to-RS485 adapter into the local PC.
-8. Open Device Manager and record the COM port for that USB-to-RS485 adapter.
-9. Update `svc/data/sensors_config.json`:
-   - set `eko_ms90_plus[].port` to the adapter COM port
-   - confirm `baudrate` is usually `9600`
+1. Confirm the EKO sensors are wired into the `C-BOX` and powered according to the EKO site wiring.
+2. Connect the `C-BOX` Ethernet port to the same local network as the site computer.
+3. On the site computer, open the C-BOX web UI in a browser:
+   - default/site example: `http://192.168.2.20/`
+   - use the actual C-BOX IP if it has been changed
+4. Confirm the web UI shows live EKO readings under the device page.
+5. Open `Modbus -> Setup` in the C-BOX web UI.
+6. Confirm `Modbus TCP Access` is enabled. The site screenshots show `Allow ModbusTCP access from any IP address`.
+7. Update `svc/data/sensors_config.json`:
+   - set `eko_ms90_plus[].host` to the C-BOX IP address
+   - set `eko_ms90_plus[].port` to `502`
    - confirm `slave_address` is usually `1`
+   - set `timeout_s` to `3.0` unless site testing needs a different value
    - leave `float_byte_order` at `ABCD` unless testing shows otherwise
-10. Start the backend in real mode.
-11. Confirm the EKO sensor appears in `GET /sensors`.
-12. Confirm `ghi_w_m2`, `dni_w_m2`, `dhi_w_m2`, and sun-position metrics appear in `GET /metrics/latest`.
+8. Start the backend in real mode.
+9. Confirm the EKO sensor appears in `GET /sensors`.
+10. Confirm `ghi_w_m2`, `dni_w_m2`, `dhi_w_m2`, and sun-position metrics appear in `GET /metrics/latest`.
+
+EKO config example:
+
+```json
+{
+  "eko_ms90_plus": [
+    {
+      "sensor_id": "EKO-00",
+      "device_id": "EKO-CBOX-01",
+      "host": "192.168.2.20",
+      "port": 502,
+      "slave_address": 1,
+      "float_byte_order": "ABCD",
+      "interval_s": 5,
+      "timeout_s": 3.0,
+      "label": "EKO MS-90+",
+      "location": "Roof"
+    }
+  ]
+}
+```
 
 ### EKO watch-outs
 
 - The PC does not connect directly to `MS-90` or `MS-80S`.
-- If there is no Modbus response, swap RS-485 `A/B` at the adapter.
+- Do not configure a COM port for EKO. `eko_ms90_plus[].port` is the TCP port, usually `502`.
+- If the C-BOX web UI is unreachable, fix local network/IP access before starting the backend.
+- If the web UI works but the backend logs Modbus read failures, confirm Modbus TCP access is enabled in the C-BOX UI and that firewalls allow TCP `502`.
 - If values are present but obviously wrong, try `float_byte_order` values in this order: `ABCD`, `CDAB`, `BADC`, `DCBA`.
 - `DHI` depends on the MS-90/MS-80S system being wired and operating correctly through the C-BOX.
 
