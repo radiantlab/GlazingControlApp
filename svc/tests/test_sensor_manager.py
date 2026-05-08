@@ -121,6 +121,32 @@ def test_manager_logs_missing_eko_host_in_real_mode(monkeypatch, caplog) -> None
     assert "missing 'host'" in caplog.text
 
 
+def test_manager_logs_invalid_eko_tcp_port_in_real_mode(monkeypatch, caplog) -> None:
+    _disable_sensor_db(monkeypatch)
+    monkeypatch.setattr(manager, "MODE", "real")
+    monkeypatch.setattr(
+        manager,
+        "_load_config",
+        lambda: {
+            "eko_ms90_plus": [
+                {
+                    "sensor_id": "EKO-00",
+                    "device_id": "EKO-CBOX-01",
+                    "host": "192.168.2.20",
+                    "port": "COM5",
+                }
+            ]
+        },
+    )
+
+    with caplog.at_level("WARNING"):
+        clients = manager._make_clients_from_config()
+
+    assert clients == []
+    assert "invalid Modbus TCP config" in caplog.text
+    assert "COM5" in caplog.text
+
+
 def test_real_mode_does_not_create_sim_clients(monkeypatch) -> None:
     _disable_sensor_db(monkeypatch)
     monkeypatch.setattr(manager, "MODE", "real")
@@ -235,3 +261,38 @@ def test_sim_mode_uses_simulated_sensors(monkeypatch) -> None:
     sim_sources = [client.source for client, _ in clients]
 
     assert sim_sources.count("sim") == 3
+
+
+def test_sim_mode_tolerates_legacy_eko_com_port_config(monkeypatch) -> None:
+    _disable_sensor_db(monkeypatch)
+    monkeypatch.setattr(manager, "MODE", "sim")
+    monkeypatch.setattr(
+        manager,
+        "_load_config",
+        lambda: {
+            "eko_ms90_plus": [
+                {
+                    "sensor_id": "EKO-00",
+                    "device_id": "EKO-CBOX-01",
+                    "port": "COM5",
+                    "slave_address": 1,
+                    "float_byte_order": "ABCD",
+                }
+            ]
+        },
+    )
+    monkeypatch.setattr(
+        manager,
+        "EkoCBoxModbusTcpClient",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("EKO real created in sim mode")),
+    )
+    monkeypatch.setattr(
+        manager,
+        "EkoMs90PlusSimClient",
+        lambda **kwargs: FakeClient(kwargs["device_id"], "sim"),
+    )
+
+    clients = manager._make_clients_from_config()
+
+    assert len(clients) == 1
+    assert clients[0][0].source == "sim"

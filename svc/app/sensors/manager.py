@@ -331,17 +331,38 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
         location = dev_cfg.get("location")
         interval_s = float(dev_cfg.get("interval_s", 5.0))
         host = str(dev_cfg.get("host") or "").strip()
-        tcp_port = int(dev_cfg.get("port", 502))
-        slave_address = int(dev_cfg.get("slave_address", 1))
-        timeout_s = float(dev_cfg.get("timeout_s", 3.0))
+        raw_tcp_port = dev_cfg.get("port", 502)
+        raw_slave_address = dev_cfg.get("slave_address", 1)
+        raw_timeout_s = dev_cfg.get("timeout_s", 3.0)
         float_byte_order = str(dev_cfg.get("float_byte_order", "ABCD"))
 
-        if use_real_eko and not host:
-            logger.warning(
-                "Skip EKO MS-90+ %s: missing 'host'; real mode requires the C-BOX IP address",
-                sensor_id,
-            )
-            continue
+        if use_real_eko:
+            if not host:
+                logger.warning(
+                    "Skip EKO MS-90+ %s: missing 'host'; real mode requires the C-BOX IP address",
+                    sensor_id,
+                )
+                continue
+
+            try:
+                tcp_port = int(raw_tcp_port)
+                slave_address = int(raw_slave_address)
+                timeout_s = float(raw_timeout_s)
+            except (TypeError, ValueError) as e:
+                logger.warning(
+                    "Skip EKO MS-90+ %s: invalid Modbus TCP config "
+                    "(port=%r, slave_address=%r, timeout_s=%r): %s",
+                    sensor_id,
+                    raw_tcp_port,
+                    raw_slave_address,
+                    raw_timeout_s,
+                    e,
+                )
+                continue
+        else:
+            tcp_port = raw_tcp_port
+            slave_address = raw_slave_address
+            timeout_s = raw_timeout_s
 
         try:
             register_sensor(
