@@ -7,13 +7,14 @@ Check installation
 git --version
 ```
 
-2. `Python 3.11 or newer`  
+2. `Python >=3.11,<3.14`  
 Get it from `https://python.org`  
 On Windows check `Add Python to PATH`  
 Check installation  
 ```bash
 python --version
 ```
+The backend declares this in `svc/pyproject.toml`. The repo-local `svc/.python-version` is for tools that read it.
 
 3. `UV` (Recommended package manager)  
 Get it from `https://github.com/astral-sh/uv`  
@@ -89,6 +90,19 @@ python main.py
 You should see Uvicorn running on port 8000
 
 Open the API docs in a browser at `http://127.0.0.1:8000/docs`
+
+### Start the backend in real mode on Windows PowerShell
+
+Use this on the site computer after `svc/data/sensors_config.json` has the real sensor values:
+
+```powershell
+cd svc
+$env:SVC_MODE = "real"
+uv sync
+uv run python main.py
+```
+
+For the EKO C-BOX, set `eko_ms90_plus[].host` to the C-BOX IP address, usually `192.168.2.20`, and `eko_ms90_plus[].port` to TCP port `502`. The app no longer uses a USB-to-RS485 adapter or COM port for EKO.
 
 ---
 
@@ -169,6 +183,17 @@ npm run dev
 Open the link shown by Vite usually `http://127.0.0.1:5173`  
 You should see the control interface
 
+## Frontend build and checks
+
+```bash
+cd web
+npm run typecheck
+npm test
+npm run build
+```
+
+Windows PowerShell uses the same commands.
+
 ---
 
 # Use the app
@@ -177,6 +202,36 @@ You should see the control interface
 2. Pick a group set a level press `Tint Group`  
 3. Move a slider on any panel and press `Apply`  
 4. Press `Refresh` in the header to reload state
+
+## Verify live sensors
+
+After the backend is running:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/sensors
+Invoke-RestMethod http://127.0.0.1:8000/metrics/latest
+```
+
+Then open the HMI and verify the sensor cards, live graphs, and `Logs -> Sensor log`.
+
+For EKO on site:
+
+1. Open the C-BOX web UI from the site computer, usually `http://192.168.2.20/`.
+2. Confirm the live readings page updates.
+3. Open `Modbus -> Setup`.
+4. Confirm Modbus TCP access is enabled.
+
+## Troubleshooting
+
+- `uv: command not found`: install uv, then open a new terminal and run `uv --version`.
+- Wrong Python version: install Python 3.11, 3.12, or 3.13 and run `uv python pin 3.13` from `svc` if needed.
+- Missing Python packages: run `cd svc` then `uv sync`. For pip/venv, rerun `pip install -r requirements.txt`.
+- `npm: command not found`: install Node.js LTS and open a new terminal.
+- Frontend dependency issues: run `cd web`, delete `node_modules` if needed, then `npm install`.
+- Backend port already in use: stop the other process using port `8000`, or run `uv run uvicorn main:app --host 0.0.0.0 --port 8001`.
+- C-BOX web UI unreachable: confirm the site computer is on the C-BOX network, verify the IP address, and check Ethernet cabling/firewall rules.
+- EKO Modbus read failures: confirm C-BOX Modbus TCP is enabled and TCP `502` is reachable.
+- `GET /sensors` is empty in real mode: check `SVC_MODE=real`, `SENSORS_CONFIG_FILE`, and required sensor config fields. Real mode does not create simulated sensors as fallback.
 
 ---
 

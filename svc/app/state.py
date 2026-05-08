@@ -530,6 +530,21 @@ def fetch_latest_readings() -> list[dict]:
         return [dict(row) for row in rows]
 
 
+def delete_sensor_readings_for_ids(sensor_ids: list[str]) -> None:
+    """Delete all readings for the provided sensor IDs."""
+    _ensure_sensor_db()
+    unique_ids = sorted(set(sensor_ids))
+    if not unique_ids:
+        return
+
+    placeholders = ",".join(["?"] * len(unique_ids))
+    with _db_connection() as conn:
+        conn.execute(
+            f"DELETE FROM sensor_readings WHERE sensor_id IN ({placeholders})",
+            tuple(unique_ids),
+        )
+
+
 def fetch_readings(
     sensor_id: str,
     metric: str,

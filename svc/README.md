@@ -10,7 +10,7 @@ What this gives you today
 
 ## Setup
 
-Python 3.11 or newer
+Python `>=3.11,<3.14` is expected. The repo includes `svc/.python-version` for local tooling.
 
 ### Using UV (Recommended)
 
@@ -109,7 +109,7 @@ The adapter automatically:
 | `SENSORS_CONFIG_FILE` | `svc/data/sensors_config.json` | Sensor runtime config. If you override it, prefer an absolute path. |
 | `SVC_ENABLE_T10A_IN_SIM` | `false` | Enable T-10A polling in sim mode |
 | `SVC_ENABLE_JETI_SERIAL_IN_SIM` | `false` | Enable JETI serial polling in sim mode |
-| `SVC_ENABLE_EKO_IN_SIM` | `false` | Enable EKO C-BOX polling in sim mode |
+| `SVC_ENABLE_EKO_IN_SIM` | `false` | Enable real EKO C-BOX Modbus TCP polling in sim mode |
 
 ### Sensor Integration (Real Mode)
 
@@ -119,7 +119,28 @@ The backend supports three real sensor paths via `svc/data/sensors_config.json`:
 - `jeti_spectraval`: one or more JETI devices (`spectraval 1511` or `specbos 1211-2`) via either
   - `transport: "file"` (watch a live `.cap` file or folder written by the PC measurement workflow), or
   - `transport: "serial_scpi"` (direct SPECFIRM serial)
-- `eko_ms90_plus`: EKO C-BOX over Modbus RTU (RS-485, default 9600, 8N1, slave 1)
+- `eko_ms90_plus`: EKO C-BOX over Ethernet Modbus TCP. The app does not use USB-to-RS485 for EKO anymore.
+
+EKO TCP config example:
+
+```json
+{
+  "eko_ms90_plus": [
+    {
+      "sensor_id": "EKO-00",
+      "device_id": "EKO-CBOX-01",
+      "host": "192.168.2.20",
+      "port": 502,
+      "slave_address": 1,
+      "float_byte_order": "ABCD",
+      "interval_s": 5,
+      "timeout_s": 3.0,
+      "label": "EKO MS-90+",
+      "location": "Roof"
+    }
+  ]
+}
+```
 
 See the sample config in [`svc/data/sensors_config.json`](./data/sensors_config.json) and
 the detailed runbook in [`docs/real_sensor_setup.md`](../docs/real_sensor_setup.md).
@@ -146,7 +167,29 @@ If you need to poll real serial devices while still in sim mode, set:
 
 - `SVC_ENABLE_T10A_IN_SIM=true`
 - `SVC_ENABLE_JETI_SERIAL_IN_SIM=true`
-- `SVC_ENABLE_EKO_IN_SIM=true`
+- `SVC_ENABLE_EKO_IN_SIM=true` for the real EKO Modbus TCP path
+
+In `SVC_MODE=real`, simulated sensor clients are never created. Missing, misconfigured, or unreachable real sensors are logged clearly and do not produce simulated readings.
+
+### Launching Real Mode On The Site Computer
+
+Windows PowerShell:
+
+```powershell
+cd svc
+$env:SVC_MODE = "real"
+uv sync
+uv run python main.py
+```
+
+Then verify:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/sensors
+Invoke-RestMethod http://127.0.0.1:8000/metrics/latest
+```
+
+For EKO, first verify the C-BOX web UI loads from the site computer, for example `http://192.168.2.20/` or the configured C-BOX IP. In the C-BOX UI, open `Modbus -> Setup` and confirm Modbus TCP access is enabled.
 
 ### Sensor Log APIs
 

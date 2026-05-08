@@ -24,8 +24,10 @@ This app provides researchers and facility managers with a local-first system to
 - **Sensor Integration Ready:** Built to analyze and manage DIAL's advanced setup of indoor and rooftop environmental sensors (including JETI spectroradiometers and EKO pyranometers).
 - **Safe Manual Override:** The safety-first manual override protocols allow the researchers to take direct control of individual panels.
 
-![Sensor Integration](docs/images/sensors.png)
-*DIAL's advanced sensor suite provides real-time environmental data to the control system.*
+For a clean machine setup, use [`DEV-SETUP.md`](./DEV-SETUP.md). The backend expects Python `>=3.11,<3.14`; the frontend uses Node.js/NPM. EKO site deployments now use the C-BOX Ethernet Modbus TCP interface (`host` plus TCP `port` 502) and no longer use USB-to-RS485 or a COM port for EKO.
+
+## Watch for errors
+Run the watcher from `root`, `svc`, or `web`:
 
 ## How to Try It
 
