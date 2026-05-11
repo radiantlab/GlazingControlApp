@@ -25,6 +25,7 @@ class CommandRequest(BaseModel):
     target_type: Literal["panel", "group"] = Field(description="Type of target to control")
     target_id: str = Field(description="Panel ID (e.g., P01) or Group ID (e.g., G-facade)")
     level: TintLevel = Field(description="Tint level to set (0-100)")
+    actor: str = Field(default="api", description="Actor initiating the command")
 
 
 class CommandResult(BaseModel):
@@ -76,3 +77,52 @@ class ErrorResponse(BaseModel):
     """Standard error response format."""
     detail: str = Field(description="Error message describing what went wrong")
 
+class SensorInfo(BaseModel):
+    id: str
+    kind: str
+    label: str
+    location: Optional[str] = None
+    config: Dict = Field(default_factory=dict)
+
+
+class SensorReadingResponse(BaseModel):
+    sensor_id: str
+    metric: str
+    value: float
+    ts: float
+
+
+class SensorLogEntry(BaseModel):
+    sensor_id: str
+    sensor_kind: Optional[str] = None
+    sensor_label: Optional[str] = None
+    metric: str
+    value: float
+    ts: float
+
+
+class RoutineRequest(BaseModel):
+    name: str = Field(description="Name of the routine")
+    code: str = Field(description="Python code to execute")
+    mode: Literal["once", "interval"] = Field(description="Execution mode")
+    interval_ms: Optional[int] = Field(default=None, description="Interval in milliseconds for interval mode")
+    run_at_ts: Optional[float] = Field(default=None, description="Unix timestamp to run the routine at")
+    indefinite: bool = Field(default=False, description="Whether an interval routine should run indefinitely")
+
+
+class RoutineStatusResponse(BaseModel):
+    id: str
+    name: str
+    code: str
+    mode: str
+    interval_ms: Optional[int]
+    run_at_ts: Optional[float]
+    indefinite: bool
+    status: Literal["idle", "scheduled", "running", "error", "done", "stopped"]
+    logs: List[str]
+    duration_ms: Optional[int]
+
+
+class SavedRoutine(BaseModel):
+    name: str = Field(description="Name of the saved routine")
+    code: str = Field(description="Python code")

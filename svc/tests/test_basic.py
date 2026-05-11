@@ -1,6 +1,10 @@
 import time
 import os
 from fastapi.testclient import TestClient
+
+# Force simulator mode for tests even if local svc/.env is set to real.
+os.environ["SVC_MODE"] = "sim"
+
 from main import app
 from app.state import reset_default_panel_timestamps, load_snapshot
 from app.routes import get_service

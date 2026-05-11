@@ -1,8 +1,7 @@
+import { Panel, Group, AuditLogEntry, SortField, SortDir } from "./types";
 
-import { Panel, Group, AuditLogEntry, SortField, SortDir} from "./types";
-
-const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
-
+/** Empty default: same-origin when served behind Docker/nginx; set VITE_API_BASE for local Vite dev. */
+export const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
 async function http<T>(path: string, options?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
         headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
@@ -23,7 +22,6 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
     }
     return (await res.json()) as T;
 }
-
 export const api = {
     health: () => http<{ status: string; mode: string }>("/health"),
     panels: () => http<Panel[]>("/panels"),
@@ -33,33 +31,27 @@ export const api = {
             method: "POST",
             body: JSON.stringify({ name, member_ids: memberIds })
         }),
-
     updateGroup: (groupId: string, name: string, memberIds: string[]) =>
         http<Group>(`/groups/${groupId}`, {
             method: "PATCH",
             body: JSON.stringify({ name, member_ids: memberIds })
         }),
-
     deleteGroup: (groupId: string) =>
         http<unknown>(`/groups/${groupId}`, {
             method: "DELETE"
         }),
-
-    setPanelLevel: (panelId: string, level: number) =>
+    setPanelLevel: (panelId: string, level: number, actor?: string) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
-            body: JSON.stringify({ target_type: "panel", target_id: panelId, level })
+            body: JSON.stringify({ target_type: "panel", target_id: panelId, level, ...(actor ? { actor } : {}) })
         }),
-
-    setGroupLevel: (groupId: string, level: number) =>
+    setGroupLevel: (groupId: string, level: number, actor?: string) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
-            body: JSON.stringify({ target_type: "group", target_id: groupId, level })
+            body: JSON.stringify({ target_type: "group", target_id: groupId, level, ...(actor ? { actor } : {}) })
         }),
-
     auditLogs: (limit = 500) =>
         http<AuditLogEntry[]>(`/logs/audit?limit=${encodeURIComponent(limit)}`),
-
     exportAuditLogs: async (
         limit = 10000,
         startDate?: string,
@@ -72,23 +64,15 @@ export const api = {
     ) => {
         const params = new URLSearchParams();
         params.append("limit", limit.toString());
-
-
-
         if (startDate) {
-            // Parse date string as local date (start of day in user's timezone), then convert to UTC
-            // This matches LogsPanel filtering logic to ensure export matches what users see in UI
             const [year, month, day] = startDate.split('-').map(Number);
             const date = new Date(year, month - 1, day, 0, 0, 0, 0);
             params.append("start_date", Math.floor(date.getTime() / 1000).toString());
         }
         if (endDate) {
-            // Parse date string as local date (end of day in user's timezone), then convert to UTC
-            // This matches LogsPanel filtering logic to ensure export matches what users see in UI
             const [year, month, day] = endDate.split('-').map(Number);
             const date = new Date(year, month - 1, day, 23, 59, 59, 999);
             const seconds = date.getTime() / 1000;
-            // Include fractional seconds to match component's end-of-day handling
             params.append("end_date", seconds.toString());
         }
         if (targetType && targetType !== "all") {
@@ -100,10 +84,9 @@ export const api = {
         if (resultFilter) {
             params.append("result_filter", resultFilter);
         }
-
         if (sortField) params.append("sort_field", sortField);
         if (sortDir) params.append("sort_dir", sortDir);
-        
+
         const res = await fetch(`${API_BASE}/logs/audit/export?${params.toString()}`, {
             headers: { "Content-Type": "application/json" }
         });
@@ -115,8 +98,6 @@ export const api = {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-
-        // Extract filename from Content-Disposition header if available
         const contentDisposition = res.headers.get("Content-Disposition");
         if (contentDisposition) {
             const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
@@ -128,13 +109,126 @@ export const api = {
         } else {
             a.download = `audit_logs_${new Date().toISOString().replace(/[:.]/g, "-")}_sorted_${sortField}_${sortDir}.csv`;
         }
-
-        //cleanup section
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-    }
+    },
+    getSensorLogs: (
+        limit = 500,
+        offset = 0,
+        sensorId?: string,
+        metric?: string,
+        tsFrom?: number,
+        tsTo?: number,
+        sortField: SensorSortField = "ts",
+        sortDir: SortDir = "desc",
+    ) => {
+        const params = new URLSearchParams();
+        params.append("limit", String(limit));
+        params.append("offset", String(offset));
+        params.append("sort_field", sortField);
+        params.append("sort_dir", sortDir);
+        if (sensorId) params.append("sensor_id", sensorId);
+        if (metric) params.append("metric", metric);
+        if (tsFrom != null) params.append("ts_from", String(tsFrom));
+        if (tsTo != null) params.append("ts_to", String(tsTo));
+        return http<SensorLogEntry[]>(`/logs/sensors?${params.toString()}`);
+    },
+    exportSensorLogs: async (
+        limit = 100000,
+        sensorId?: string,
+        metric?: string,
+        tsFrom?: number,
+        tsTo?: number,
+        sortField: SensorSortField = "ts",
+        sortDir: SortDir = "desc",
+    ) => {
+        const params = new URLSearchParams();
+        params.append("limit", String(limit));
+        params.append("sort_field", sortField);
+        params.append("sort_dir", sortDir);
+        if (sensorId) params.append("sensor_id", sensorId);
+        if (metric) params.append("metric", metric);
+        if (tsFrom != null) params.append("ts_from", String(tsFrom));
+        if (tsTo != null) params.append("ts_to", String(tsTo));
+
+        const res = await fetch(`${API_BASE}/logs/sensors/export?${params.toString()}`, {
+            headers: { "Content-Type": "application/json" }
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`${res.status} ${text}`);
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const contentDisposition = res.headers.get("Content-Disposition");
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+            if (filenameMatch) {
+                a.download = filenameMatch[1];
+            } else {
+                a.download = `sensor_logs_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+            }
+        } else {
+            a.download = `sensor_logs_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+        }
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    },
+    listSensors: () => http<SensorInfo[]>("/sensors"),
+    getLatestMetrics: () => http<SensorReadingResponse[]>("/metrics/latest"),
+    getMetricHistory: (sensorId: string, metric: string, tsFrom: number, tsTo: number) =>
+        http<SensorReadingResponse[]>(`/metrics/history?sensor_id=${encodeURIComponent(sensorId)}&metric=${encodeURIComponent(metric)}&ts_from=${tsFrom}&ts_to=${tsTo}`),
+    getRoutines: () => http<RoutineStatusResponse[]>("/routines")
 };
 
+export type RoutineStatus = "idle" | "scheduled" | "running" | "error" | "done" | "stopped";
 
+export type RoutineStatusResponse = {
+    id: string;
+    name: string;
+    code: string;
+    mode: "once" | "interval";
+    interval_ms?: number;
+    run_at_ts?: number;
+    indefinite: boolean;
+    status: RoutineStatus;
+    logs: string[];
+    duration_ms?: number;
+};
+
+export type SensorReadingResponse = {
+    sensor_id: string;
+    metric: string;
+    value: number;
+    ts: number;
+};
+export type SensorInfo = {
+    id: string;
+    kind: string;
+    label: string;
+    location?: string;
+    config: any;
+};
+
+export type SensorSortField =
+    | "ts"
+    | "sensor_id"
+    | "metric"
+    | "value"
+    | "sensor_kind"
+    | "sensor_label";
+
+export type SensorLogEntry = {
+    sensor_id: string;
+    sensor_kind?: string | null;
+    sensor_label?: string | null;
+    metric: string;
+    value: number;
+    ts: number;
+};

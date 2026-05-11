@@ -34,7 +34,7 @@ export default function RoomGridCompact({ panels, transitioning, panelControls =
                         const getControlClass = () => `controlled-${controlType}`;
                         const showIndicator = controlType !== 'manual';
                         const isSkylight = panel.name.toUpperCase().includes('SK') || panel.id.startsWith('SK');
-                        
+
                         return (
                             <div
                                 key={panel.id}
@@ -61,4 +61,3 @@ export default function RoomGridCompact({ panels, transitioning, panelControls =
         </div>
     );
 }
-

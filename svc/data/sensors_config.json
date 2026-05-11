@@ -1,0 +1,105 @@
+{
+  "t10a": [
+    {
+      "device_id": "KM1",
+      "port": "COM3",
+      "interval_s": 60,
+      "timeout_s": 1.0,
+      "protocol": {
+        "head_index_base": 0,
+        "body_template": "{head:02d}{cmd}{params}",
+        "send_pc_mode": true,
+        "pc_mode_command": "54",
+        "pc_mode_params": "0000",
+        "measure_command": "10",
+        "measure_params": "0200"
+      },
+      "heads": [
+        {
+          "head_no": 0,
+          "sensor_id": "T10A1-H1",
+          "label": "T-10A #1 Head 1"
+        },
+        {
+          "head_no": 1,
+          "sensor_id": "T10A1-H2",
+          "label": "T-10A #1 Head 2"
+        },
+        {
+          "head_no": 2,
+          "sensor_id": "T10A1-H3",
+          "label": "T-10A #1 Head 3"
+        },
+        {
+          "head_no": 3,
+          "sensor_id": "T10A1-H4",
+          "label": "T-10A #1 Head 4"
+        }
+      ]
+    },
+    {
+      "device_id": "KM2",
+      "port": "COM4",
+      "interval_s": 60,
+      "timeout_s": 1.0,
+      "protocol": {
+        "head_index_base": 0,
+        "body_template": "{head:02d}{cmd}{params}",
+        "send_pc_mode": true,
+        "pc_mode_command": "54",
+        "pc_mode_params": "0000",
+        "measure_command": "10",
+        "measure_params": "0200"
+      },
+      "heads": [
+        {
+          "head_no": 0,
+          "sensor_id": "T10A2-H1",
+          "label": "T-10A #2 Head 1"
+        },
+        {
+          "head_no": 1,
+          "sensor_id": "T10A2-H2",
+          "label": "T-10A #2 Head 2"
+        },
+        {
+          "head_no": 2,
+          "sensor_id": "T10A2-H3",
+          "label": "T-10A #2 Head 3"
+        },
+        {
+          "head_no": 3,
+          "sensor_id": "T10A2-H4",
+          "label": "T-10A #2 Head 4"
+        }
+      ]
+    }
+  ],
+  "jeti_spectraval": [
+    {
+      "sensor_id": "JETI-00",
+      "device_id": "JETI",
+      "transport": "file",
+      "template_path": "data/251118_Jeti_Spectraval_Data.cap",
+      "output_path": "data/jeti_sim_output",
+      "watch_interval_s": 1,
+      "interval_s": 5,
+      "loop": true,
+      "label": "Jeti Spectraval",
+      "location": null
+    }
+  ],
+  "eko_ms90_plus": [
+    {
+      "sensor_id": "EKO-00",
+      "device_id": "EKO-CBOX-01",
+      "port": "COM5",
+      "baudrate": 9600,
+      "slave_address": 1,
+      "float_byte_order": "ABCD",
+      "interval_s": 5,
+      "label": "EKO MS-90+",
+      "location": "Roof"
+    }
+  ]
+}

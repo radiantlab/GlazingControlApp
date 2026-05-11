@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  svc:
+    build:
+      context: ./svc
+      dockerfile: Dockerfile
+    container_name: glazing-svc
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./svc/data:/app/data
+    environment:
+      - SVC_HOST=0.0.0.0
+      - SVC_PORT=8000
+      - UVICORN_RELOAD=false
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        # Ok since we are only running locally, we can just use localhost
+        - VITE_API_BASE=http://localhost:8000
+    container_name: glazing-web
+    ports:
+      - "80:80"
+    depends_on:
+      - svc
+    restart: unless-stopped
+
+

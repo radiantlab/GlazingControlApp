@@ -3,7 +3,8 @@ from fastapi import APIRouter, HTTPException, Depends, status, Query
 from fastapi.responses import Response
 from .models import (
     Panel, Group, CommandRequest, CommandResult, GroupCreate, GroupUpdate, 
-    AuditEntry, HealthResponse, DeleteGroupResponse, ErrorResponse
+    AuditEntry, HealthResponse, DeleteGroupResponse, ErrorResponse, SensorInfo,
+    SensorReadingResponse, SensorLogEntry, RoutineRequest, RoutineStatusResponse, SavedRoutine
 )
 from typing import List, Optional
 import csv
@@ -11,8 +12,20 @@ import io
 from datetime import datetime, timezone
 from .service import ControlService
 from .config import MODE
-from .state import fetch_audit_entries
-
+from .state import (
+    fetch_audit_entries,
+    list_sensors as _list_sensors,
+    fetch_latest_readings as _fetch_latest_readings,
+    fetch_readings as _fetch_readings,
+    fetch_sensor_log_entries as _fetch_sensor_log_entries,
+    list_routines,
+    get_routine,
+    list_saved_routines,
+    save_saved_routine,
+    delete_saved_routine
+)
+from .routines.manager import start_routine, stop_routine, remove_routine, active_routines
+import uuid
 
 
 router = APIRouter()
@@ -81,9 +94,9 @@ def set_level(
 ) -> CommandResult:
     """Set tint level for a panel or group."""
     if body.target_type == "panel":
-        ok, applied, msg = service.set_panel_level(body.target_id, body.level)
+        ok, applied, msg = service.set_panel_level(body.target_id, body.level, body.actor)
     else:
-        ok, applied, msg = service.set_group_level(body.target_id, body.level)
+        ok, applied, msg = service.set_group_level(body.target_id, body.level, body.actor)
 
     if not ok:
         if msg in ("panel not found", "group not found"):
@@ -293,3 +306,289 @@ def export_audit_logs_csv(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+@router.get(
+    "/logs/sensors",
+    response_model=List[SensorLogEntry],
+    summary="Get sensor logs",
+    description="Retrieve sensor reading log entries with optional filtering and sorting",
+    tags=["Logs"],
+)
+def get_sensor_logs(
+    limit: int = Query(default=500, ge=1, le=5000, description="Maximum number of entries to return"),
+    offset: int = Query(default=0, ge=0, description="Number of entries to skip"),
+    sensor_id: Optional[str] = Query(None, description="Filter by sensor ID"),
+    metric: Optional[str] = Query(None, description="Filter by metric name"),
+    ts_from: Optional[float] = Query(None, description="Start timestamp (Unix seconds)"),
+    ts_to: Optional[float] = Query(None, description="End timestamp (Unix seconds)"),
+    sort_field: Optional[str] = Query(None, description="Field to sort by"),
+    sort_dir: Optional[str] = Query(None, description="Direction to sort by (asc/desc)"),
+) -> List[SensorLogEntry]:
+    allowed_fields = ["ts", "sensor_id", "metric", "value", "sensor_kind", "sensor_label"]
+    allowed_dirs = ["desc", "asc"]
+
+    if (sort_field is None) or (sort_field not in allowed_fields):
+        sort_field = "ts"
+    if (sort_dir is None) or (sort_dir not in allowed_dirs):
+        sort_dir = "desc"
+
+    rows = _fetch_sensor_log_entries(
+        limit=limit,
+        offset=offset,
+        sensor_id=sensor_id,
+        metric=metric,
+        ts_from=ts_from,
+        ts_to=ts_to,
+        input_sort_field=sort_field,
+        input_sort_dir=sort_dir,
+    )
+    return [SensorLogEntry(**r) for r in rows]
+
+
+@router.get(
+    "/logs/sensors/export",
+    summary="Export sensor logs as CSV",
+    description="Export sensor reading logs as a CSV file with optional filtering and sorting",
+    tags=["Logs"],
+)
+def export_sensor_logs_csv(
+    limit: int = Query(default=100000, ge=1, le=1000000, description="Maximum number of entries to export"),
+    sensor_id: Optional[str] = Query(None, description="Filter by sensor ID"),
+    metric: Optional[str] = Query(None, description="Filter by metric name"),
+    ts_from: Optional[float] = Query(None, description="Start timestamp (Unix seconds)"),
+    ts_to: Optional[float] = Query(None, description="End timestamp (Unix seconds)"),
+    sort_field: Optional[str] = Query(None, description="Field to sort by"),
+    sort_dir: Optional[str] = Query(None, description="Direction to sort by (asc/desc)"),
+) -> Response:
+    allowed_fields = ["ts", "sensor_id", "metric", "value", "sensor_kind", "sensor_label"]
+    allowed_dirs = ["desc", "asc"]
+
+    if (sort_field is None) or (sort_field not in allowed_fields):
+        sort_field = "ts"
+    if (sort_dir is None) or (sort_dir not in allowed_dirs):
+        sort_dir = "desc"
+
+    rows = _fetch_sensor_log_entries(
+        limit=limit,
+        offset=0,
+        sensor_id=sensor_id,
+        metric=metric,
+        ts_from=ts_from,
+        ts_to=ts_to,
+        input_sort_field=sort_field,
+        input_sort_dir=sort_dir,
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "Timestamp",
+            "Sensor ID",
+            "Sensor Kind",
+            "Sensor Label",
+            "Metric",
+            "Value",
+        ]
+    )
+
+    for row in rows:
+        human_readable_ts = datetime.fromtimestamp(row["ts"], tz=timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%S UTC"
+        )
+        writer.writerow(
+            [
+                human_readable_ts,
+                row["sensor_id"],
+                row.get("sensor_kind") or "",
+                row.get("sensor_label") or "",
+                row["metric"],
+                row["value"],
+            ]
+        )
+
+    filename = (
+        f"sensor_logs_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+        f"_sorted_{sort_field}_{sort_dir}.csv"
+    )
+
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@router.get(
+    "/sensors",
+    response_model=List[SensorInfo],
+    summary="List connected sensors",
+    tags=["Sensors"],
+)
+def list_sensors() -> List[SensorInfo]:
+    rows = _list_sensors()
+    return [
+        SensorInfo(
+            id=r["id"],
+            kind=r["kind"],
+            label=r["label"],
+            location=r.get("location"),
+            config=r.get("config", {}),
+        )
+        for r in rows
+    ]
+
+
+@router.get(
+    "/metrics/latest",
+    response_model=List[SensorReadingResponse],
+    summary="Latest metric values per sensor/metric",
+    tags=["Sensors"],
+)
+def get_latest_metrics() -> List[SensorReadingResponse]:
+    rows = _fetch_latest_readings()
+    return [SensorReadingResponse(**r) for r in rows]
+
+
+@router.get(
+    "/metrics/history",
+    response_model=List[SensorReadingResponse],
+    summary="Historical readings for a sensor + metric",
+    tags=["Sensors"],
+)
+def get_metric_history(
+    sensor_id: str = Query(..., description="Sensor ID, e.g. T10A1-H1"),
+    metric: str = Query(..., description="Metric name, e.g. 'lux'"),
+    ts_from: float = Query(..., description="Start timestamp (unix seconds)"),
+    ts_to: float = Query(..., description="End timestamp (unix seconds)"),
+) -> List[SensorReadingResponse]:
+    rows = _fetch_readings(sensor_id=sensor_id, metric=metric, ts_from=ts_from, ts_to=ts_to)
+    return [SensorReadingResponse(**r) for r in rows]
+
+
+# --- ROUTINES -------------------------------------------------------------
+
+@router.get(
+    "/routines",
+    response_model=List[RoutineStatusResponse],
+    summary="List all routines",
+    tags=["Routines"],
+)
+def get_routines() -> List[RoutineStatusResponse]:
+    routines = list_routines()
+    out = []
+    for r in routines:
+        rid = r["id"]
+        logs = []
+        if rid in active_routines:
+            logs = active_routines[rid].get("logs", [])
+
+        out.append(RoutineStatusResponse(
+            id=rid,
+            name=r["name"],
+            code=r["code"],
+            mode=r["mode"],
+            interval_ms=r.get("interval_ms"),
+            run_at_ts=r.get("run_at_ts"),
+            indefinite=r["indefinite"],
+            status=r["status"],
+            logs=logs,
+            duration_ms=None
+        ))
+    return out
+
+
+@router.post(
+    "/routines",
+    response_model=RoutineStatusResponse,
+    summary="Create and start a new routine",
+    tags=["Routines"],
+)
+def create_routine(body: RoutineRequest) -> RoutineStatusResponse:
+    rid = str(uuid.uuid4())
+    start_routine(
+        routine_id=rid,
+        name=body.name,
+        code=body.code,
+        mode=body.mode,
+        interval_ms=body.interval_ms,
+        run_at_ts=body.run_at_ts,
+        indefinite=body.indefinite
+    )
+    
+    # fetch back to return
+    r = get_routine(rid)
+    logs = active_routines.get(rid, {}).get("logs", [])
+    
+    return RoutineStatusResponse(
+        id=rid,
+        name=r["name"],
+        code=r["code"],
+        mode=r["mode"],
+        interval_ms=r.get("interval_ms"),
+        run_at_ts=r.get("run_at_ts"),
+        indefinite=r["indefinite"],
+        status=r["status"],
+        logs=logs,
+        duration_ms=None
+    )
+
+
+@router.delete(
+    "/routines/{routine_id}",
+    summary="Stop and delete a routine",
+    tags=["Routines"],
+)
+def delete_routine_endpoint(routine_id: str):
+    r = get_routine(routine_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Routine not found")
+        
+    remove_routine(routine_id)
+    return {"ok": True}
+
+
+@router.post(
+    "/routines/{routine_id}/stop",
+    summary="Stop a running routine",
+    tags=["Routines"],
+)
+def stop_routine_endpoint(routine_id: str):
+    r = get_routine(routine_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Routine not found")
+        
+    stop_routine(routine_id)
+    return {"ok": True}
+
+
+@router.get(
+    "/saved-routines",
+    response_model=List[SavedRoutine],
+    summary="List all saved routines",
+    tags=["Routines"],
+)
+def get_saved_routines() -> List[SavedRoutine]:
+    return [SavedRoutine(**r) for r in list_saved_routines()]
+
+
+@router.post(
+    "/saved-routines",
+    response_model=SavedRoutine,
+    summary="Save a routine to the server",
+    tags=["Routines"],
+)
+def create_saved_routine(body: SavedRoutine) -> SavedRoutine:
+    save_saved_routine(body.name, body.code)
+    return body
+
+
+@router.delete(
+    "/saved-routines/{name}",
+    summary="Delete a saved routine",
+    tags=["Routines"],
+)
+def delete_saved_routine_endpoint(name: str):
+    delete_saved_routine(name)
+    return {"ok": True}
