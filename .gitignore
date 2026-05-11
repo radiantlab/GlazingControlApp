@@ -235,6 +235,12 @@ svc/data/panels_state.json
 svc/data/panels_config.json
 svc/data/routines/
 
+svc/data/audit.db
+# audit.db is a SQLite database for the audit log, changes on run time, so ignore it for now
+
+#just for routines to not be published
+svc/data/routines/
+
 # JETI simulator output (configured as either file or directory)
 svc/data/jeti_sim_output
 svc/data/jeti_sim_output/

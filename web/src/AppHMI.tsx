@@ -9,6 +9,7 @@ import ActiveControllersBar from "./components/ActiveControllersBar";
 import { controlManager, type ControlSource } from "./utils/controlManager";
 import { useToast } from "./utils/toast";
 import LogsPanel from "./components/LogsPanel";
+import { Link} from "react-router"
 import LiveGraph from "./components/LiveGraph";
 import { type SensorInfo, type SensorReadingResponse } from "./api";
 
@@ -582,6 +583,17 @@ export default function AppHMI() {
                         >
                             Routines
                         </button>
+
+                        <Link to="/docs"
+                        >
+                            <button
+                            className="hmi-manage-btn"
+                            title="View Docs"
+                            >
+                                Docs
+                            </button>
+                        </Link>
+
                     </div>
                 </div>
             </header>
