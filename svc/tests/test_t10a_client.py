@@ -9,7 +9,28 @@ def _make_client_stub() -> T10AClient:
     c.id = "KMX"
     c._head_index_base = 0
     c._body_template = "{head:02d}{cmd}{params}"
+    c._measure_command = "10"
+    c._pc_mode_command = "54"
     return c
+
+
+def test_compute_bcc_excludes_stx() -> None:
+    # Reference frame body for PC mode on head 0: 00541<ETX>
+    body_with_etx = b"00541 \x03"
+    assert T10AClient._compute_bcc(body_with_etx) == b"13"
+
+
+def test_build_pc_mode_frame_matches_spec() -> None:
+    client = _make_client_stub()
+    frame = client._build_frame(head_no=0, cmd="54", params="1 ")
+    assert frame == b"\x0200541 \x0313\r\n"
+
+
+def test_build_measure_frame_head_zero() -> None:
+    client = _make_client_stub()
+    frame = client._build_frame(head_no=0, cmd="10", params="0200")
+    assert frame.startswith(b"\x0200100200\x03")
+    assert frame.endswith(b"\r\n")
 
 
 def test_parse_measurement_reply_e_format() -> None:
@@ -22,6 +43,14 @@ def test_parse_measurement_reply_signed_exponent() -> None:
     client = _make_client_stub()
     head = T10AHeadConfig(head_no=0, sensor_id="KMX-00", label="x")
     assert client._parse_measurement_reply(head, "\x020010+0123+1\x03AA") == 1230.0
+
+
+def test_parse_measurement_reply_t10a_fixed_field() -> None:
+    client = _make_client_stub()
+    head = T10AHeadConfig(head_no=0, sensor_id="KMX-00", label="x")
+    # Long frame: head(2)+cmd(2)+status(4)+data1(6); exp digit 4 => 10^(4-4)
+    reply = "\x02" + "00" + "10" + "0000" + "+01234" + "      " + "      " + "\x03AA"
+    assert client._parse_measurement_reply(head, reply) == 123.0
 
 
 def test_parse_measurement_reply_decimal_fallback() -> None:

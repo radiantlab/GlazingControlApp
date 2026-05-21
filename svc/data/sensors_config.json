@@ -10,7 +10,7 @@
         "body_template": "{head:02d}{cmd}{params}",
         "send_pc_mode": true,
         "pc_mode_command": "54",
-        "pc_mode_params": "0000",
+        "pc_mode_params": "1 ",
         "measure_command": "10",
         "measure_params": "0200"
       },
@@ -47,7 +47,7 @@
         "body_template": "{head:02d}{cmd}{params}",
         "send_pc_mode": true,
         "pc_mode_command": "54",
-        "pc_mode_params": "0000",
+        "pc_mode_params": "1 ",
         "measure_command": "10",
         "measure_params": "0200"
       },
