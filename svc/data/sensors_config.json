@@ -2,7 +2,7 @@
   "t10a": [
     {
       "device_id": "KM1",
-      "port": "COM3",
+      "port": "COM5",
       "interval_s": 60,
       "timeout_s": 1.0,
       "protocol": {
@@ -10,7 +10,7 @@
         "body_template": "{head:02d}{cmd}{params}",
         "send_pc_mode": true,
         "pc_mode_command": "54",
-        "pc_mode_params": "0000",
+        "pc_mode_params": "1 ",
         "measure_command": "10",
         "measure_params": "0200"
       },
@@ -47,7 +47,7 @@
         "body_template": "{head:02d}{cmd}{params}",
         "send_pc_mode": true,
         "pc_mode_command": "54",
-        "pc_mode_params": "0000",
+        "pc_mode_params": "1 ",
         "measure_command": "10",
         "measure_params": "0200"
       },
@@ -93,10 +93,11 @@
     {
       "sensor_id": "EKO-00",
       "device_id": "EKO-CBOX-01",
-      "port": "COM5",
-      "baudrate": 9600,
+      "host": "192.168.40.50",
+      "port": 502,
       "slave_address": 1,
-      "float_byte_order": "ABCD",
+      "timeout_s": 3.0,
+      "float_byte_order": "CDAB",
       "interval_s": 5,
       "label": "EKO MS-90+",
       "location": "Roof"

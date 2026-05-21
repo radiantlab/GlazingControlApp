@@ -11,16 +11,17 @@ Use this at the trailer/lab PC after the hardware is physically installed.
 5. If the JETI path will use file mode, confirm the PC software is configured to write a live `.cap` file or folder.
 6. If the JETI path will use direct serial mode, confirm the JETI USB driver is installed and a COM port appears in Windows.
 7. Connect the EKO `MS-90` and optional `MS-80S` to the `C-BOX`.
-8. Connect `C-BOX` output power and RS-485 wiring.
-9. Connect the USB-to-RS485 adapter from the `C-BOX` output side to the PC.
+8. Connect the `C-BOX` Ethernet port to the site computer/network.
+9. Confirm the `C-BOX` is powered and its web UI shows live EKO readings.
 
 ## Windows Checks
 
 1. Open Device Manager.
 2. Record the COM port for each `T-10A` body.
 3. Record the COM port for each JETI device that will use direct serial mode.
-4. Record the COM port for the USB-RS485 adapter used by the `C-BOX`.
-5. If a JETI device is missing, install the JETI USB driver and reconnect it.
+4. If a JETI device is missing, install the JETI USB driver and reconnect it.
+5. Open the C-BOX web UI from the site computer, usually `http://192.168.2.20/`.
+6. In the C-BOX web UI, open `Modbus -> Setup` and confirm Modbus TCP access is enabled.
 
 ## Update `svc/data/sensors_config.json`
 
@@ -32,13 +33,16 @@ Use this at the trailer/lab PC after the hardware is physically installed.
 6. If JETI uses serial mode, set `jeti_spectraval[].baudrate`:
    - `921600` for `spectraval 1511`
    - `115200` for `specbos 1211-2`
-7. Set `eko_ms90_plus[].port` to the COM port of the USB-RS485 adapter.
+7. Set `eko_ms90_plus[].host` to the C-BOX IP address, usually `192.168.2.20`.
+8. Set `eko_ms90_plus[].port` to TCP port `502`.
+9. Keep `eko_ms90_plus[].slave_address` at `1` unless the C-BOX configuration says otherwise.
 
 ## Start The Backend
 
 ```powershell
 cd svc
 $env:SVC_MODE = "real"
+uv sync
 uv run python main.py
 ```
 
@@ -72,12 +76,21 @@ For the full step-by-step connection instructions for each sensor and each suppo
   - re-check USB COM port
   - verify head IDs
   - verify straight CAT5 and external power for multi-point mode
+  - stop the backend, then probe the port directly (9600 7E1, not 8N1):
+
+```powershell
+cd svc
+uv run python scripts/read_t10a_serial.py COM5
+```
+
+  - you should see a 14-byte PC-mode reply; if RX is empty, another app may hold the port or the meter is off/not in USB PC mode
 - No JETI data:
   - re-check driver install
   - confirm the PC measurement software is writing to the configured `output_path`, or
   - confirm COM port and baudrate for serial mode
 - No EKO data:
-  - swap RS-485 `A/B`
-  - verify `12 VDC` power and fuse
-  - verify `slave_address`
+  - open the C-BOX web UI from the site computer and confirm it is reachable
+  - confirm `Modbus -> Setup` has Modbus TCP access enabled
+  - verify `host`, TCP `port`, and `slave_address` in `svc/data/sensors_config.json`
+  - confirm firewall/network rules allow TCP `502` to the C-BOX
   - try a different `float_byte_order` if values are present but incorrect

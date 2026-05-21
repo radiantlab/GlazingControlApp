@@ -13,6 +13,10 @@ from .interface import SensorClient, SensorReading
 
 logger = logging.getLogger(__name__)
 
+# Fixed reply lengths from Konica Minolta T-10A communication spec.
+_SHORT_REPLY_LEN = 14
+_LONG_REPLY_LEN = 32
+
 
 @dataclass
 class T10AHeadConfig:
@@ -28,10 +32,10 @@ class T10AClient(SensorClient):
     One instance = one COM port = one meter.
 
     Based on T-10A Communication Specifications:
-      - 9600 baud, 7 data bits, even parity, 1 stop bit.
-      - ASCII framed commands with STX/ETX + BCC.
-      - Command '54' -> PC mode.
-      - Command '10' -> measurement data output (long frame).
+      - 9600 baud, 7 data bits, even parity, 1 stop bit (7E1).
+      - ASCII framed commands with STX/ETX + BCC (BCC XORs body + ETX only).
+      - Command '54' + param '1 ' -> PC mode (short 14-byte reply).
+      - Command '10' + param '0200' -> measurement data output (32-byte reply).
     """
 
     def __init__(
@@ -41,6 +45,8 @@ class T10AClient(SensorClient):
         heads: List[T10AHeadConfig],
         timeout_s: float = 1.0,
         protocol: dict | None = None,
+        baudrate: int = 9600,
+        open_delay_s: float = 0.2,
     ) -> None:
         self.id = device_id      # e.g. "KM1"
         self.port = port
@@ -54,27 +60,55 @@ class T10AClient(SensorClient):
         self._measure_command = str(protocol_cfg.get("measure_command", "10"))
         self._measure_params = str(protocol_cfg.get("measure_params", "0200"))
         self._pc_mode_command = str(protocol_cfg.get("pc_mode_command", "54"))
-        self._pc_mode_params = str(protocol_cfg.get("pc_mode_params", "0000"))
+        # Konica Minolta spec: PC mode uses param "1 " (not "0000").
+        self._pc_mode_params = str(protocol_cfg.get("pc_mode_params", "1 "))
         self._send_pc_mode = str(
             protocol_cfg.get("send_pc_mode", "true")
         ).lower() in {"1", "true", "yes", "on"}
         self._pc_mode_head_no = int(protocol_cfg.get("pc_mode_head_no", 0))
+        self._short_reply_len = int(protocol_cfg.get("short_reply_len", _SHORT_REPLY_LEN))
+        self._long_reply_len = int(protocol_cfg.get("long_reply_len", _LONG_REPLY_LEN))
+        self._xonxoff = str(protocol_cfg.get("xonxoff", "true")).lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self._inter_command_delay_s = float(protocol_cfg.get("inter_command_delay_s", 0.1))
 
         self.ser = serial.Serial(
             port=self.port,
-            baudrate=9600,
+            baudrate=int(protocol_cfg.get("baudrate", baudrate)),
             bytesize=serial.SEVENBITS,
             parity=serial.PARITY_EVEN,
             stopbits=serial.STOPBITS_ONE,
             timeout=timeout_s,
+            xonxoff=self._xonxoff,
         )
-        logger.info(f"T10AClient[{self.id}] opened on {self.port}")
+        logger.info(
+            "T10AClient[%s] opened on %s (%s baud, 7E1, xonxoff=%s)",
+            self.id,
+            self.port,
+            self.ser.baudrate,
+            self._xonxoff,
+        )
+
+        if open_delay_s > 0:
+            time.sleep(open_delay_s)
 
         # put meter into PC mode (command 54)
         if self._send_pc_mode:
             self._enter_pc_mode()
 
     # --- low-level helpers -------------------------------------------------
+
+    @staticmethod
+    def _compute_bcc(body_with_etx: bytes) -> bytes:
+        """BCC = XOR of body characters + ETX (STX is excluded)."""
+        bcc_val = 0
+        for b in body_with_etx:
+            bcc_val ^= b
+        return f"{bcc_val:02X}".encode("ascii")
 
     def _build_frame(self, head_no: int, cmd: str, params: str = "") -> bytes:
         """
@@ -95,26 +129,38 @@ class T10AClient(SensorClient):
             params=params,
         )
 
-        stx = "\x02"
-        etx = "\x03"
-        raw = (stx + body + etx).encode("ascii")
+        body_with_etx = body.encode("ascii") + b"\x03"
+        bcc = self._compute_bcc(body_with_etx)
+        return b"\x02" + body_with_etx + bcc + b"\r\n"
 
-        bcc_val = 0
-        for b in raw:
-            bcc_val ^= b
-        bcc = f"{bcc_val:02X}".encode("ascii")
+    def _response_length_for(self, cmd: str) -> int:
+        if cmd == self._measure_command:
+            return self._long_reply_len
+        return self._short_reply_len
 
-        frame = raw + bcc + b"\r\n"
-        return frame
+    def _read_reply(self, cmd: str) -> str:
+        """Read a fixed-length T-10A reply frame."""
+        n = self._response_length_for(cmd)
+        data = self.ser.read(n)
+        if len(data) < n:
+            # Fallback for adapters that chunk differently.
+            extra = self.ser.read_until(expected=b"\r\n", size=max(n, 64))
+            if extra and not data.endswith(extra):
+                data = (data + extra)[: max(n, len(data + extra))]
+        return data.decode("ascii", errors="replace").strip()
 
     def _send_command(self, head_no: int, cmd: str, params: str = "") -> str:
-        """Send a command and return the raw ASCII reply (without CRLF)."""
+        """Send a command and return the raw ASCII reply."""
         frame = self._build_frame(head_no, cmd, params=params)
+        logger.debug("T10A[%s] TX %r", self.id, frame)
         self.ser.reset_input_buffer()
         self.ser.write(frame)
         self.ser.flush()
-        line = self.ser.read_until(expected=b"\r\n").decode("ascii", errors="replace").strip()
-        return line
+        if self._inter_command_delay_s > 0:
+            time.sleep(self._inter_command_delay_s)
+        reply = self._read_reply(cmd)
+        logger.debug("T10A[%s] RX %r", self.id, reply)
+        return reply
 
     def _enter_pc_mode(self) -> None:
         """Send configured PC mode command once."""
@@ -124,9 +170,16 @@ class T10AClient(SensorClient):
                 cmd=self._pc_mode_command,
                 params=self._pc_mode_params,
             )
-            logger.info(f"T10A[{self.id}] PC mode reply: {reply!r}")
+            logger.info("T10A[%s] PC mode reply: %r", self.id, reply)
+            if not reply:
+                logger.warning(
+                    "T10A[%s] empty PC mode reply on %s — check USB cable, "
+                    "meter power, and that no other app holds the port",
+                    self.id,
+                    self.port,
+                )
         except Exception as e:
-            logger.error(f"T10A[{self.id}] failed to enter PC mode: {e}")
+            logger.error("T10A[%s] failed to enter PC mode: %s", self.id, e)
 
     # --- parse replies -----------------------------------------------------
 
@@ -139,6 +192,26 @@ class T10AClient(SensorClient):
         if etx_idx >= 0:
             s = s[:etx_idx]
         return s
+
+    @staticmethod
+    def _parse_t10a_data_field(field: str) -> float | None:
+        """
+        Parse one 6-character Ev slot from a long measurement frame.
+
+        Meters sometimes pad with spaces, e.g. '+ 2904' instead of '+02904'.
+        """
+        compact = field.replace(" ", "")
+        if not compact or compact[0] not in "+-":
+            return None
+        if len(compact) == 5:
+            # '+2904' -> '+02904' (insert mantissa leading zero)
+            compact = compact[0] + "0" + compact[1:]
+        if len(compact) != 6 or not compact[1:5].isdigit() or not compact[5].isdigit():
+            return None
+        sign = -1 if compact[0] == "-" else 1
+        mant = int(compact[1:5])
+        exp = int(compact[5]) - 4
+        return float(sign * mant * (10**exp))
 
     def _parse_measurement_reply(self, head_cfg: T10AHeadConfig, reply: str) -> float | None:
         """
@@ -154,6 +227,12 @@ class T10AClient(SensorClient):
 
             if "ERR" in body.upper():
                 return None
+
+            # T-10A long frame (no STX): head(2)+cmd(2)+status(4)+data1(6)+data2(6)+data3(6)
+            for field in (body[8:14], body[14:20], body[20:26]):
+                ev = self._parse_t10a_data_field(field)
+                if ev is not None:
+                    return ev
 
             # Pattern 1: +0123E0 or -0123E+1
             m = re.search(r"([+-])(\d{4})(?:E)([+-]?\d{1,2})", body)
@@ -183,7 +262,13 @@ class T10AClient(SensorClient):
 
             return None
         except Exception as e:
-            logger.warning(f"T10A[{self.id}] parse error for {head_cfg.sensor_id}: reply={reply!r} err={e}")
+            logger.warning(
+                "T10A[%s] parse error for %s: reply=%r err=%s",
+                self.id,
+                head_cfg.sensor_id,
+                reply,
+                e,
+            )
             return None
 
     # --- public API --------------------------------------------------------
@@ -206,6 +291,12 @@ class T10AClient(SensorClient):
                 )
                 ev = self._parse_measurement_reply(head, reply)
                 if ev is None:
+                    logger.debug(
+                        "T10A[%s] no lux parsed for head %s, reply=%r",
+                        self.id,
+                        head.head_no,
+                        reply,
+                    )
                     continue
                 readings.append(
                     SensorReading(
@@ -216,7 +307,7 @@ class T10AClient(SensorClient):
                     )
                 )
             except Exception as e:
-                logger.error(f"T10A[{self.id}] poll failed for head {head.head_no}: {e}")
+                logger.error("T10A[%s] poll failed for head %s: %s", self.id, head.head_no, e)
 
         return readings
 

@@ -9,9 +9,14 @@ import time
 from typing import List
 
 from app.config import MODE
-from app.state import insert_sensor_reading, prune_sensors_to_ids, register_sensor
+from app.state import (
+    delete_sensor_readings_for_ids,
+    insert_sensor_reading,
+    prune_sensors_to_ids,
+    register_sensor,
+)
 
-from .eko_cbox_modbus_client import EkoCBoxModbusClient
+from .eko_cbox_modbus_tcp_client import EkoCBoxModbusTcpClient
 from .eko_ms90_plus_sim_client import EkoMs90PlusSimClient
 from .interface import SensorClient, SensorReading
 from .jeti_specfirm_client import JetiSpecfirmClient
@@ -64,6 +69,10 @@ def _default_jeti_baudrate(dev_cfg: dict) -> int:
     return 921600
 
 
+def _env_flag(name: str, default: str = "false") -> bool:
+    return os.getenv(name, default).lower() in {"1", "true", "yes", "on"}
+
+
 def _load_config() -> dict:
     """
     Expected JSON structure (keys optional):
@@ -88,26 +97,16 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
     clients_with_interval: list[tuple[SensorClient, float]] = []
     configured_sensor_ids: set[str] = set()
 
-    enable_t10a_in_sim = os.getenv("SVC_ENABLE_T10A_IN_SIM", "false").lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
-    enable_jeti_serial_in_sim = os.getenv(
-        "SVC_ENABLE_JETI_SERIAL_IN_SIM", "false"
-    ).lower() in {"1", "true", "yes", "on"}
-    enable_eko_in_sim = os.getenv("SVC_ENABLE_EKO_IN_SIM", "false").lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    is_sim_mode = MODE == "sim"
+    is_real_mode = MODE == "real"
+    enable_t10a_in_sim = _env_flag("SVC_ENABLE_T10A_IN_SIM")
+    enable_jeti_serial_in_sim = _env_flag("SVC_ENABLE_JETI_SERIAL_IN_SIM")
+    enable_eko_in_sim = _env_flag("SVC_ENABLE_EKO_IN_SIM")
 
     # --- T-10A -------------------------------------------------------------
     t10a_configs = cfg.get("t10a", [])[:4]  # enforce 1-4 devices
-    use_real_t10a = MODE != "sim" or enable_t10a_in_sim
-    if MODE == "sim" and not enable_t10a_in_sim and t10a_configs:
+    use_real_t10a = is_real_mode or (is_sim_mode and enable_t10a_in_sim)
+    if is_sim_mode and not enable_t10a_in_sim and t10a_configs:
         logger.info(
             "SVC_MODE=sim: using simulated T10A data for %d config(s). "
             "Set SVC_ENABLE_T10A_IN_SIM=true to poll real serial devices in sim mode.",
@@ -116,10 +115,17 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
 
     for dev_cfg in t10a_configs:
         device_id = dev_cfg["device_id"]
-        port = str(dev_cfg.get("port", "SIM"))
+        port = str(dev_cfg.get("port") or "")
         interval_s = float(dev_cfg.get("interval_s", 60.0))
         timeout_s = float(dev_cfg.get("timeout_s", 1.0))
         protocol_cfg = dev_cfg.get("protocol", {})
+
+        if use_real_t10a and (not port or port == "SIM"):
+            logger.warning(
+                "Skip T10A device %s: missing 'port'; real mode requires a USB COM port",
+                device_id,
+            )
+            continue
 
         heads_cfg: list[T10AHeadConfig] = []
         for h in dev_cfg.get("heads", []):
@@ -138,7 +144,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                 location=hc.location,
                 config={
                     "device_id": device_id,
-                    "port": port,
+                    "port": port or "SIM",
                     "head_no": hc.head_no,
                     "timeout_s": timeout_s,
                     "protocol": protocol_cfg,
@@ -157,11 +163,12 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     heads=heads_cfg,
                     timeout_s=timeout_s,
                     protocol=protocol_cfg,
+                    baudrate=int(dev_cfg.get("baudrate", 9600)),
                 )
                 clients_with_interval.append((client, interval_s))
             except Exception as e:
                 logger.warning("Skip T10A device %s (port %s): %s", device_id, port, e)
-        else:
+        elif is_sim_mode:
             clients_with_interval.append(
                 (
                     T10ASimClient(
@@ -170,6 +177,12 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     ),
                     interval_s,
                 )
+            )
+        else:
+            logger.warning(
+                "Skip T10A device %s: unsupported SVC_MODE=%s; simulated sensors run only in SVC_MODE=sim",
+                device_id,
+                MODE,
             )
 
     # --- JETI spectraval ---------------------------------------------------
@@ -185,7 +198,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
 
         transport = str(dev_cfg.get("transport", "file")).lower()
         if transport in {"serial_scpi", "serial", "specfirm"}:
-            if MODE == "sim" and not enable_jeti_serial_in_sim:
+            if is_sim_mode and not enable_jeti_serial_in_sim:
                 logger.info(
                     "SVC_MODE=sim: skipping JETI serial_scpi config for %s. "
                     "Set SVC_ENABLE_JETI_SERIAL_IN_SIM=true to enable it.",
@@ -285,7 +298,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
             )
             clients_with_interval.append((watcher, watch_interval_s))
 
-            if MODE == "sim":
+            if is_sim_mode:
                 sim = JetiSpectravalSimClient(
                     device_id=device_id,
                     sensor_id=sensor_id,
@@ -302,31 +315,55 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
         except Exception as e:
             logger.warning("Skip Jeti Spectraval %s: %s", sensor_id, e)
 
-    # --- EKO MS-90+ (via C-BOX Modbus RTU) -------------------------------
+    # --- EKO MS-90+ (via C-BOX Ethernet Modbus TCP) -----------------------
     eko_configs = cfg.get("eko_ms90_plus", [])[:4]
-    use_real_eko = MODE != "sim" or enable_eko_in_sim
-    if MODE == "sim" and not enable_eko_in_sim and eko_configs:
+    use_real_eko = is_real_mode or (is_sim_mode and enable_eko_in_sim)
+    if is_sim_mode and not enable_eko_in_sim and eko_configs:
         logger.info(
             "SVC_MODE=sim: using simulated EKO MS-90+ data for %d config(s). "
-            "Set SVC_ENABLE_EKO_IN_SIM=true to poll real serial devices in sim mode.",
+            "Set SVC_ENABLE_EKO_IN_SIM=true to poll real C-BOX Modbus TCP devices in sim mode.",
             len(eko_configs),
         )
 
     for dev_cfg in eko_configs:
         sensor_id = dev_cfg.get("sensor_id", "EKO-00")
         device_id = dev_cfg.get("device_id", "EKO-CBOX")
-        port = dev_cfg.get("port") or "SIM"
-        if use_real_eko and (not port or port == "SIM"):
-            logger.warning("Skip EKO MS-90+ %s: missing 'port'", sensor_id)
-            continue
-
         label = dev_cfg.get("label", sensor_id)
         location = dev_cfg.get("location")
         interval_s = float(dev_cfg.get("interval_s", 5.0))
-        baudrate = int(dev_cfg.get("baudrate", 9600))
-        slave_address = int(dev_cfg.get("slave_address", 1))
-        timeout_s = float(dev_cfg.get("timeout_s", 1.0))
+        host = str(dev_cfg.get("host") or "").strip()
+        raw_tcp_port = dev_cfg.get("port", 502)
+        raw_slave_address = dev_cfg.get("slave_address", 1)
+        raw_timeout_s = dev_cfg.get("timeout_s", 3.0)
         float_byte_order = str(dev_cfg.get("float_byte_order", "ABCD"))
+
+        if use_real_eko:
+            if not host:
+                logger.warning(
+                    "Skip EKO MS-90+ %s: missing 'host'; real mode requires the C-BOX IP address",
+                    sensor_id,
+                )
+                continue
+
+            try:
+                tcp_port = int(raw_tcp_port)
+                slave_address = int(raw_slave_address)
+                timeout_s = float(raw_timeout_s)
+            except (TypeError, ValueError) as e:
+                logger.warning(
+                    "Skip EKO MS-90+ %s: invalid Modbus TCP config "
+                    "(port=%r, slave_address=%r, timeout_s=%r): %s",
+                    sensor_id,
+                    raw_tcp_port,
+                    raw_slave_address,
+                    raw_timeout_s,
+                    e,
+                )
+                continue
+        else:
+            tcp_port = raw_tcp_port
+            slave_address = raw_slave_address
+            timeout_s = raw_timeout_s
 
         try:
             register_sensor(
@@ -336,8 +373,8 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                 location=location,
                 config={
                     "device_id": device_id,
-                    "port": port,
-                    "baudrate": baudrate,
+                    "host": host,
+                    "port": tcp_port,
                     "slave_address": slave_address,
                     "timeout_s": timeout_s,
                     "float_byte_order": float_byte_order,
@@ -346,19 +383,19 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
             configured_sensor_ids.add(sensor_id)
 
             if use_real_eko:
-                eko_client = EkoCBoxModbusClient(
+                eko_client = EkoCBoxModbusTcpClient(
                     device_id=device_id,
                     sensor_id=sensor_id,
-                    port=port,
+                    host=host,
+                    port=tcp_port,
                     slave_address=slave_address,
-                    baudrate=baudrate,
                     timeout_s=timeout_s,
                     label=label,
                     location=location,
                     float_byte_order=float_byte_order,
                 )
                 clients_with_interval.append((eko_client, interval_s))
-            else:
+            elif is_sim_mode:
                 sim_lat = float(dev_cfg.get("latitude_deg", 44.5646))
                 sim_lon = float(dev_cfg.get("longitude_deg", -123.2620))
                 clients_with_interval.append(
@@ -372,9 +409,17 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                         interval_s,
                     )
                 )
+            else:
+                logger.warning(
+                    "Skip EKO MS-90+ %s: unsupported SVC_MODE=%s; simulated sensors run only in SVC_MODE=sim",
+                    sensor_id,
+                    MODE,
+                )
         except Exception as e:
             logger.warning("Skip EKO MS-90+ %s: %s", sensor_id, e)
 
+    if is_real_mode and configured_sensor_ids:
+        delete_sensor_readings_for_ids(list(configured_sensor_ids))
     prune_sensors_to_ids(list(configured_sensor_ids))
     return clients_with_interval
 
