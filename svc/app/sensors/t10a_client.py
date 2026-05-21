@@ -193,6 +193,26 @@ class T10AClient(SensorClient):
             s = s[:etx_idx]
         return s
 
+    @staticmethod
+    def _parse_t10a_data_field(field: str) -> float | None:
+        """
+        Parse one 6-character Ev slot from a long measurement frame.
+
+        Meters sometimes pad with spaces, e.g. '+ 2904' instead of '+02904'.
+        """
+        compact = field.replace(" ", "")
+        if not compact or compact[0] not in "+-":
+            return None
+        if len(compact) == 5:
+            # '+2904' -> '+02904' (insert mantissa leading zero)
+            compact = compact[0] + "0" + compact[1:]
+        if len(compact) != 6 or not compact[1:5].isdigit() or not compact[5].isdigit():
+            return None
+        sign = -1 if compact[0] == "-" else 1
+        mant = int(compact[1:5])
+        exp = int(compact[5]) - 4
+        return float(sign * mant * (10**exp))
+
     def _parse_measurement_reply(self, head_cfg: T10AHeadConfig, reply: str) -> float | None:
         """
         Parse a long measurement frame for a head and return Ev [lux].
@@ -210,12 +230,9 @@ class T10AClient(SensorClient):
 
             # T-10A long frame (no STX): head(2)+cmd(2)+status(4)+data1(6)+data2(6)+data3(6)
             for field in (body[8:14], body[14:20], body[20:26]):
-                if len(field) >= 6 and field[0] in "+- " and field[1:5].isdigit():
-                    sign = -1 if field[0] == "-" else 1
-                    mant = int(field[1:5])
-                    exp = int(field[5]) - 4
-                    if field[0] in "+-":
-                        return float(sign * mant * (10**exp))
+                ev = self._parse_t10a_data_field(field)
+                if ev is not None:
+                    return ev
 
             # Pattern 1: +0123E0 or -0123E+1
             m = re.search(r"([+-])(\d{4})(?:E)([+-]?\d{1,2})", body)
