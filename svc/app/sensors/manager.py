@@ -163,6 +163,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     heads=heads_cfg,
                     timeout_s=timeout_s,
                     protocol=protocol_cfg,
+                    baudrate=int(dev_cfg.get("baudrate", 9600)),
                 )
                 clients_with_interval.append((client, interval_s))
             except Exception as e:

@@ -76,6 +76,14 @@ For the full step-by-step connection instructions for each sensor and each suppo
   - re-check USB COM port
   - verify head IDs
   - verify straight CAT5 and external power for multi-point mode
+  - stop the backend, then probe the port directly (9600 7E1, not 8N1):
+
+```powershell
+cd svc
+uv run python scripts/read_t10a_serial.py COM5
+```
+
+  - you should see a 14-byte PC-mode reply; if RX is empty, another app may hold the port or the meter is off/not in USB PC mode
 - No JETI data:
   - re-check driver install
   - confirm the PC measurement software is writing to the configured `output_path`, or
