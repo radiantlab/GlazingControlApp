@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api, type SensorReadingResponse } from "../api";
 
@@ -8,9 +8,10 @@ interface LiveGraphProps {
     color?: string;
     label?: string;
     height?: number;
+    variant?: "card" | "embedded";
 }
 
-export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300 }: LiveGraphProps) {
+export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, variant = "card" }: LiveGraphProps) {
     const [data, setData] = useState<SensorReadingResponse[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -35,61 +36,78 @@ export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, 
         return () => clearInterval(interval);
     }, [sensorId, metric]);
 
-    if (loading && !data.length) {
-        return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: "#666" }}>Loading graph...</div>;
-    }
-
-    if (!data.length) {
-        return <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: "#666" }}>No data available</div>;
-    }
-
     const formatTime = (ts: number) => {
         const d = new Date(ts * 1000);
         return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    const placeholder = (message: string) => (
+        <div
+            className={variant === "embedded" ? "live-graph-placeholder live-graph-placeholder-embedded" : "live-graph-placeholder"}
+            style={{ height }}
+        >
+            {message}
+        </div>
+    );
+
+    if (loading && !data.length) {
+        return placeholder("Loading graph...");
+    }
+
+    if (!data.length) {
+        return placeholder("No data available");
+    }
+
+    const chart = (
+        <div className={variant === "embedded" ? "live-graph-chart live-graph-chart-embedded" : "live-graph-chart"} style={{ height }}>
+            <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data}>
+                    <defs>
+                        <linearGradient id={`color${sensorId}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={color} stopOpacity={0.8} />
+                            <stop offset="95%" stopColor={color} stopOpacity={0} />
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
+                    <XAxis
+                        dataKey="ts"
+                        tickFormatter={formatTime}
+                        stroke="#888"
+                        tick={{ fill: '#888' }}
+                        minTickGap={50}
+                    />
+                    <YAxis
+                        stroke="#888"
+                        tick={{ fill: '#888' }}
+                    />
+                    <Tooltip
+                        contentStyle={{ backgroundColor: '#222', border: '1px solid #444', borderRadius: 4, color: '#fff' }}
+                        labelFormatter={(label) => new Date(label * 1000).toLocaleString()}
+                        formatter={(value: number | undefined) => [value != null ? value.toFixed(1) : "N/A", metric]}
+                    />
+                    <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke={color}
+                        fillOpacity={1}
+                        fill={`url(#color${sensorId})`}
+                        animationDuration={500}
+                    />
+                </AreaChart>
+            </ResponsiveContainer>
+        </div>
+    );
+
+    if (variant === "embedded") {
+        return chart;
+    }
+
     return (
-        <div className="room-section" style={{ marginTop: 20 }}>
+        <div className="room-section live-graph-card" style={{ marginTop: 20 }}>
             <div className="room-header">
                 <h2 className="room-title">{label || `${sensorId} - ${metric}`}</h2>
             </div>
-            <div style={{ height, padding: "10px 20px 20px 0" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data}>
-                        <defs>
-                            <linearGradient id={`color${sensorId}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={color} stopOpacity={0.8} />
-                                <stop offset="95%" stopColor={color} stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
-                        <XAxis
-                            dataKey="ts"
-                            tickFormatter={formatTime}
-                            stroke="#888"
-                            tick={{ fill: '#888' }}
-                            minTickGap={50}
-                        />
-                        <YAxis
-                            stroke="#888"
-                            tick={{ fill: '#888' }}
-                        />
-                        <Tooltip
-                            contentStyle={{ backgroundColor: '#222', border: '1px solid #444', borderRadius: 4, color: '#fff' }}
-                            labelFormatter={(label) => new Date(label * 1000).toLocaleString()}
-                            formatter={(value: number | undefined) => [value != null ? value.toFixed(1) : "N/A", metric]}
-                        />
-                        <Area
-                            type="monotone"
-                            dataKey="value"
-                            stroke={color}
-                            fillOpacity={1}
-                            fill={`url(#color${sensorId})`}
-                            animationDuration={500}
-                        />
-                    </AreaChart>
-                </ResponsiveContainer>
-            </div>
+            {chart}
         </div>
     );
 }
