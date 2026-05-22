@@ -35,7 +35,7 @@ To run the local control service and researcher UI on your machine:
 
 **Prerequisites:**
 - [Node.js](https://nodejs.org/) (v18+)
-- [Docker](https://www.docker.com/) (for full stack environment, optional)
+- [Docker](https://www.docker.com/) or [Podman Desktop](https://podman-desktop.io/) (for running the full stack container environment)
 
 **Getting Started:**
 
