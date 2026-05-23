@@ -7,6 +7,7 @@ import { ToastProvider } from "./utils/toast";
 import "./styles-hmi.css";
 
 import Docs from "./components/Docs";
+import SensorDocs from "./components/SensorDocs";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
@@ -16,6 +17,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                     <Route path="/" element={<AppHMI />} />
                     <Route path="/docs" element={<Docs />} />
                     <Route path="/docs/routines" element={<RoutineDocs />} />
+                    <Route path="/docs/sensors" element={<SensorDocs />} />
                 </Routes>
             </BrowserRouter>
         </ToastProvider>

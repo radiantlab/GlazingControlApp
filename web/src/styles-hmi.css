@@ -2660,3 +2660,147 @@ select option[disabled] {
     font-size: 12px;
     font-style: italic;
 }
+
+/* ========================================
+   Docs Dropdown Menu
+   ======================================== */
+
+.hmi-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.hmi-dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    background: var(--hmi-surface);
+    border: 1px solid var(--hmi-border);
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    min-width: 240px;
+    z-index: 1000;
+    overflow: visible;
+    padding: 8px 0;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+/* Invisible bridge to prevent losing hover when crossing the gap */
+.hmi-dropdown-menu::before {
+    content: "";
+    position: absolute;
+    top: -12px;
+    left: 0;
+    right: 0;
+    height: 12px;
+    background: transparent;
+}
+
+/* Show when open class is applied or parent hovered */
+.hmi-dropdown:hover .hmi-dropdown-menu,
+.hmi-dropdown.open .hmi-dropdown-menu {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.hmi-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 18px;
+    color: var(--hmi-text-muted);
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.hmi-dropdown-item:hover {
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--hmi-text-bright);
+}
+
+.hmi-dropdown-item svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0.6;
+    color: var(--hmi-text-muted);
+    transition: opacity 0.15s ease, color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.hmi-dropdown-item:hover svg {
+    opacity: 1;
+    color: var(--hmi-primary);
+}
+
+.hmi-dropdown-divider {
+    height: 1px;
+    background: var(--hmi-border);
+    margin: 8px 0;
+}
+
+.hmi-dropdown-arrow {
+    width: 12px;
+    height: 12px;
+    transition: transform 0.2s ease;
+    transform: rotate(0deg);
+}
+
+.hmi-dropdown:hover .hmi-dropdown-arrow,
+.hmi-dropdown.open .hmi-dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+/* ========================================
+   Documentation Pages Layout
+   ======================================== */
+
+.docs-layout {
+    max-width: 1000px !important;
+    margin: 0 auto;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+@media (min-width: 768px) {
+    .docs-layout {
+        padding: 40px 24px;
+    }
+}
+
+.docs-layout .room-section p,
+.docs-layout .room-section ul,
+.docs-layout .room-section ol {
+    margin-top: 0;
+    margin-bottom: 16px;
+    line-height: 1.6;
+    color: var(--hmi-text-muted);
+}
+
+.docs-layout .room-section ul:last-child,
+.docs-layout .room-section ol:last-child,
+.docs-layout .room-section p:last-child {
+    margin-bottom: 0;
+}
+
+.docs-layout .room-section h3 {
+    color: var(--hmi-text-bright);
+    font-size: 16px;
+    margin: 24px 0 12px 0;
+}
+
+.docs-layout .room-section code {
+    font-family: monospace;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--hmi-text-bright);
+}

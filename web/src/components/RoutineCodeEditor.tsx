@@ -351,22 +351,29 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
             <div className="form-group" style={{ position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <label>Routine Name</label>
-                    <Link
-                        to="/docs/routines"
-                        target="_blank"
-                        style={{
-                            fontSize: "12px",
-                            fontWeight: 600,
-                            color: "var(--btn-blue)",
-                            textDecoration: "none",
-                            padding: "2px 6px",
-                            border: "1px solid var(--btn-blue)",
-                            borderRadius: "4px"
-                        }}
-                    >
-                        View Documentation ↗
-                    </Link>
-                </div>
+                    <Link to="/docs/routines" target="_blank" rel="noopener noreferrer">
+                        <button
+                            className="hmi-manage-btn"
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                background: "linear-gradient(135deg, rgba(30, 64, 175, 0.25) 0%, rgba(37, 99, 235, 0.2) 100%)",
+                                border: "1px solid rgba(59, 130, 246, 0.4)",
+                                color: "#93c5fd",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                                padding: "4px 8px",
+                                boxShadow: "0 2px 6px rgba(0, 0, 0, 0.15)"
+                            }}
+                            title="View Routine Developer Documentation"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: "14px", height: "14px" }}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                            </svg>
+                            Routine Docs
+                        </button>
+                    </Link>                </div>
                 <input
                     type="text"
                     value={routineName}
