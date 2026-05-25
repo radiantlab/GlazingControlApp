@@ -779,16 +779,38 @@ export default function AppHMI() {
                             </div>
 
                             <div className="sensor-card-layout">
-                                <div className="sensor-latest-panel">
-                                    <div className="sensor-latest-eyebrow">Latest metric</div>
-                                    <div className="sensor-latest-label">
-                                        {METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric}
+                                <div className="sensor-metrics-panel">
+                                    <div className="sensor-metrics-heading">Live metrics</div>
+                                    <div className="sensor-metrics-grid">
+                                        {orderedMetricNames.map(metric => {
+                                            const reading = metricMap.get(metric);
+                                            if (!reading) return null;
+                                            const isSelected = metric === selectedGraphMetric;
+
+                                            return (
+                                                <button
+                                                    key={`${sensor.id}-${metric}`}
+                                                    type="button"
+                                                    className={`sensor-metric-row ${isSelected ? "active" : ""}`}
+                                                    aria-pressed={isSelected}
+                                                    onClick={() => {
+                                                        if (availableGraphMetrics.includes(metric)) {
+                                                            setGraphMetricBySensor(prev => ({ ...prev, [sensor.id]: metric }));
+                                                        }
+                                                    }}
+                                                >
+                                                    <span className="sensor-metric-label">
+                                                        {METRIC_LABELS[metric] || metric}
+                                                    </span>
+                                                    <span className="sensor-metric-value">
+                                                        {formatMetricValue(metric, reading.value)}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
-                                    <div className="sensor-latest-value">
-                                        {formatMetricValue(selectedGraphMetric, selectedReading.value)}
-                                    </div>
-                                    <div className="sensor-latest-meta">
-                                        Updated {formatMetricTimestamp(selectedReading.ts)}
+                                    <div className="sensor-metrics-meta">
+                                        Graphing {METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric} - updated {formatMetricTimestamp(selectedReading.ts)}
                                     </div>
                                 </div>
 
