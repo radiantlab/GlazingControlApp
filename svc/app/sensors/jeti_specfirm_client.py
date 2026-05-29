@@ -209,7 +209,15 @@ class JetiSpecfirmClient(SensorClient):
 
             metrics = compute_jeti_metrics(lux=lux, spectral_values=spectral)
             ts = time.time()
-            out: list[SensorReading] = []
+            out: list[SensorReading] = [
+                SensorReading(
+                    sensor_id=self._sensor_id,
+                    metric="spectrum",
+                    value=0.0,
+                    ts=ts,
+                    spectrum=spectral,
+                )
+            ]
             for metric, value in metrics.items():
                 out.append(
                     SensorReading(

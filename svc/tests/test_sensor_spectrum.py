@@ -1,16 +1,14 @@
-import os
-import sqlite3
-import time
 from fastapi.testclient import TestClient
 import pytest
-from app.sensors.interface import SensorReading
 from app.sensors.jeti_spectraval_watcher import JetiSpectravalFileWatcher
 from app.state import (
-    _db_connection,
-    _ensure_sensor_db,
+    delete_sensor_readings_for_ids,
+    insert_sensor_reading,
     insert_sensor_spectrum,
     fetch_latest_spectrum,
     fetch_historical_spectrum,
+    prune_sensors_to_ids,
+    register_sensor,
 )
 from main import app
 
@@ -53,6 +51,28 @@ def test_sqlite_spectrum_operations():
     # Verify no match for far away timestamp
     hist_far = fetch_historical_spectrum("JETI-TEST", 1005.0)
     assert hist_far is None
+
+
+def test_delete_sensor_readings_for_ids_removes_spectra():
+    register_sensor("JETI-TEST", "jeti_spectraval", "JETI", None, {})
+    insert_sensor_reading("JETI-TEST", 1000.0, "lux", 1.0)
+    insert_sensor_spectrum("JETI-TEST", 1000.0, [1.0, 2.0, 3.0])
+
+    delete_sensor_readings_for_ids(["JETI-TEST"])
+
+    assert fetch_latest_spectrum("JETI-TEST") is None
+
+
+def test_prune_sensors_to_ids_removes_spectra_for_pruned_sensors():
+    register_sensor("JETI-KEEP", "jeti_spectraval", "JETI Keep", None, {})
+    register_sensor("JETI-PRUNE", "jeti_spectraval", "JETI Prune", None, {})
+    insert_sensor_spectrum("JETI-KEEP", 1000.0, [1.0, 2.0, 3.0])
+    insert_sensor_spectrum("JETI-PRUNE", 1000.0, [4.0, 5.0, 6.0])
+
+    prune_sensors_to_ids(["JETI-KEEP"])
+
+    assert fetch_latest_spectrum("JETI-KEEP") is not None
+    assert fetch_latest_spectrum("JETI-PRUNE") is None
 
 
 def test_api_spectrum_endpoints():

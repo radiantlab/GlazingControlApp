@@ -609,7 +609,7 @@ def fetch_latest_readings() -> list[dict]:
 
 
 def delete_sensor_readings_for_ids(sensor_ids: list[str]) -> None:
-    """Delete all readings for the provided sensor IDs."""
+    """Delete all readings and spectra for the provided sensor IDs."""
     _ensure_sensor_db()
     unique_ids = sorted(set(sensor_ids))
     if not unique_ids:
@@ -617,6 +617,10 @@ def delete_sensor_readings_for_ids(sensor_ids: list[str]) -> None:
 
     placeholders = ",".join(["?"] * len(unique_ids))
     with _db_connection() as conn:
+        conn.execute(
+            f"DELETE FROM sensor_spectra WHERE sensor_id IN ({placeholders})",
+            tuple(unique_ids),
+        )
         conn.execute(
             f"DELETE FROM sensor_readings WHERE sensor_id IN ({placeholders})",
             tuple(unique_ids),
@@ -746,11 +750,16 @@ def prune_sensors_to_ids(sensor_ids: list[str]) -> None:
     unique_ids = sorted(set(sensor_ids))
     with _db_connection() as conn:
         if not unique_ids:
+            conn.execute("DELETE FROM sensor_spectra")
             conn.execute("DELETE FROM sensor_readings")
             conn.execute("DELETE FROM sensors")
             return
 
         placeholders = ",".join(["?"] * len(unique_ids))
+        conn.execute(
+            f"DELETE FROM sensor_spectra WHERE sensor_id NOT IN ({placeholders})",
+            tuple(unique_ids),
+        )
         conn.execute(
             f"DELETE FROM sensor_readings WHERE sensor_id NOT IN ({placeholders})",
             tuple(unique_ids),
