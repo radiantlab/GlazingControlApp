@@ -5,12 +5,13 @@ import {
     getFreshMetricsForSensor,
     pruneVisibleSensorIds,
     sensorFreshnessWindowSeconds,
+    sortSensorsForDisplay,
 } from "./sensorDisplay";
 
-const sensor = (id: string, interval_s?: number): SensorInfo => ({
+const sensor = (id: string, interval_s?: number, kind = "t10a", label = id): SensorInfo => ({
     id,
-    kind: "t10a",
-    label: id,
+    kind,
+    label,
     config: interval_s == null ? {} : { interval_s },
 });
 
@@ -51,5 +52,25 @@ describe("sensorDisplay", () => {
 
     it("prunes visible sensors to the allowed connected sensor order", () => {
         expect(pruneVisibleSensorIds(["B", "A", "C"], ["A", "C"])).toEqual(["A", "C"]);
+    });
+
+    it("sorts sensors by site display order", () => {
+        const sensors = [
+            sensor("T10A2-H2", undefined, "t10a", "T-10A #2 Head 2"),
+            sensor("EKO-00", undefined, "eko_ms90_plus", "EKO MS-90+"),
+            sensor("T10A1-H8", undefined, "t10a", "T-10A #1 Head 8"),
+            sensor("JETI-00", undefined, "jeti_spectraval", "Jeti Spectraval"),
+            sensor("T10A1-H1", undefined, "t10a", "T-10A #1 Head 1"),
+            sensor("T10A2-H1", undefined, "t10a", "T-10A #2 Head 1"),
+        ];
+
+        expect(sortSensorsForDisplay(sensors).map(s => s.id)).toEqual([
+            "T10A1-H1",
+            "T10A1-H8",
+            "T10A2-H1",
+            "T10A2-H2",
+            "JETI-00",
+            "EKO-00",
+        ]);
     });
 });

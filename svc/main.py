@@ -51,13 +51,13 @@ async def lifespan(_: FastAPI):
 
 class LoggingMiddleware(BaseHTTPMiddleware):
     """Middleware to log detailed request and response information."""
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         start_time = time.time()
-        
+
         # Get client IP
         client_ip = request.client.host if request.client else "unknown"
-        
+
         # Skip body reading for OPTIONS (CORS preflight) - let CORS middleware handle it
         body = None
         body_bytes = b""
@@ -72,7 +72,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 f"Time: {process_time:.3f}s"
             )
             return response
-        
+
         # Get request body for POST/PATCH/PUT requests
         if request.method in ("POST", "PATCH", "PUT"):
             try:
@@ -83,12 +83,12 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 body = "<non-json body>"
             except Exception as e:
                 body = f"<error reading body: {e}>"
-            
+
             # Recreate request with body for downstream handlers
             async def receive():
                 return {"type": "http.request", "body": body_bytes}
             request._receive = receive
-        
+
         # Log request
         query_params = dict(request.query_params) if request.query_params else None
         logger.info(
@@ -97,20 +97,20 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             f"Query: {query_params} | "
             f"Body: {body if body else 'N/A'}"
         )
-        
+
         # Process request
         response = await call_next(request)
-        
+
         # Calculate response time
         process_time = time.time() - start_time
-        
+
         # Log response
         logger.info(
             f"Response: {request.method} {request.url.path} | "
             f"Status: {response.status_code} | "
             f"Time: {process_time:.3f}s"
         )
-        
+
         return response
 
 
@@ -119,12 +119,12 @@ def create_app() -> FastAPI:
     initialize_database()
     # Bootstrap default panels/groups if needed
     bootstrap_default_if_empty()
-    
+
     app = FastAPI(title="ECG Control Service", version="0.1.0", lifespan=lifespan)
 
     # Request logging middleware (add first so it wraps everything)
     app.add_middleware(LoggingMiddleware)
-    
+
     # CORS for local web dev
     app.add_middleware(
         CORSMiddleware,

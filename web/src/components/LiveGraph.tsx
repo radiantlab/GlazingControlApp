@@ -9,9 +9,11 @@ interface LiveGraphProps {
     label?: string;
     height?: number;
     variant?: "card" | "embedded";
+    yAxisLabel?: string;
+    valueFormatter?: (value: number | undefined) => string;
 }
 
-export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, variant = "card" }: LiveGraphProps) {
+export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, variant = "card", yAxisLabel, valueFormatter }: LiveGraphProps) {
     const [data, setData] = useState<SensorReadingResponse[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -50,6 +52,11 @@ export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, 
         </div>
     );
 
+    const formatTooltipValue = (value: number | undefined) => {
+        if (valueFormatter) return valueFormatter(value);
+        return value != null ? value.toFixed(1) : "N/A";
+    };
+
     if (loading && !data.length) {
         return placeholder("Loading graph...");
     }
@@ -61,7 +68,7 @@ export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, 
     const chart = (
         <div className={variant === "embedded" ? "live-graph-chart live-graph-chart-embedded" : "live-graph-chart"} style={{ height }}>
             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data}>
+                <AreaChart data={data} margin={{ top: 10, right: 20, left: 34, bottom: 26 }}>
                     <defs>
                         <linearGradient id={`color${sensorId}`} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor={color} stopOpacity={0.8} />
@@ -75,15 +82,28 @@ export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, 
                         stroke="#888"
                         tick={{ fill: '#888' }}
                         minTickGap={50}
+                        label={{
+                            value: "Time",
+                            position: "insideBottom",
+                            offset: -18,
+                            fill: "#888",
+                        }}
                     />
                     <YAxis
                         stroke="#888"
                         tick={{ fill: '#888' }}
+                        label={{
+                            value: yAxisLabel || metric,
+                            angle: -90,
+                            position: "insideLeft",
+                            fill: "#888",
+                            style: { textAnchor: "middle" },
+                        }}
                     />
                     <Tooltip
                         contentStyle={{ backgroundColor: '#222', border: '1px solid #444', borderRadius: 4, color: '#fff' }}
                         labelFormatter={(label) => new Date(label * 1000).toLocaleString()}
-                        formatter={(value: number | undefined) => [value != null ? value.toFixed(1) : "N/A", metric]}
+                        formatter={(value: number | undefined) => [formatTooltipValue(value), yAxisLabel || metric]}
                     />
                     <Area
                         type="monotone"

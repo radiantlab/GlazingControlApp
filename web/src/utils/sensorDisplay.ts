@@ -40,3 +40,35 @@ export function pruneVisibleSensorIds(visibleSensorIds: string[], allowedSensorI
     const visibleSet = new Set(visibleSensorIds);
     return allowedSensorIds.filter(id => visibleSet.has(id));
 }
+
+function t10aOrder(sensor: SensorInfo): [number, number, string] {
+    const raw = `${sensor.id} ${sensor.label}`.toLowerCase();
+    const parsed = raw.match(/t-?10a?\s*#?\s*(\d+).*?h(?:ead)?\s*(\d+)/i)
+        || raw.match(/t10a(\d+)-h(\d+)/i);
+    if (!parsed) return [999, 999, sensor.label || sensor.id];
+    return [Number(parsed[1]), Number(parsed[2]), sensor.label || sensor.id];
+}
+
+function sensorKindRank(sensor: SensorInfo): number {
+    if (sensor.kind === "t10a") return 0;
+    if (sensor.kind === "jeti_spectraval") return 1;
+    if (sensor.kind === "eko_ms90_plus") return 2;
+    return 99;
+}
+
+export function sortSensorsForDisplay(sensors: SensorInfo[]): SensorInfo[] {
+    return [...sensors].sort((a, b) => {
+        const kindDiff = sensorKindRank(a) - sensorKindRank(b);
+        if (kindDiff !== 0) return kindDiff;
+
+        if (a.kind === "t10a" && b.kind === "t10a") {
+            const [aBody, aHead, aLabel] = t10aOrder(a);
+            const [bBody, bHead, bLabel] = t10aOrder(b);
+            if (aBody !== bBody) return aBody - bBody;
+            if (aHead !== bHead) return aHead - bHead;
+            return aLabel.localeCompare(bLabel, undefined, { numeric: true });
+        }
+
+        return (a.label || a.id).localeCompare(b.label || b.id, undefined, { numeric: true });
+    });
+}
