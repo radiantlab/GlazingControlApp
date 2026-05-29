@@ -243,9 +243,21 @@ To build a new image:
 podman build -t glazing-control-app .
 ```
 
-To run the container in podman:
+To run the single container in Podman:
 
-```sh
+**On macOS / Linux:**
+```bash
+podman run --rm -p 8000:8000 \
+    -v "$(pwd)/svc/data:/app/svc/data" \
+    -e SVC_MODE=real \
+    -e HALIO_API_URL= \
+    -e HALIO_SITE_ID= \
+    -e HALIO_API_KEY= \
+    glazing-control-app
+```
+
+**On Windows (PowerShell):**
+```powershell
 podman run --rm -p 8000:8000 `
     -v "${PWD}\svc\data:/app/svc/data" `
     -e SVC_MODE=real `
@@ -254,3 +266,20 @@ podman run --rm -p 8000:8000 `
     -e HALIO_API_KEY= `
     glazing-control-app
 ```
+
+---
+
+# Running the Multi-Container Stack (Podman Compose)
+
+You can run both the backend (`svc`) and frontend (`web`) containers together using the compose configuration:
+
+1. Ensure the Podman system service/machine is running (via Podman Desktop or command line: `podman machine start`).
+2. Build and run the compose stack:
+   ```bash
+   podman compose up --build
+   ```
+   *(Note: Depending on your environment, you can also use `docker-compose up --build` if you have configured Podman's helper socket, or `podman-compose up --build`).*
+3. Once running, you can access:
+   - **Frontend UI (HMI)**: `http://localhost:8080` (updated from `80` to support rootless Podman execution without administrator privileges)
+   - **Backend API**: `http://localhost:8000`
+

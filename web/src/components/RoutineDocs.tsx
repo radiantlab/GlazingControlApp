@@ -165,7 +165,8 @@ for s in sensor_list:
                         <p style={{ lineHeight: "1.6", marginBottom: "8px" }}>Provides advanced colorimetry, illuminance, and non-visual lighting metrics from JETI spectraval or specbos devices.</p>
                         <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Common Sensor IDs:</h4>
                         <ul style={{ margin: "0 0 12px 0", paddingLeft: "20px" }}>
-                            <li><code>JETI-00</code> - first configured JETI device</li>
+                            <li><code>SPECTRAVAL-1</code> - first configured Spectraval device</li>
+                            <li><code>SPECBOS-1</code> - configured Specbos device</li>
                         </ul>
                         <h4 style={{ color: "var(--hmi-text-muted)", marginBottom: "4px" }}>Available Metrics:</h4>
                         <ul style={{ margin: 0, paddingLeft: "20px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "4px" }}>
