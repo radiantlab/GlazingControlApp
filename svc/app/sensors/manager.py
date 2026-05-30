@@ -150,6 +150,8 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     "interval_s": interval_s,
                     "timeout_s": timeout_s,
                     "protocol": protocol_cfg,
+                    "custom_label": h.get("custom_label"),
+                    "device_custom_label": dev_cfg.get("custom_label"),
                 },
             )
             configured_sensor_ids.add(hc.sensor_id)
@@ -491,3 +493,97 @@ def stop_sensor_workers() -> None:
 
     _workers = []
     _clients = []
+
+
+def update_sensor_labels(
+    sensor_id: str,
+    custom_label: str | None = None,
+    device_custom_label: str | None = None,
+) -> bool:
+    """
+    Update the custom labels for a T-10A head and/or body.
+    Updates the SQLite database only.
+    """
+    config_path = _get_sensors_config_file()
+    if not os.path.exists(config_path):
+        logger.warning("No sensors_config.json found at %s", config_path)
+        return False
+
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+    except Exception as e:
+        logger.error("Failed to load sensors config for update: %s", e)
+        return False
+
+    found = False
+    target_device_id = None
+
+    # Loop through t10a devices to find the matching head and get its device_id
+    for dev_cfg in cfg.get("t10a", []):
+        for h in dev_cfg.get("heads", []):
+            if h.get("sensor_id") == sensor_id:
+                found = True
+                target_device_id = dev_cfg.get("device_id")
+                break
+        if found:
+            break
+
+    if not found:
+        return False
+
+    # Update SQLite database
+    from app.state import _db_connection
+    import sqlite3
+
+    try:
+        with _db_connection(row_factory=sqlite3.Row) as conn:
+            # First, update the head custom_label in its config_json
+            row = conn.execute(
+                "SELECT config_json FROM sensors WHERE id = ?", (sensor_id,)
+            ).fetchone()
+            if row:
+                config = json.loads(row["config_json"] or "{}")
+                if custom_label is not None:
+                    if custom_label.strip() == "":
+                        config.pop("custom_label", None)
+                    else:
+                        config["custom_label"] = custom_label.strip()
+                
+                if device_custom_label is not None:
+                    if device_custom_label.strip() == "":
+                        config.pop("device_custom_label", None)
+                    else:
+                        config["device_custom_label"] = device_custom_label.strip()
+                
+                conn.execute(
+                    "UPDATE sensors SET config_json = ? WHERE id = ?",
+                    (json.dumps(config), sensor_id),
+                )
+
+            # If device_custom_label is updated, we must update all heads belonging to this device_id
+            if device_custom_label is not None and target_device_id:
+                rows = conn.execute(
+                    "SELECT id, config_json FROM sensors WHERE kind = 't10a'"
+                ).fetchall()
+                for r in rows:
+                    h_id = r["id"]
+                    if h_id == sensor_id:
+                        continue # Already updated
+                    
+                    h_config = json.loads(r["config_json"] or "{}")
+                    if h_config.get("device_id") == target_device_id:
+                        if device_custom_label.strip() == "":
+                            h_config.pop("device_custom_label", None)
+                        else:
+                            h_config["device_custom_label"] = device_custom_label.strip()
+                        
+                        conn.execute(
+                            "UPDATE sensors SET config_json = ? WHERE id = ?",
+                            (json.dumps(h_config), h_id),
+                        )
+    except Exception as e:
+        logger.error("Failed to update database with custom labels: %s", e)
+        return False
+
+    return True

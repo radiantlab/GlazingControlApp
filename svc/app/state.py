@@ -486,8 +486,22 @@ def register_sensor(
     Idempotently register a sensor; if it already exists we just update its metadata.
     """
     _ensure_sensor_db()
-    cfg_json = json.dumps(config)
-    with _db_connection() as conn:
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        # Check if it already exists to preserve custom labels
+        row = conn.execute(
+            "SELECT config_json FROM sensors WHERE id = ?", (sensor_id,)
+        ).fetchone()
+        if row:
+            try:
+                existing_config = json.loads(row["config_json"] or "{}")
+                if "custom_label" in existing_config:
+                    config["custom_label"] = existing_config["custom_label"]
+                if "device_custom_label" in existing_config:
+                    config["device_custom_label"] = existing_config["device_custom_label"]
+            except Exception:
+                pass
+
+        cfg_json = json.dumps(config)
         conn.execute(
             """
             INSERT INTO sensors (id, kind, label, location, config_json)
