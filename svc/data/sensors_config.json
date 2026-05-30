@@ -34,6 +34,26 @@
           "head_no": 3,
           "sensor_id": "T10A1-H4",
           "label": "T-10A #1 Head 4"
+        },
+        {
+          "head_no": 4,
+          "sensor_id": "T10A1-H5",
+          "label": "T-10A #1 Head 5"
+        },
+        {
+          "head_no": 5,
+          "sensor_id": "T10A1-H6",
+          "label": "T-10A #1 Head 6"
+        },
+        {
+          "head_no": 6,
+          "sensor_id": "T10A1-H7",
+          "label": "T-10A #1 Head 7"
+        },
+        {
+          "head_no": 7,
+          "sensor_id": "T10A1-H8",
+          "label": "T-10A #1 Head 8"
         }
       ]
     },
@@ -71,6 +91,26 @@
           "head_no": 3,
           "sensor_id": "T10A2-H4",
           "label": "T-10A #2 Head 4"
+        },
+        {
+          "head_no": 4,
+          "sensor_id": "T10A2-H5",
+          "label": "T-10A #2 Head 5"
+        },
+        {
+          "head_no": 5,
+          "sensor_id": "T10A2-H6",
+          "label": "T-10A #2 Head 6"
+        },
+        {
+          "head_no": 6,
+          "sensor_id": "T10A2-H7",
+          "label": "T-10A #2 Head 7"
+        },
+        {
+          "head_no": 7,
+          "sensor_id": "T10A2-H8",
+          "label": "T-10A #2 Head 8"
         }
       ]
     }

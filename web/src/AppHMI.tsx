@@ -11,6 +11,12 @@ import { useToast } from "./utils/toast";
 import LogsPanel from "./components/LogsPanel";
 import LiveGraph from "./components/LiveGraph";
 import { type SensorInfo, type SensorReadingResponse } from "./api";
+import {
+    connectedSensors as getConnectedSensors,
+    getFreshMetricsForSensor,
+    pruneVisibleSensorIds,
+    sortSensorsForDisplay,
+} from "./utils/sensorDisplay";
 import SpectralGraph from "./components/SpectralGraph";
 
 const METRIC_LABELS: Record<string, string> = {
@@ -45,6 +51,41 @@ const METRIC_LABELS: Record<string, string> = {
     sun_elevation_deg: "Sun elevation (deg)",
     sun_azimuth_deg: "Sun azimuth (deg)",
     gps_timestamp_s: "GPS timestamp (s)",
+    gps_satellites: "GPS satellites",
+};
+
+const METRIC_AXIS_LABELS: Record<string, string> = {
+    lux: "Illuminance (lx)",
+    cie1931_x: "CIE 1931 x",
+    cie1931_y: "CIE 1931 y",
+    s_cone_irradiance_mw_m2: "S-cone irradiance (mW/m2)",
+    m_cone_irradiance_mw_m2: "M-cone irradiance (mW/m2)",
+    l_cone_irradiance_mw_m2: "L-cone irradiance (mW/m2)",
+    rhodopic_irradiance_mw_m2: "Rhodopic irradiance (mW/m2)",
+    melanopic_irradiance_mw_m2: "Melanopic irradiance (mW/m2)",
+    s_cone_edi_lx: "S-cone EDI (lx)",
+    m_cone_edi_lx: "M-cone EDI (lx)",
+    l_cone_edi_lx: "L-cone EDI (lx)",
+    rhodopic_edi_lx: "Rhodopic EDI (lx)",
+    melanopic_edi_lx: "Melanopic EDI (lx)",
+    cct_ohno_k: "CCT Ohno (K)",
+    cct_robertson_k: "CCT Robertson (K)",
+    cri_ra: "CRI Ra",
+    cfi_rf: "CFI Rf",
+    duv_ohno: "Duv Ohno",
+    duv_robertson: "Duv Robertson",
+    sample_interval_s: "Sample interval (s)",
+    lux_calc: "Calculated illuminance (lx)",
+    board_temp_c: "Board temp (degC)",
+    sensor_temp_c: "Sensor temp (degC)",
+    ghi_w_m2: "GHI (W/m2)",
+    dni_w_m2: "DNI (W/m2)",
+    dhi_w_m2: "DHI (W/m2)",
+    latitude_deg: "Latitude (deg)",
+    longitude_deg: "Longitude (deg)",
+    sun_elevation_deg: "Sun elevation (deg)",
+    sun_azimuth_deg: "Sun azimuth (deg)",
+    gps_timestamp_s: "GPS time (s)",
     gps_satellites: "GPS satellites",
 };
 
@@ -139,6 +180,14 @@ function sensorGraphColor(kind: string): string {
     return SENSOR_GRAPH_COLORS[kind] || "#8884d8";
 }
 
+function metricAxisLabel(metric: string): string {
+    return METRIC_AXIS_LABELS[metric] || METRIC_LABELS[metric] || metric;
+}
+
+function sensorGraphHeight(kind: string): number {
+    return kind === "jeti_spectraval" || kind === "eko_ms90_plus" ? 420 : 260;
+}
+
 function formatMetricValue(metric: string, value: number): string {
     if (metric === "sample_interval_s") return `${value.toFixed(2)} s`;
     if (metric === "gps_timestamp_s") return `${Math.round(value)} s`;
@@ -152,6 +201,14 @@ function formatMetricValue(metric: string, value: number): string {
     if (metric === "cri_ra" || metric === "cfi_rf") return value.toFixed(3);
     if (metric.startsWith("cie1931_")) return value.toFixed(4);
     return value.toFixed(4);
+}
+
+function formatMetricTimestamp(ts: number): string {
+    return new Date(ts * 1000).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+    });
 }
 
 
@@ -180,6 +237,14 @@ export default function AppHMI() {
     const sensorVisibilityUserSet = useRef(false);
     const [targetRoutineId, setTargetRoutineId] = useState<string | null>(null);
     const [spectralModal, setSpectralModal] = useState<{ sensorId: string; fixedTs?: number } | null>(null);
+
+    const connectedSensorList = sortSensorsForDisplay(getConnectedSensors(sensors, latestMetrics));
+    const sensorListForControls = connectedSensorList.length > 0 ? connectedSensorList : sortSensorsForDisplay(sensors);
+    const sensorIdsForControls = sensorListForControls.map(sensor => sensor.id);
+    const sensorControlKey = sensorIdsForControls.join("|");
+    const showingConfiguredSensorsFallback = sensors.length > 0 && connectedSensorList.length === 0;
+    const selectedGroup = groups.find(g => g.id === groupId);
+    const highlightedPanelIds = new Set(selectedGroup?.member_ids || []);
 
 
     async function refresh() {
@@ -244,23 +309,18 @@ export default function AppHMI() {
     }, []);
 
     useEffect(() => {
-        const sensorIds = sensors.map(sensor => sensor.id);
-        if (!sensorIds.length) {
+        if (!sensorIdsForControls.length) {
             setVisibleSensorIds([]);
             return;
         }
 
         if (!sensorVisibilityUserSet.current) {
-            // Initial/default behavior: show all sensors.
-            setVisibleSensorIds(sensorIds);
+            setVisibleSensorIds(sensorIdsForControls);
             return;
         }
 
-        setVisibleSensorIds(prev => {
-            const prevSet = new Set(prev);
-            return sensorIds.filter(id => prevSet.has(id));
-        });
-    }, [sensors]);
+        setVisibleSensorIds(prev => pruneVisibleSensorIds(prev, sensorIdsForControls));
+    }, [sensorControlKey]);
 
     async function setPanel(panelId: string, level: number) {
         try {
@@ -492,7 +552,11 @@ export default function AppHMI() {
         }
     }
 
-    const visibleSensors = sensors.filter(sensor => visibleSensorIds.includes(sensor.id));
+    const visibleSensors = sensorListForControls.filter(sensor => visibleSensorIds.includes(sensor.id));
+    const hideSensor = (sensorId: string) => {
+        sensorVisibilityUserSet.current = true;
+        setVisibleSensorIds(prev => prev.filter(id => id !== sensorId));
+    };
 
 
     return (
@@ -657,7 +721,12 @@ export default function AppHMI() {
 
                         {/* room grids */}
                         {sidePanelOpen ? (
-                            <RoomGridCompact panels={panels} transitioning={transitioning} panelControls={controlState.panelControls} />
+                            <RoomGridCompact
+                                panels={panels}
+                                transitioning={transitioning}
+                                panelControls={controlState.panelControls}
+                                highlightedPanelIds={highlightedPanelIds}
+                            />
                         ) : (
                             <RoomGrid
                                 panels={panels}
@@ -665,6 +734,7 @@ export default function AppHMI() {
                                 busyId={busy}
                                 transitioning={transitioning}
                                 panelControls={controlState.panelControls}
+                                highlightedPanelIds={highlightedPanelIds}
                             />
                         )}
 
@@ -672,147 +742,229 @@ export default function AppHMI() {
                 )}
 
                 {/* Sensor Metrics + Live Graph Section */}
-                {mainTab === "sensors" && !usingMock && sensors.length > 0 && (
-                    <div className="room-section" style={{ marginTop: 20 }}>
+                {mainTab === "sensors" && !usingMock && sensorListForControls.length > 0 && (
+                    <div className="room-section sensor-visibility-card" style={{ marginTop: 20 }}>
                         <div className="room-header">
                             <h2 className="room-title">Visible sensors</h2>
                             <div className="room-stats">
-                                <span>{visibleSensors.length} of {sensors.length} shown</span>
+                                <span>{visibleSensors.length} of {sensorListForControls.length} shown</span>
+                                {showingConfiguredSensorsFallback && <span style={{ marginLeft: 8 }}>configured</span>}
                             </div>
                         </div>
-                        <div className="sensor-visibility-controls">
-                            <button
-                                className="sensor-visibility-chip"
-                                onClick={() => {
-                                    sensorVisibilityUserSet.current = true;
-                                    setVisibleSensorIds(sensors.map(sensor => sensor.id));
-                                }}
-                            >
-                                Show all
-                            </button>
-                            <button
-                                className="sensor-visibility-chip"
-                                onClick={() => {
-                                    sensorVisibilityUserSet.current = true;
-                                    setVisibleSensorIds([]);
-                                }}
-                            >
-                                Hide all
-                            </button>
-                            {sensors.map(sensor => {
-                                const active = visibleSensorIds.includes(sensor.id);
-                                return (
-                                    <button
-                                        key={`visibility-${sensor.id}`}
-                                        className={`sensor-visibility-chip ${active ? "active" : ""}`}
-                                        onClick={() => {
-                                            sensorVisibilityUserSet.current = true;
-                                            setVisibleSensorIds(prev =>
-                                                prev.includes(sensor.id)
-                                                    ? prev.filter(id => id !== sensor.id)
-                                                    : [...prev, sensor.id]
-                                            );
-                                        }}
-                                        title={`${sensor.label || sensor.id} (${SENSOR_KIND_LABELS[sensor.kind] || sensor.kind})`}
-                                    >
-                                        {sensor.label || sensor.id}
-                                    </button>
-                                );
-                            })}
+                        <div className="sensor-visibility-body">
+                            <div className="sensor-visibility-list" aria-label="Visible sensors">
+                                {sensorListForControls.map(sensor => {
+                                    const active = visibleSensorIds.includes(sensor.id);
+                                    const sensorKindLabel = SENSOR_KIND_LABELS[sensor.kind] || sensor.kind;
+                                    return (
+                                        <label
+                                            key={`visibility-${sensor.id}`}
+                                            className={`sensor-visibility-row ${active ? "active" : ""}`}
+                                            title={`${sensor.label || sensor.id} (${sensorKindLabel})`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={active}
+                                                onChange={() => {
+                                                    sensorVisibilityUserSet.current = true;
+                                                    setVisibleSensorIds(prev =>
+                                                        prev.includes(sensor.id)
+                                                            ? prev.filter(id => id !== sensor.id)
+                                                            : [...prev, sensor.id]
+                                                    );
+                                                }}
+                                            />
+                                            <span className="sensor-visibility-name">{sensor.label || sensor.id}</span>
+                                            <span className="sensor-visibility-kind">{sensorKindLabel}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            <div className="sensor-visibility-actions">
+                                <button
+                                    className="sensor-visibility-action"
+                                    onClick={() => {
+                                        sensorVisibilityUserSet.current = true;
+                                        setVisibleSensorIds(sensorIdsForControls);
+                                    }}
+                                >
+                                    All
+                                </button>
+                                <button
+                                    className="sensor-visibility-action"
+                                    onClick={() => {
+                                        sensorVisibilityUserSet.current = true;
+                                        setVisibleSensorIds([]);
+                                    }}
+                                >
+                                    None
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {mainTab === "sensors" && !usingMock && visibleSensors.map(sensor => {
-                    const sensorMetrics = latestMetrics.filter(m => m.sensor_id === sensor.id);
-                    const metricMap = new Map<string, number>();
-                    sensorMetrics.forEach(m => metricMap.set(m.metric, m.value));
+                    const sensorMetrics = getFreshMetricsForSensor(sensor, latestMetrics);
+                    const metricMap = new Map<string, SensorReadingResponse>();
+                    sensorMetrics.forEach(m => metricMap.set(m.metric, m));
                     const metricNames = Array.from(metricMap.keys());
                     const orderedMetricNames = orderMetrics(sensor.kind, metricNames);
                     const availableGraphMetrics = graphMetricOptions(sensor.kind, metricNames);
-                    const selectedGraphMetric = graphMetricBySensor[sensor.id]
-                        || availableGraphMetrics[0]
-                        || "";
+                    const requestedMetric = graphMetricBySensor[sensor.id];
+                    const selectedGraphMetric = requestedMetric && availableGraphMetrics.includes(requestedMetric)
+                        ? requestedMetric
+                        : availableGraphMetrics[0] || "";
+                    const selectedReading = selectedGraphMetric ? metricMap.get(selectedGraphMetric) : undefined;
                     const sensorKindLabel = SENSOR_KIND_LABELS[sensor.kind] || sensor.kind;
+                    const graphHeight = sensorGraphHeight(sensor.kind);
 
-                    return (
-                        <React.Fragment key={sensor.id}>
-                            <div className="room-section" style={{ marginTop: 20 }}>
-                                <div className="room-header">
-                                    <h2 className="room-title">{`${sensor.label || sensor.id} - Latest metrics`}</h2>
-                                    <div className="room-stats" style={{ display: 'flex', alignItems: 'center' }}>
+                    if (!selectedGraphMetric || !selectedReading) {
+                        return (
+                            <div key={sensor.id} className="room-section sensor-card sensor-card-no-data" style={{ marginTop: 20 }}>
+                                <div className="room-header sensor-card-header">
+                                    <h2 className="room-title">{sensor.label || sensor.id}</h2>
+                                    <div className="room-stats">
                                         <span>{sensorKindLabel}</span>
                                         {sensor.location && <span style={{ marginLeft: 8 }}>{sensor.location}</span>}
-                                        <span style={{ marginLeft: 8 }}>{orderedMetricNames.length} metrics</span>
+                                        <span style={{ marginLeft: 8 }}>not reporting</span>
                                         {sensor.kind === "jeti_spectraval" && (
                                             <button
                                                 className="hmi-manage-btn"
                                                 onClick={() => setSpectralModal({ sensorId: sensor.id })}
-                                                style={{ marginLeft: 12, padding: "2px 8px", fontSize: "11px", height: "auto" }}
+                                                style={{ marginLeft: 12, marginRight: 8, padding: "2px 8px", fontSize: "11px", height: "auto" }}
                                                 title="View real-time spectral irradiance graph"
                                             >
                                                 View Spectrum
                                             </button>
                                         )}
+                                        <button
+                                            type="button"
+                                            className="sensor-card-hide-btn"
+                                            onClick={() => hideSensor(sensor.id)}
+                                            title={`Hide ${sensor.label || sensor.id}`}
+                                        >
+                                            Hide
+                                        </button>
                                     </div>
                                 </div>
-                                <div style={{ padding: "12px 16px", display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
-                                    {orderedMetricNames.length === 0 && (
-                                        <div style={{ gridColumn: "1 / span 2", color: "#9ca3af" }}>
-                                            Waiting for sensor data...
+                                <div className="sensor-card-layout">
+                                    <div className="sensor-metrics-panel">
+                                        <div className="sensor-metrics-heading">Live metrics</div>
+                                        <div className="sensor-empty-state">No live data yet</div>
+                                    </div>
+                                    <div className="sensor-graph-panel">
+                                        <div className="sensor-empty-state sensor-empty-graph" style={{ height: graphHeight }}>
+                                            Graph appears when readings arrive
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <div key={sensor.id} className="room-section sensor-card" style={{ marginTop: 20 }}>
+                            <div className="room-header sensor-card-header">
+                                <h2 className="room-title">{sensor.label || sensor.id}</h2>
+                                <div className="room-stats">
+                                    <span>{sensorKindLabel}</span>
+                                    {sensor.location && <span style={{ marginLeft: 8 }}>{sensor.location}</span>}
+                                    <span style={{ marginLeft: 8 }}>{orderedMetricNames.length} metrics</span>
+                                    {sensor.kind === "jeti_spectraval" && (
+                                        <button
+                                            className="hmi-manage-btn"
+                                            onClick={() => setSpectralModal({ sensorId: sensor.id })}
+                                            style={{ marginLeft: 12, marginRight: 8, padding: "2px 8px", fontSize: "11px", height: "auto" }}
+                                            title="View real-time spectral irradiance graph"
+                                        >
+                                            View Spectrum
+                                        </button>
                                     )}
-                                    {orderedMetricNames.map(metric => (
-                                        <React.Fragment key={`${sensor.id}-${metric}`}>
-                                            <div style={{ color: "#e5e7eb" }}>{METRIC_LABELS[metric] || metric}</div>
-                                            <div style={{ color: "#f9fafb", fontVariantNumeric: "tabular-nums" }}>
-                                                {formatMetricValue(metric, metricMap.get(metric) as number)}
-                                            </div>
-                                        </React.Fragment>
-                                    ))}
+                                    <button
+                                        type="button"
+                                        className="sensor-card-hide-btn"
+                                        onClick={() => hideSensor(sensor.id)}
+                                        title={`Hide ${sensor.label || sensor.id}`}
+                                    >
+                                        Hide
+                                    </button>
                                 </div>
                             </div>
 
-                            {selectedGraphMetric && availableGraphMetrics.length > 1 && (
-                                <>
-                                    <div className="sensor-graph-controls">
-                                        <label className="hmi-status-label">Graph metric</label>
-                                        <select
-                                            className="sensor-graph-select"
-                                            value={selectedGraphMetric}
-                                            onChange={(e) => {
-                                                const nextMetric = e.target.value;
-                                                setGraphMetricBySensor(prev => ({ ...prev, [sensor.id]: nextMetric }));
-                                            }}
-                                        >
-                                            {availableGraphMetrics.map(metric => (
-                                                <option key={`${sensor.id}-graph-${metric}`} value={metric}>
-                                                    {METRIC_LABELS[metric] || metric}
-                                                </option>
-                                            ))}
-                                        </select>
+                            <div className="sensor-card-layout">
+                                <div className="sensor-metrics-panel">
+                                    <div className="sensor-metrics-heading">Live metrics</div>
+                                    <div className="sensor-metrics-grid">
+                                        {orderedMetricNames.map(metric => {
+                                            const reading = metricMap.get(metric);
+                                            if (!reading) return null;
+                                            const isSelected = metric === selectedGraphMetric;
+
+                                            return (
+                                                <button
+                                                    key={`${sensor.id}-${metric}`}
+                                                    type="button"
+                                                    className={`sensor-metric-row ${isSelected ? "active" : ""}`}
+                                                    aria-pressed={isSelected}
+                                                    onClick={() => {
+                                                        if (availableGraphMetrics.includes(metric)) {
+                                                            setGraphMetricBySensor(prev => ({ ...prev, [sensor.id]: metric }));
+                                                        }
+                                                    }}
+                                                >
+                                                    <span className="sensor-metric-label">
+                                                        {METRIC_LABELS[metric] || metric}
+                                                    </span>
+                                                    <span className="sensor-metric-value">
+                                                        {formatMetricValue(metric, reading.value)}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
+                                    <div className="sensor-metrics-meta">
+                                        Graphing {METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric} - updated {formatMetricTimestamp(selectedReading.ts)}
+                                    </div>
+                                </div>
+
+                                <div className="sensor-graph-panel">
+                                    {availableGraphMetrics.length > 1 && (
+                                        <div className="sensor-graph-controls">
+                                            <label className="hmi-status-label">Graph metric</label>
+                                            <select
+                                                className="sensor-graph-select"
+                                                value={selectedGraphMetric}
+                                                onChange={(e) => {
+                                                    const nextMetric = e.target.value;
+                                                    setGraphMetricBySensor(prev => ({ ...prev, [sensor.id]: nextMetric }));
+                                                }}
+                                            >
+                                                {availableGraphMetrics.map(metric => (
+                                                    <option key={`${sensor.id}-graph-${metric}`} value={metric}>
+                                                        {METRIC_LABELS[metric] || metric}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
                                     <LiveGraph
                                         sensorId={sensor.id}
                                         metric={selectedGraphMetric}
                                         label={`${sensor.label || sensor.id} - ${METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric}`}
+                                        yAxisLabel={metricAxisLabel(selectedGraphMetric)}
+                                        valueFormatter={(value) => value != null ? formatMetricValue(selectedGraphMetric, value) : "N/A"}
                                         color={sensorGraphColor(sensor.kind)}
+                                        height={graphHeight}
+                                        variant="embedded"
                                     />
-                                </>
-                            )}
-                            {selectedGraphMetric && availableGraphMetrics.length <= 1 && (
-                                <LiveGraph
-                                    sensorId={sensor.id}
-                                    metric={selectedGraphMetric}
-                                    label={`${sensor.label || sensor.id} - ${METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric}`}
-                                    color={sensorGraphColor(sensor.kind)}
-                                />
-                            )}
-                        </React.Fragment>
+                                </div>
+                            </div>
+                        </div>
                     );
                 })}
 
-                {mainTab === "sensors" && !usingMock && sensors.length > 0 && visibleSensors.length === 0 && (
+                {mainTab === "sensors" && !usingMock && sensorListForControls.length > 0 && visibleSensors.length === 0 && (
                     <div className="room-section" style={{ marginTop: 20, padding: "12px 16px", color: "#9ca3af" }}>
                         No sensors selected for display. Use the visibility controls above to choose what to show.
                     </div>
