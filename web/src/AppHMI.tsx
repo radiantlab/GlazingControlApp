@@ -11,6 +11,7 @@ import { useToast } from "./utils/toast";
 import LogsPanel from "./components/LogsPanel";
 import LiveGraph from "./components/LiveGraph";
 import { type SensorInfo, type SensorReadingResponse } from "./api";
+import SpectralGraph from "./components/SpectralGraph";
 
 const METRIC_LABELS: Record<string, string> = {
     lux: "Illuminance (lx)",
@@ -178,6 +179,7 @@ export default function AppHMI() {
     const [visibleSensorIds, setVisibleSensorIds] = useState<string[]>([]);
     const sensorVisibilityUserSet = useRef(false);
     const [targetRoutineId, setTargetRoutineId] = useState<string | null>(null);
+    const [spectralModal, setSpectralModal] = useState<{ sensorId: string; fixedTs?: number } | null>(null);
 
 
     async function refresh() {
@@ -738,10 +740,20 @@ export default function AppHMI() {
                             <div className="room-section" style={{ marginTop: 20 }}>
                                 <div className="room-header">
                                     <h2 className="room-title">{`${sensor.label || sensor.id} - Latest metrics`}</h2>
-                                    <div className="room-stats">
+                                    <div className="room-stats" style={{ display: 'flex', alignItems: 'center' }}>
                                         <span>{sensorKindLabel}</span>
                                         {sensor.location && <span style={{ marginLeft: 8 }}>{sensor.location}</span>}
                                         <span style={{ marginLeft: 8 }}>{orderedMetricNames.length} metrics</span>
+                                        {sensor.kind === "jeti_spectraval" && (
+                                            <button
+                                                className="hmi-manage-btn"
+                                                onClick={() => setSpectralModal({ sensorId: sensor.id })}
+                                                style={{ marginLeft: 12, padding: "2px 8px", fontSize: "11px", height: "auto" }}
+                                                title="View real-time spectral irradiance graph"
+                                            >
+                                                View Spectrum
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                                 <div style={{ padding: "12px 16px", display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
@@ -848,7 +860,47 @@ export default function AppHMI() {
                     setSidePanelOpen(true);
                     setLogsPanelOpen(false);
                 }}
+                onViewSpectrum={(sensorId, ts) => {
+                    setSpectralModal({ sensorId, fixedTs: ts });
+                }}
             />
+
+            {spectralModal && (
+                <>
+                    <div className="side-panel-overlay" onClick={() => setSpectralModal(null)} style={{ zIndex: 1200 }} />
+                    <div
+                        className="logs-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        style={{
+                            zIndex: 1201,
+                            maxWidth: "800px",
+                            height: "auto",
+                            minHeight: "520px",
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="logs-modal-header">
+                            <h2>
+                                Spectral Irradiance - {spectralModal.sensorId} 
+                                {spectralModal.fixedTs ? ` (${new Date(spectralModal.fixedTs * 1000).toLocaleString()})` : " (Live)"}
+                            </h2>
+                            <button
+                                className="logs-modal-close"
+                                onClick={() => setSpectralModal(null)}
+                                aria-label="Close spectrum"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: "20px", height: "20px" }}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="logs-panel-content" style={{ padding: "20px 24px" }}>
+                            <SpectralGraph sensorId={spectralModal.sensorId} fixedTs={spectralModal.fixedTs} />
+                        </div>
+                    </div>
+                </>
+            )}
 
         </>
     );

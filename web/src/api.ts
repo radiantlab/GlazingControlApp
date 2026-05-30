@@ -184,7 +184,11 @@ export const api = {
     getLatestMetrics: () => http<SensorReadingResponse[]>("/metrics/latest"),
     getMetricHistory: (sensorId: string, metric: string, tsFrom: number, tsTo: number) =>
         http<SensorReadingResponse[]>(`/metrics/history?sensor_id=${encodeURIComponent(sensorId)}&metric=${encodeURIComponent(metric)}&ts_from=${tsFrom}&ts_to=${tsTo}`),
-    getRoutines: () => http<RoutineStatusResponse[]>("/routines")
+    getRoutines: () => http<RoutineStatusResponse[]>("/routines"),
+    getLatestSpectrum: (sensorId: string) =>
+        http<SensorSpectrumResponse>(`/sensors/${encodeURIComponent(sensorId)}/spectrum/latest`),
+    getHistoricalSpectrum: (sensorId: string, ts: number) =>
+        http<SensorSpectrumResponse>(`/sensors/${encodeURIComponent(sensorId)}/spectrum/historical?ts=${ts}`),
 };
 
 export type RoutineStatus = "idle" | "scheduled" | "running" | "error" | "done" | "stopped";
@@ -207,6 +211,14 @@ export type SensorReadingResponse = {
     metric: string;
     value: number;
     ts: number;
+};
+export type SensorSpectrumResponse = {
+    sensor_id: string;
+    ts: number;
+    wavelength_start: number;
+    wavelength_end: number;
+    wavelength_step: number;
+    values: number[];
 };
 export type SensorInfo = {
     id: string;

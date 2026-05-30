@@ -449,6 +449,20 @@ def _ensure_sensor_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS sensor_spectra (
+                sensor_id TEXT NOT NULL,
+                ts REAL NOT NULL,
+                wavelength_start INTEGER NOT NULL,
+                wavelength_end INTEGER NOT NULL,
+                wavelength_step INTEGER NOT NULL,
+                values_json TEXT NOT NULL,
+                PRIMARY KEY (sensor_id, ts),
+                FOREIGN KEY(sensor_id) REFERENCES sensors(id)
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_sensor_readings_sensor_metric_ts
             ON sensor_readings (sensor_id, metric, ts)
             """
@@ -506,6 +520,70 @@ def insert_sensor_reading(
         )
 
 
+def insert_sensor_spectrum(
+    sensor_id: str,
+    ts: float,
+    spectrum: list[float],
+    wavelength_start: int = 380,
+    wavelength_step: int = 1,
+) -> None:
+    """Insert a sensor spectrum measurement."""
+    _ensure_sensor_db()
+    wavelength_end = wavelength_start + len(spectrum) - 1
+    values_json = json.dumps(spectrum)
+    with _db_connection() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO sensor_spectra (
+                sensor_id, ts, wavelength_start, wavelength_end, wavelength_step, values_json
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (sensor_id, ts, wavelength_start, wavelength_end, wavelength_step, values_json),
+        )
+
+
+def fetch_latest_spectrum(sensor_id: str) -> dict | None:
+    """Fetch the latest spectrum for a given sensor."""
+    _ensure_sensor_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        row = conn.execute(
+            """
+            SELECT sensor_id, ts, wavelength_start, wavelength_end, wavelength_step, values_json
+            FROM sensor_spectra
+            WHERE sensor_id = ?
+            ORDER BY ts DESC
+            LIMIT 1
+            """,
+            (sensor_id,),
+        ).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        d["values"] = json.loads(d.pop("values_json"))
+        return d
+
+
+def fetch_historical_spectrum(sensor_id: str, ts: float) -> dict | None:
+    """Fetch the historical spectrum for a sensor closest to a given timestamp."""
+    _ensure_sensor_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        row = conn.execute(
+            """
+            SELECT sensor_id, ts, wavelength_start, wavelength_end, wavelength_step, values_json
+            FROM sensor_spectra
+            WHERE sensor_id = ? AND ABS(ts - ?) < 0.1
+            ORDER BY ABS(ts - ?)
+            LIMIT 1
+            """,
+            (sensor_id, ts, ts),
+        ).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        d["values"] = json.loads(d.pop("values_json"))
+        return d
+
+
 def fetch_latest_readings() -> list[dict]:
     """
     Return the latest value per (sensor_id, metric).
@@ -531,7 +609,7 @@ def fetch_latest_readings() -> list[dict]:
 
 
 def delete_sensor_readings_for_ids(sensor_ids: list[str]) -> None:
-    """Delete all readings for the provided sensor IDs."""
+    """Delete all readings and spectra for the provided sensor IDs."""
     _ensure_sensor_db()
     unique_ids = sorted(set(sensor_ids))
     if not unique_ids:
@@ -539,6 +617,10 @@ def delete_sensor_readings_for_ids(sensor_ids: list[str]) -> None:
 
     placeholders = ",".join(["?"] * len(unique_ids))
     with _db_connection() as conn:
+        conn.execute(
+            f"DELETE FROM sensor_spectra WHERE sensor_id IN ({placeholders})",
+            tuple(unique_ids),
+        )
         conn.execute(
             f"DELETE FROM sensor_readings WHERE sensor_id IN ({placeholders})",
             tuple(unique_ids),
@@ -668,11 +750,16 @@ def prune_sensors_to_ids(sensor_ids: list[str]) -> None:
     unique_ids = sorted(set(sensor_ids))
     with _db_connection() as conn:
         if not unique_ids:
+            conn.execute("DELETE FROM sensor_spectra")
             conn.execute("DELETE FROM sensor_readings")
             conn.execute("DELETE FROM sensors")
             return
 
         placeholders = ",".join(["?"] * len(unique_ids))
+        conn.execute(
+            f"DELETE FROM sensor_spectra WHERE sensor_id NOT IN ({placeholders})",
+            tuple(unique_ids),
+        )
         conn.execute(
             f"DELETE FROM sensor_readings WHERE sensor_id NOT IN ({placeholders})",
             tuple(unique_ids),

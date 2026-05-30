@@ -101,6 +101,15 @@ class SensorLogEntry(BaseModel):
     ts: float
 
 
+class SensorSpectrumResponse(BaseModel):
+    sensor_id: str
+    ts: float
+    wavelength_start: int
+    wavelength_end: int
+    wavelength_step: int
+    values: List[float]
+
+
 class RoutineRequest(BaseModel):
     name: str = Field(description="Name of the routine")
     code: str = Field(description="Python code to execute")

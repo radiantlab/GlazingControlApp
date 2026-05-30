@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 from typing import Iterable, List, Tuple
 from .interface import SensorClient, SensorReading
-from .spectral_metrics import compute_jeti_metrics
+from .spectral_metrics import compute_jeti_metrics, _clean_spectral_values
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +174,17 @@ class JetiSpectravalFileWatcher(SensorClient):
                         if dt > 0:
                             metrics["sample_interval_s"] = dt
                     self._last_measurement_ts = measurement_ts
+
+                    # Clean raw spectral strings and yield a spectrum reading
+                    cleaned_spec = _clean_spectral_values(spectral)
+                    if cleaned_spec:
+                        yield SensorReading(
+                            sensor_id=self._sensor_id,
+                            metric="spectrum",
+                            value=0.0,
+                            ts=measurement_ts,
+                            spectrum=cleaned_spec,
+                        )
 
                     if not metrics:
                         continue
