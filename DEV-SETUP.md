@@ -104,6 +104,8 @@ uv run python main.py
 
 For the EKO C-BOX, set `eko_ms90_plus[].host` to the C-BOX IP address, usually `192.168.2.20`, and `eko_ms90_plus[].port` to TCP port `502`. The app no longer uses a USB-to-RS485 adapter or COM port for EKO.
 
+For T-10A and JETI direct serial configs, set `port` to `"auto"` or omit it so the backend probes available COM ports at startup. Use `port_match` metadata such as `serial_number`, `description`, `hwid`, `vid`, or `pid` when multiple identical USB serial devices must be pinned to specific logical sensor configs.
+
 ---
 
 ## Using pip and venv (Legacy)

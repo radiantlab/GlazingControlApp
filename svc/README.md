@@ -121,6 +121,20 @@ The backend supports three real sensor paths via `svc/data/sensors_config.json`:
   - `transport: "serial_scpi"` (direct SPECFIRM serial)
 - `eko_ms90_plus`: EKO C-BOX over Ethernet Modbus TCP. The app does not use USB-to-RS485 for EKO anymore.
 
+For USB serial sensors, set `port` to `"auto"` or omit it to let startup scan available COM ports. T-10A probing uses the Konica Minolta 7E1 command protocol; JETI serial probing uses SPECFIRM `*IDN?` / `*VERS?`. If several identical devices are attached, add optional `port_match` metadata so each logical sensor binds to the intended physical USB adapter:
+
+```json
+{
+  "port": "auto",
+  "port_match": {
+    "serial_number": "JETI-ABC123",
+    "description": "USB Serial"
+  }
+}
+```
+
+JETI serial configs may also set `"baudrate": "auto"` and optionally `baudrate_candidates`, for example `[115200, 921600]`.
+
 EKO TCP config example:
 
 ```json

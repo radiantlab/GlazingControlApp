@@ -2,7 +2,7 @@
   "t10a": [
     {
       "device_id": "KM1",
-      "port": "COM5",
+      "port": "auto",
       "interval_s": 60,
       "timeout_s": 1.0,
       "protocol": {
@@ -39,7 +39,7 @@
     },
     {
       "device_id": "KM2",
-      "port": "COM4",
+      "port": "auto",
       "interval_s": 60,
       "timeout_s": 1.0,
       "protocol": {

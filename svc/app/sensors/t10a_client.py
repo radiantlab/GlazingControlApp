@@ -78,7 +78,7 @@ class T10AClient(SensorClient):
 
         self.ser = serial.Serial(
             port=self.port,
-            baudrate=int(protocol_cfg.get("baudrate", baudrate)),
+            baudrate=self._coerce_baudrate(protocol_cfg.get("baudrate"), baudrate),
             bytesize=serial.SEVENBITS,
             parity=serial.PARITY_EVEN,
             stopbits=serial.STOPBITS_ONE,
@@ -110,6 +110,12 @@ class T10AClient(SensorClient):
             bcc_val ^= b
         return f"{bcc_val:02X}".encode("ascii")
 
+    @staticmethod
+    def _coerce_baudrate(value, default: int = 9600) -> int:
+        if value in (None, "") or str(value).strip().lower() == "auto":
+            return int(default)
+        return int(value)
+
     def _build_frame(self, head_no: int, cmd: str, params: str = "") -> bytes:
         """
         Build a T-10A frame for given head + command.
@@ -133,20 +139,48 @@ class T10AClient(SensorClient):
         bcc = self._compute_bcc(body_with_etx)
         return b"\x02" + body_with_etx + bcc + b"\r\n"
 
+    @classmethod
+    def _build_probe_frame(
+        cls,
+        *,
+        head_no: int,
+        cmd: str,
+        params: str,
+        protocol: dict | None = None,
+    ) -> bytes:
+        protocol_cfg = protocol or {}
+        head_index_base = int(protocol_cfg.get("head_index_base", 0))
+        body_template = str(protocol_cfg.get("body_template", "{head:02d}{cmd}{params}"))
+        head_address = head_no + head_index_base
+        body = body_template.format(
+            head=head_address,
+            head_no=head_no,
+            cmd=cmd,
+            params=params,
+        )
+
+        body_with_etx = body.encode("ascii") + b"\x03"
+        bcc = cls._compute_bcc(body_with_etx)
+        return b"\x02" + body_with_etx + bcc + b"\r\n"
+
     def _response_length_for(self, cmd: str) -> int:
         if cmd == self._measure_command:
             return self._long_reply_len
         return self._short_reply_len
 
+    @staticmethod
+    def _read_serial_reply(ser, expected_len: int) -> bytes:
+        data = ser.read(expected_len)
+        if len(data) < expected_len:
+            # Fallback for adapters that chunk differently.
+            extra = ser.read_until(expected=b"\r\n", size=max(expected_len, 64))
+            if extra and not data.endswith(extra):
+                data = (data + extra)[: max(expected_len, len(data + extra))]
+        return data
+
     def _read_reply(self, cmd: str) -> str:
         """Read a fixed-length T-10A reply frame."""
-        n = self._response_length_for(cmd)
-        data = self.ser.read(n)
-        if len(data) < n:
-            # Fallback for adapters that chunk differently.
-            extra = self.ser.read_until(expected=b"\r\n", size=max(n, 64))
-            if extra and not data.endswith(extra):
-                data = (data + extra)[: max(n, len(data + extra))]
+        data = self._read_serial_reply(self.ser, self._response_length_for(cmd))
         return data.decode("ascii", errors="replace").strip()
 
     def _send_command(self, head_no: int, cmd: str, params: str = "") -> str:
@@ -212,6 +246,96 @@ class T10AClient(SensorClient):
         mant = int(compact[1:5])
         exp = int(compact[5]) - 4
         return float(sign * mant * (10**exp))
+
+    @classmethod
+    def _looks_like_t10a_reply(cls, raw: bytes, expected_cmd: str) -> bool:
+        if not raw:
+            return False
+        text = raw.decode("ascii", errors="replace").strip()
+        body = cls._strip_transport(text)
+        if len(body) < 4:
+            return False
+        if body[:2].isdigit() and body[2:4] == expected_cmd:
+            return True
+        return body[:2].isdigit() and "ERR" in body.upper()
+
+    @classmethod
+    def probe_port(
+        cls,
+        *,
+        port: str,
+        timeout_s: float = 1.0,
+        protocol: dict | None = None,
+        baudrate: int = 9600,
+        head_no: int = 0,
+        open_delay_s: float = 0.1,
+    ) -> bool:
+        protocol_cfg = protocol or {}
+        xonxoff = str(protocol_cfg.get("xonxoff", "true")).lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        inter_command_delay_s = float(protocol_cfg.get("inter_command_delay_s", 0.1))
+        measure_command = str(protocol_cfg.get("measure_command", "10"))
+        measure_params = str(protocol_cfg.get("measure_params", "0200"))
+        pc_mode_command = str(protocol_cfg.get("pc_mode_command", "54"))
+        pc_mode_params = str(protocol_cfg.get("pc_mode_params", "1 "))
+        pc_mode_head_no = int(protocol_cfg.get("pc_mode_head_no", 0))
+        short_reply_len = int(protocol_cfg.get("short_reply_len", _SHORT_REPLY_LEN))
+        long_reply_len = int(protocol_cfg.get("long_reply_len", _LONG_REPLY_LEN))
+        send_pc_mode = str(protocol_cfg.get("send_pc_mode", "true")).lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+
+        commands: list[tuple[int, str, str, int]] = []
+        if send_pc_mode:
+            commands.append((pc_mode_head_no, pc_mode_command, pc_mode_params, short_reply_len))
+        commands.append((head_no, measure_command, measure_params, long_reply_len))
+
+        ser = None
+        try:
+            ser = serial.Serial(
+                port=port,
+                baudrate=cls._coerce_baudrate(protocol_cfg.get("baudrate"), baudrate),
+                bytesize=serial.SEVENBITS,
+                parity=serial.PARITY_EVEN,
+                stopbits=serial.STOPBITS_ONE,
+                timeout=timeout_s,
+                xonxoff=xonxoff,
+            )
+            if open_delay_s > 0:
+                time.sleep(open_delay_s)
+
+            for probe_head_no, cmd, params, reply_len in commands:
+                frame = cls._build_probe_frame(
+                    head_no=probe_head_no,
+                    cmd=cmd,
+                    params=params,
+                    protocol=protocol_cfg,
+                )
+                ser.reset_input_buffer()
+                ser.write(frame)
+                ser.flush()
+                if inter_command_delay_s > 0:
+                    time.sleep(inter_command_delay_s)
+                raw = cls._read_serial_reply(ser, reply_len)
+                if cls._looks_like_t10a_reply(raw, cmd):
+                    return True
+            return False
+        except Exception as e:
+            logger.debug("T10A probe failed on %s: %s", port, e)
+            return False
+        finally:
+            if ser is not None:
+                try:
+                    ser.close()
+                except Exception:
+                    pass
 
     def _parse_measurement_reply(self, head_cfg: T10AHeadConfig, reply: str) -> float | None:
         """

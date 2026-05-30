@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import app.sensors.t10a_client as t10a_mod
 from app.sensors.t10a_client import T10AClient, T10AHeadConfig
 
 
@@ -71,3 +72,33 @@ def test_build_frame_contains_stx_etx_bcc() -> None:
     assert frame.startswith(b"\x02")
     assert b"\x03" in frame
     assert frame.endswith(b"\r\n")
+
+
+def test_probe_port_recognizes_t10a_pc_mode_reply(monkeypatch) -> None:
+    class FakeSerial:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.closed = False
+
+        def reset_input_buffer(self):
+            pass
+
+        def write(self, frame):
+            self.frame = frame
+
+        def flush(self):
+            pass
+
+        def read(self, expected_len):
+            return b"\x0200540000\x0312\r\n"[:expected_len]
+
+        def read_until(self, expected=b"\r\n", size=64):
+            return b""
+
+        def close(self):
+            self.closed = True
+
+    monkeypatch.setattr(t10a_mod.serial, "Serial", FakeSerial)
+    monkeypatch.setattr(t10a_mod.time, "sleep", lambda delay: None)
+
+    assert T10AClient.probe_port(port="COM9")

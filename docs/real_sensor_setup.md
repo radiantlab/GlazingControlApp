@@ -89,9 +89,9 @@ The app supports one practical connection path for `T-10A`: head chain to T-10A 
 3. If any CAT5 segment is used in the chain, use straight CAT5/10Base-T patch cable only.
 4. Connect the T-10A body to the PC by USB.
 5. Power on the T-10A body and confirm it is detected by Windows.
-6. Open Device Manager and record the assigned COM port under `Ports (COM & LPT)`.
+6. Confirm a COM port appears under `Ports (COM & LPT)`.
 7. Update `svc/data/sensors_config.json`:
-   - set `t10a[].port` to the actual COM port
+   - set `t10a[].port` to `"auto"` or omit it to let the backend detect the T-10A COM port at startup
    - set `heads[].head_no` to the physical head/adaptor ID
    - keep `heads[].sensor_id` and `heads[].label` aligned with the physical head location
 8. Start the backend and confirm the T-10A sensor reports `lux`.
@@ -104,9 +104,9 @@ The app supports one practical connection path for `T-10A`: head chain to T-10A 
 4. Connect the `AC-A412` external power supply for the multi-head setup.
 5. Assign a unique physical ID to each head/adaptor. The supported range is `00` through `29`.
 6. Connect the T-10A body to the PC by USB.
-7. Open Device Manager and record the COM port for that T-10A body.
+7. Confirm a COM port appears for that T-10A body.
 8. Update `svc/data/sensors_config.json`:
-   - set the device `port`
+   - set the device `port` to `"auto"` or omit it to let the backend detect the T-10A COM port at startup
    - set each `heads[].head_no` to the actual physical ID
    - keep each `sensor_id` and `label` tied to the installed head location
 9. Start the backend and verify every configured T-10A head appears in `GET /sensors`.
@@ -117,7 +117,8 @@ The app supports one practical connection path for `T-10A`: head chain to T-10A 
 - Do not use crossover Ethernet cables.
 - Multi-head mode needs external power.
 - If `head_no` does not match the physical head/adaptor ID, the service will poll the wrong head or no head.
-- USB COM assignments can change if you move the USB cable to a different PC port.
+- USB COM assignments can change if you move the USB cable to a different PC port. Use `"port": "auto"` for T-10A configs so the backend probes the available COM ports using the T-10A protocol.
+- If multiple identical T-10A bodies are connected, `"auto"` assigns them by detected COM-port order. Add `port_match` hints such as `serial_number`, `description`, `hwid`, `vid`, or `pid` if the USB adapter metadata is available and a specific logical sensor must always bind to the same physical body.
 
 ## 5) JETI Setup
 
@@ -148,15 +149,15 @@ Use this when you want the backend to talk to the JETI device directly instead o
 
 1. Install the JETI USB driver on the local PC if needed.
 2. Connect the JETI device to the PC by USB.
-3. Open Device Manager and find the JETI virtual COM port under `Ports (COM & LPT)`.
-4. Record the COM port.
+3. Confirm the JETI virtual COM port appears under `Ports (COM & LPT)`.
+4. Leave the COM port on auto-detect unless you need to pin it.
 5. Decide which device model is connected:
    - `spectraval 1511` typically uses `921600`
    - `specbos 1211-2` typically uses `115200`
 6. Update `svc/data/sensors_config.json`:
    - set `jeti_spectraval[].transport` to `"serial_scpi"`
-   - set `jeti_spectraval[].port` to the JETI COM port
-   - set `jeti_spectraval[].baudrate` to the correct device baud rate
+   - set `jeti_spectraval[].port` to `"auto"` or omit it to let the backend detect the JETI COM port at startup
+   - set `jeti_spectraval[].baudrate` to the correct device baud rate, or set it to `"auto"` with optional `baudrate_candidates`
    - set `tint_ms` and `avg_count` if the measurement timing needs adjustment
 7. Start the backend in real mode.
 8. Confirm the JETI sensor appears in `GET /sensors`.
@@ -167,7 +168,7 @@ Use this when you want the backend to talk to the JETI device directly instead o
 - The schematic confirms USB to the PC. The file-vs-serial choice is a software integration choice, not a different physical cable path.
 - File mode only works if the configured `output_path` exactly matches the real file or folder on the PC.
 - The backend can now recover if the watched `.cap` file or folder appears after startup, but the path still has to be correct.
-- Direct serial mode requires the correct COM port and baudrate before anything else will work.
+- Direct serial mode can auto-detect the COM port by sending SPECFIRM `*IDN?` / `*VERS?` probes. If more than one JETI device is attached, use `port_match` metadata hints to keep each logical sensor tied to the intended instrument.
 - The backend now parses SPECFIRM format `2` correctly as `wavelength<TAB>value` pairs.
 
 ## 6) EKO MS-90+ / C-BOX Setup
