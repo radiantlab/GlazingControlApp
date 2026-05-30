@@ -5,7 +5,7 @@ from .models import (
     Panel, Group, CommandRequest, CommandResult, GroupCreate, GroupUpdate, 
     AuditEntry, HealthResponse, DeleteGroupResponse, ErrorResponse, SensorInfo,
     SensorReadingResponse, SensorLogEntry, RoutineRequest, RoutineStatusResponse, SavedRoutine,
-    SensorSpectrumResponse
+    SensorSpectrumResponse, SensorLabelUpdateRequest
 )
 from typing import List, Optional
 import csv
@@ -623,4 +623,28 @@ def create_saved_routine(body: SavedRoutine) -> SavedRoutine:
 )
 def delete_saved_routine_endpoint(name: str):
     delete_saved_routine(name)
+    return {"ok": True}
+
+
+@router.patch(
+    "/sensors/{sensor_id}",
+    summary="Update sensor custom labels",
+    tags=["Sensors"],
+)
+def patch_sensor_labels(
+    sensor_id: str,
+    req: SensorLabelUpdateRequest,
+) -> dict:
+    from app.sensors.manager import update_sensor_labels
+    
+    success = update_sensor_labels(
+        sensor_id=sensor_id,
+        custom_label=req.custom_label,
+        device_custom_label=req.device_custom_label,
+    )
+    if not success:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Sensor T-10A head with ID {sensor_id} not found in configuration."
+        )
     return {"ok": True}

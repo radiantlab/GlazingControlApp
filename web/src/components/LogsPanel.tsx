@@ -592,9 +592,22 @@ export default function LogsPanel({
                                         key={sensor.id}
                                         className={`side-panel-tab ${activeSensorId === sensor.id ? "active" : ""}`}
                                         onClick={() => setActiveSensorId(sensor.id)}
-                                        title={`${sensor.label} (${sensor.kind})`}
+                                        title={
+                                            sensor.config?.custom_label
+                                                ? `${sensor.config.custom_label} (${sensor.label || sensor.id}) (${sensor.kind})`
+                                                : `${sensor.label || sensor.id} (${sensor.kind})`
+                                        }
                                     >
-                                        {sensor.label || sensor.id}
+                                        {sensor.config?.custom_label ? (
+                                            <>
+                                                {sensor.config.custom_label}{" "}
+                                                <span style={{ color: "var(--hmi-text-muted)", fontSize: "0.85em", fontWeight: "normal" }}>
+                                                    ({sensor.label || sensor.id})
+                                                </span>
+                                            </>
+                                        ) : (
+                                            sensor.label || sensor.id
+                                        )}
                                     </button>
                                 ))}
                             </div>
@@ -713,7 +726,21 @@ export default function LogsPanel({
                                             sensorLogs.map((row, idx) => (
                                                 <tr key={`${row.ts}-${row.sensor_id}-${row.metric}-${idx}`}>
                                                     <td className="logs-cell-time">{formatDateTime(row.ts)}</td>
-                                                    <td>{row.sensor_label || row.sensor_id}</td>
+                                                    <td>
+                                                        {(() => {
+                                                            const match = sensors.find(s => s.id === row.sensor_id);
+                                                            return match?.config?.custom_label ? (
+                                                                <>
+                                                                    {match.config.custom_label}{" "}
+                                                                    <span style={{ color: "var(--hmi-text-muted)", fontSize: "0.85em" }}>
+                                                                        ({row.sensor_label || row.sensor_id})
+                                                                    </span>
+                                                                </>
+                                                            ) : (
+                                                                row.sensor_label || row.sensor_id
+                                                            );
+                                                        })()}
+                                                    </td>
                                                     <td>{row.sensor_kind || "-"}</td>
                                                     <td>{row.metric}</td>
                                                     <td>{row.value.toFixed(4)}</td>

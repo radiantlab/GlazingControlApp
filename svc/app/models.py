@@ -85,6 +85,11 @@ class SensorInfo(BaseModel):
     config: Dict = Field(default_factory=dict)
 
 
+class SensorLabelUpdateRequest(BaseModel):
+    custom_label: Optional[str] = None
+    device_custom_label: Optional[str] = None
+
+
 class SensorReadingResponse(BaseModel):
     sensor_id: str
     metric: str

@@ -253,6 +253,9 @@ export default function AppHMI() {
     }, []);
 
     const [spectralModal, setSpectralModal] = useState<{ sensorId: string; fixedTs?: number } | null>(null);
+    const [editingSensorId, setEditingSensorId] = useState<string | null>(null);
+    const editCustomLabelRef = useRef<HTMLInputElement>(null);
+    const editDeviceCustomLabelRef = useRef<HTMLInputElement>(null);
 
     const connectedSensorList = sortSensorsForDisplay(getConnectedSensors(sensors, latestMetrics));
     const sensorListForControls = connectedSensorList.length > 0 ? connectedSensorList : sortSensorsForDisplay(sensors);
@@ -840,7 +843,11 @@ export default function AppHMI() {
                                         <label
                                             key={`visibility-${sensor.id}`}
                                             className={`sensor-visibility-row ${active ? "active" : ""}`}
-                                            title={`${sensor.label || sensor.id} (${sensorKindLabel})`}
+                                            title={
+                                                sensor.config?.custom_label
+                                                    ? `${sensor.config.custom_label} (${sensor.label || sensor.id}) (${sensor.config.device_custom_label ? `${sensor.config.device_custom_label} (${sensorKindLabel})` : sensorKindLabel})`
+                                                    : `${sensor.label || sensor.id} (${sensorKindLabel})`
+                                            }
                                         >
                                             <input
                                                 type="checkbox"
@@ -854,8 +861,30 @@ export default function AppHMI() {
                                                     );
                                                 }}
                                             />
-                                            <span className="sensor-visibility-name">{sensor.label || sensor.id}</span>
-                                            <span className="sensor-visibility-kind">{sensorKindLabel}</span>
+                                            <span className="sensor-visibility-name">
+                                                {sensor.config?.custom_label ? (
+                                                    <>
+                                                        {sensor.config.custom_label}{" "}
+                                                        <span style={{ color: "var(--hmi-text-muted)", fontSize: "0.85em", fontWeight: "normal" }}>
+                                                            ({sensor.label || sensor.id})
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    sensor.label || sensor.id
+                                                )}
+                                            </span>
+                                            <span className="sensor-visibility-kind">
+                                                {sensor.config?.device_custom_label ? (
+                                                    <>
+                                                        {sensor.config.device_custom_label}{" "}
+                                                        <span style={{ color: "var(--hmi-text-muted)", fontSize: "0.85em", fontWeight: "normal" }}>
+                                                            ({sensorKindLabel})
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    sensorKindLabel
+                                                )}
+                                            </span>
                                         </label>
                                     );
                                 })}
@@ -903,30 +932,135 @@ export default function AppHMI() {
                         return (
                             <div key={sensor.id} className="room-section sensor-card sensor-card-no-data" style={{ marginTop: 20 }}>
                                 <div className="room-header sensor-card-header">
-                                    <h2 className="room-title">{sensor.label || sensor.id}</h2>
-                                    <div className="room-stats">
-                                        <span>{sensorKindLabel}</span>
-                                        {sensor.location && <span style={{ marginLeft: 8 }}>{sensor.location}</span>}
-                                        <span style={{ marginLeft: 8 }}>not reporting</span>
-                                        {sensor.kind === "jeti_spectraval" && (
-                                            <button
-                                                className="hmi-manage-btn"
-                                                onClick={() => setSpectralModal({ sensorId: sensor.id })}
-                                                style={{ marginLeft: 12, marginRight: 8, padding: "2px 8px", fontSize: "11px", height: "auto" }}
-                                                title="View real-time spectral irradiance graph"
-                                            >
-                                                View Spectrum
-                                            </button>
-                                        )}
-                                        <button
-                                            type="button"
-                                            className="sensor-card-hide-btn"
-                                            onClick={() => hideSensor(sensor.id)}
-                                            title={`Hide ${sensor.label || sensor.id}`}
-                                        >
-                                            Hide
-                                        </button>
-                                    </div>
+                                    {editingSensorId === sensor.id ? (
+                                        <div className="sensor-edit-form" style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', padding: '4px 0' }}>
+                                            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    <span style={{ fontSize: '11px', color: 'var(--hmi-text-muted)', fontWeight: 500 }}>Head Label</span>
+                                                    <input
+                                                        type="text"
+                                                        className="hmi-input"
+                                                        ref={editCustomLabelRef}
+                                                        defaultValue={sensor.config?.custom_label || ""}
+                                                        placeholder={sensor.label || sensor.id}
+                                                        style={{ padding: '6px 10px', fontSize: '13px', background: 'var(--hmi-bg-dark)', border: '1px solid var(--hmi-border)', color: 'var(--hmi-text)', borderRadius: '4px', width: '160px' }}
+                                                    />
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    <span style={{ fontSize: '11px', color: 'var(--hmi-text-muted)', fontWeight: 500 }}>Body Label</span>
+                                                    <input
+                                                        type="text"
+                                                        className="hmi-input"
+                                                        ref={editDeviceCustomLabelRef}
+                                                        defaultValue={sensor.config?.device_custom_label || ""}
+                                                        placeholder={sensorKindLabel}
+                                                        style={{ padding: '6px 10px', fontSize: '13px', background: 'var(--hmi-bg-dark)', border: '1px solid var(--hmi-border)', color: 'var(--hmi-text)', borderRadius: '4px', width: '160px' }}
+                                                    />
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="hmi-manage-btn"
+                                                        onClick={async () => {
+                                                            try {
+                                                                const customLabel = editCustomLabelRef.current?.value || "";
+                                                                const deviceCustomLabel = editDeviceCustomLabelRef.current?.value || "";
+                                                                await api.updateSensorLabels(sensor.id, customLabel, deviceCustomLabel);
+                                                                setEditingSensorId(null);
+                                                                await refresh();
+                                                            } catch (err) {
+                                                                console.error("Failed to update labels:", err);
+                                                                alert("Failed to update labels: " + String(err));
+                                                            }
+                                                        }}
+                                                        style={{ padding: '6px 12px', fontSize: '12px', height: '31px' }}
+                                                    >
+                                                        Save
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="hmi-manage-btn"
+                                                        onClick={() => setEditingSensorId(null)}
+                                                        style={{ padding: '6px 12px', fontSize: '12px', background: 'transparent', border: '1px solid var(--hmi-border)', height: '31px' }}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <h2 className="room-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                                {sensor.config?.custom_label ? (
+                                                    <>
+                                                        {sensor.config.custom_label}{" "}
+                                                        <span style={{ color: "var(--hmi-text-muted)", fontSize: "0.75em", fontWeight: "normal" }}>
+                                                            ({sensor.label || sensor.id})
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    sensor.label || sensor.id
+                                                )}
+                                                {sensor.kind === "t10a" && (
+                                                    <button
+                                                        type="button"
+                                                        className="hmi-edit-icon-btn"
+                                                        onClick={() => {
+                                                            setEditingSensorId(sensor.id);
+                                                        }}
+                                                        title="Edit labels"
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            color: 'var(--hmi-text-muted)',
+                                                            cursor: 'pointer',
+                                                            padding: 0,
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center'
+                                                        }}
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: "16px", height: "16px" }}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.83 20.013a4.5 4.5 0 01-1.897 1.13l-3.885 1.206 1.207-3.885a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </h2>
+                                            <div className="room-stats">
+                                                <span>
+                                                    {sensor.config?.device_custom_label ? (
+                                                        <>
+                                                            {sensor.config.device_custom_label}{" "}
+                                                            <span style={{ color: "var(--hmi-text-muted)", fontSize: "0.85em", fontWeight: "normal" }}>
+                                                                ({sensorKindLabel})
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        sensorKindLabel
+                                                    )}
+                                                </span>
+                                                {sensor.location && <span style={{ marginLeft: 8 }}>{sensor.location}</span>}
+                                                <span style={{ marginLeft: 8 }}>not reporting</span>
+                                                {sensor.kind === "jeti_spectraval" && (
+                                                    <button
+                                                        className="hmi-manage-btn"
+                                                        onClick={() => setSpectralModal({ sensorId: sensor.id })}
+                                                        style={{ marginLeft: 12, marginRight: 8, padding: "2px 8px", fontSize: "11px", height: "auto" }}
+                                                        title="View real-time spectral irradiance graph"
+                                                    >
+                                                        View Spectrum
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    className="sensor-card-hide-btn"
+                                                    onClick={() => hideSensor(sensor.id)}
+                                                    title={`Hide ${sensor.config?.custom_label || sensor.label || sensor.id}`}
+                                                >
+                                                    Hide
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                                 <div className="sensor-card-layout">
                                     <div className="sensor-metrics-panel">
@@ -946,31 +1080,136 @@ export default function AppHMI() {
                     return (
                         <div key={sensor.id} className="room-section sensor-card" style={{ marginTop: 20 }}>
                             <div className="room-header sensor-card-header">
-                                <h2 className="room-title">{sensor.label || sensor.id}</h2>
-                                <div className="room-stats">
-                                    <span>{sensorKindLabel}</span>
-                                    {sensor.location && <span style={{ marginLeft: 8 }}>{sensor.location}</span>}
-                                    <span style={{ marginLeft: 8 }}>{orderedMetricNames.length} metrics</span>
-                                    {sensor.kind === "jeti_spectraval" && (
-                                        <button
-                                            className="hmi-manage-btn"
-                                            onClick={() => setSpectralModal({ sensorId: sensor.id })}
-                                            style={{ marginLeft: 12, marginRight: 8, padding: "2px 8px", fontSize: "11px", height: "auto" }}
-                                            title="View real-time spectral irradiance graph"
-                                        >
-                                            View Spectrum
-                                        </button>
+                                    {editingSensorId === sensor.id ? (
+                                        <div className="sensor-edit-form" style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', padding: '4px 0' }}>
+                                            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    <span style={{ fontSize: '11px', color: 'var(--hmi-text-muted)', fontWeight: 500 }}>Head Label</span>
+                                                    <input
+                                                        type="text"
+                                                        className="hmi-input"
+                                                        ref={editCustomLabelRef}
+                                                        defaultValue={sensor.config?.custom_label || ""}
+                                                        placeholder={sensor.label || sensor.id}
+                                                        style={{ padding: '6px 10px', fontSize: '13px', background: 'var(--hmi-bg-dark)', border: '1px solid var(--hmi-border)', color: 'var(--hmi-text)', borderRadius: '4px', width: '160px' }}
+                                                    />
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    <span style={{ fontSize: '11px', color: 'var(--hmi-text-muted)', fontWeight: 500 }}>Body Label</span>
+                                                    <input
+                                                        type="text"
+                                                        className="hmi-input"
+                                                        ref={editDeviceCustomLabelRef}
+                                                        defaultValue={sensor.config?.device_custom_label || ""}
+                                                        placeholder={sensorKindLabel}
+                                                        style={{ padding: '6px 10px', fontSize: '13px', background: 'var(--hmi-bg-dark)', border: '1px solid var(--hmi-border)', color: 'var(--hmi-text)', borderRadius: '4px', width: '160px' }}
+                                                    />
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="hmi-manage-btn"
+                                                        onClick={async () => {
+                                                            try {
+                                                                const customLabel = editCustomLabelRef.current?.value || "";
+                                                                const deviceCustomLabel = editDeviceCustomLabelRef.current?.value || "";
+                                                                await api.updateSensorLabels(sensor.id, customLabel, deviceCustomLabel);
+                                                                setEditingSensorId(null);
+                                                                await refresh();
+                                                            } catch (err) {
+                                                                console.error("Failed to update labels:", err);
+                                                                alert("Failed to update labels: " + String(err));
+                                                            }
+                                                        }}
+                                                        style={{ padding: '6px 12px', fontSize: '12px', height: '31px' }}
+                                                    >
+                                                        Save
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="hmi-manage-btn"
+                                                        onClick={() => setEditingSensorId(null)}
+                                                        style={{ padding: '6px 12px', fontSize: '12px', background: 'transparent', border: '1px solid var(--hmi-border)', height: '31px' }}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <h2 className="room-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                                {sensor.config?.custom_label ? (
+                                                    <>
+                                                        {sensor.config.custom_label}{" "}
+                                                        <span style={{ color: "var(--hmi-text-muted)", fontSize: "0.75em", fontWeight: "normal" }}>
+                                                            ({sensor.label || sensor.id})
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    sensor.label || sensor.id
+                                                )}
+                                                {sensor.kind === "t10a" && (
+                                                    <button
+                                                        type="button"
+                                                        className="hmi-edit-icon-btn"
+                                                        onClick={() => {
+                                                            setEditingSensorId(sensor.id);
+                                                        }}
+                                                        title="Edit labels"
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            color: 'var(--hmi-text-muted)',
+                                                            cursor: 'pointer',
+                                                            padding: 0,
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center'
+                                                        }}
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: "16px", height: "16px" }}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.83 20.013a4.5 4.5 0 01-1.897 1.13l-3.885 1.206 1.207-3.885a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </h2>
+                                            <div className="room-stats">
+                                                <span>
+                                                    {sensor.config?.device_custom_label ? (
+                                                        <>
+                                                            {sensor.config.device_custom_label}{" "}
+                                                            <span style={{ color: "var(--hmi-text-muted)", fontSize: "0.85em", fontWeight: "normal" }}>
+                                                                ({sensorKindLabel})
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        sensorKindLabel
+                                                    )}
+                                                </span>
+                                                {sensor.location && <span style={{ marginLeft: 8 }}>{sensor.location}</span>}
+                                                <span style={{ marginLeft: 8 }}>{orderedMetricNames.length} metrics</span>
+                                                {sensor.kind === "jeti_spectraval" && (
+                                                    <button
+                                                        className="hmi-manage-btn"
+                                                        onClick={() => setSpectralModal({ sensorId: sensor.id })}
+                                                        style={{ marginLeft: 12, marginRight: 8, padding: "2px 8px", fontSize: "11px", height: "auto" }}
+                                                        title="View real-time spectral irradiance graph"
+                                                    >
+                                                        View Spectrum
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    className="sensor-card-hide-btn"
+                                                    onClick={() => hideSensor(sensor.id)}
+                                                    title={`Hide ${sensor.config?.custom_label || sensor.label || sensor.id}`}
+                                                >
+                                                    Hide
+                                                </button>
+                                            </div>
+                                        </>
                                     )}
-                                    <button
-                                        type="button"
-                                        className="sensor-card-hide-btn"
-                                        onClick={() => hideSensor(sensor.id)}
-                                        title={`Hide ${sensor.label || sensor.id}`}
-                                    >
-                                        Hide
-                                    </button>
                                 </div>
-                            </div>
 
                             <div className="sensor-card-layout">
                                 <div className="sensor-metrics-panel">
@@ -1031,7 +1270,7 @@ export default function AppHMI() {
                                     <LiveGraph
                                         sensorId={sensor.id}
                                         metric={selectedGraphMetric}
-                                        label={`${sensor.label || sensor.id} - ${METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric}`}
+                                        label={`${sensor.config?.custom_label ? `${sensor.config.custom_label} (${sensor.label || sensor.id})` : (sensor.label || sensor.id)} - ${METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric}`}
                                         yAxisLabel={metricAxisLabel(selectedGraphMetric)}
                                         valueFormatter={(value) => value != null ? formatMetricValue(selectedGraphMetric, value) : "N/A"}
                                         color={sensorGraphColor(sensor.kind)}

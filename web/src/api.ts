@@ -181,6 +181,14 @@ export const api = {
         document.body.removeChild(a);
     },
     listSensors: () => http<SensorInfo[]>("/sensors"),
+    updateSensorLabels: (sensorId: string, customLabel: string, deviceCustomLabel: string) =>
+        http<{ ok: boolean }>(`/sensors/${encodeURIComponent(sensorId)}`, {
+            method: "PATCH",
+            body: JSON.stringify({
+                custom_label: customLabel,
+                device_custom_label: deviceCustomLabel
+            })
+        }),
     getLatestMetrics: () => http<SensorReadingResponse[]>("/metrics/latest"),
     getMetricHistory: (sensorId: string, metric: string, tsFrom: number, tsTo: number) =>
         http<SensorReadingResponse[]>(`/metrics/history?sensor_id=${encodeURIComponent(sensorId)}&metric=${encodeURIComponent(metric)}&ts_from=${tsFrom}&ts_to=${tsTo}`),
