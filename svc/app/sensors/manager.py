@@ -22,6 +22,12 @@ from .interface import SensorClient, SensorReading
 from .jeti_specfirm_client import JetiSpecfirmClient
 from .jeti_spectraval_sim import JetiSpectravalSimClient
 from .jeti_spectraval_watcher import JetiSpectravalFileWatcher
+from .serial_autodetect import (
+    find_serial_port,
+    is_auto_port,
+    serial_match_config,
+    serial_port_key,
+)
 from .t10a_client import T10AClient, T10AHeadConfig
 from .t10a_sim_client import T10ASimClient
 
@@ -57,7 +63,7 @@ def _get_sensors_config_file() -> str:
 
 def _default_jeti_baudrate(dev_cfg: dict) -> int:
     explicit_baudrate = dev_cfg.get("baudrate")
-    if explicit_baudrate not in (None, ""):
+    if explicit_baudrate not in (None, "") and not is_auto_port(explicit_baudrate):
         return int(explicit_baudrate)
 
     fingerprint = " ".join(
@@ -71,6 +77,46 @@ def _default_jeti_baudrate(dev_cfg: dict) -> int:
 
 def _env_flag(name: str, default: str = "false") -> bool:
     return os.getenv(name, default).lower() in {"1", "true", "yes", "on"}
+
+
+def _t10a_baudrate(dev_cfg: dict) -> int:
+    raw_baudrate = dev_cfg.get("baudrate")
+    if raw_baudrate in (None, "") or is_auto_port(raw_baudrate):
+        return 9600
+    return int(raw_baudrate)
+
+
+def _parse_int_candidates(value) -> list[int]:
+    if value in (None, ""):
+        return []
+    if isinstance(value, (list, tuple, set)):
+        raw_values = list(value)
+    else:
+        raw_values = [part.strip() for part in str(value).split(",")]
+
+    candidates: list[int] = []
+    for raw_value in raw_values:
+        if raw_value in (None, ""):
+            continue
+        candidate = int(raw_value)
+        if candidate not in candidates:
+            candidates.append(candidate)
+    return candidates
+
+
+def _jeti_baudrate_candidates(dev_cfg: dict) -> list[int]:
+    explicit_baudrate = dev_cfg.get("baudrate")
+    if explicit_baudrate not in (None, "") and not is_auto_port(explicit_baudrate):
+        return [int(explicit_baudrate)]
+
+    configured = dev_cfg.get("baudrate_candidates", dev_cfg.get("autodetect_baudrates"))
+    candidates = _parse_int_candidates(configured)
+    if candidates:
+        return candidates
+
+    inferred = _default_jeti_baudrate(dev_cfg)
+    candidates = [inferred, 921600, 115200, 230400, 38400, 3000000]
+    return list(dict.fromkeys(candidates))
 
 
 def _load_config() -> dict:
@@ -96,6 +142,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
     cfg = _load_config()
     clients_with_interval: list[tuple[SensorClient, float]] = []
     configured_sensor_ids: set[str] = set()
+    reserved_serial_ports: set[str] = set()
 
     is_sim_mode = MODE == "sim"
     is_real_mode = MODE == "real"
@@ -115,17 +162,11 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
 
     for dev_cfg in t10a_configs:
         device_id = dev_cfg["device_id"]
-        port = str(dev_cfg.get("port") or "")
+        raw_port = dev_cfg.get("port")
+        port = str(raw_port or "").strip()
         interval_s = float(dev_cfg.get("interval_s", 60.0))
         timeout_s = float(dev_cfg.get("timeout_s", 1.0))
         protocol_cfg = dev_cfg.get("protocol", {})
-
-        if use_real_t10a and (not port or port == "SIM"):
-            logger.warning(
-                "Skip T10A device %s: missing 'port'; real mode requires a USB COM port",
-                device_id,
-            )
-            continue
 
         heads_cfg: list[T10AHeadConfig] = []
         for h in dev_cfg.get("heads", []):
@@ -137,6 +178,47 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
             )
             heads_cfg.append(hc)
 
+        if not heads_cfg:
+            continue
+
+        if use_real_t10a:
+            if port.upper() == "SIM":
+                logger.warning(
+                    "Skip T10A device %s: port='SIM' cannot be used for real serial polling",
+                    device_id,
+                )
+                continue
+
+            if is_auto_port(raw_port):
+                probe_head_no = heads_cfg[0].head_no
+                autodetect_timeout_s = float(dev_cfg.get("autodetect_timeout_s", timeout_s))
+                port = find_serial_port(
+                    sensor_name=f"T10A device {device_id}",
+                    requested_port=raw_port,
+                    reserved_ports=reserved_serial_ports,
+                    match=serial_match_config(dev_cfg),
+                    probe=lambda candidate_port, probe_head_no=probe_head_no: T10AClient.probe_port(
+                        port=candidate_port,
+                        timeout_s=autodetect_timeout_s,
+                        protocol=protocol_cfg,
+                        baudrate=_t10a_baudrate(dev_cfg),
+                        head_no=probe_head_no,
+                    ),
+                ) or ""
+                if not port:
+                    logger.warning(
+                        "Skip T10A device %s: could not auto-detect a matching USB COM port",
+                        device_id,
+                    )
+                    continue
+
+            port_key = serial_port_key(port)
+            if port_key in reserved_serial_ports:
+                logger.warning("Skip T10A device %s: serial port %s is already in use", device_id, port)
+                continue
+            reserved_serial_ports.add(port_key)
+
+        for hc in heads_cfg:
             register_sensor(
                 sensor_id=hc.sensor_id,
                 kind="t10a",
@@ -152,9 +234,6 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
             )
             configured_sensor_ids.add(hc.sensor_id)
 
-        if not heads_cfg:
-            continue
-
         if use_real_t10a:
             try:
                 client = T10AClient(
@@ -163,7 +242,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     heads=heads_cfg,
                     timeout_s=timeout_s,
                     protocol=protocol_cfg,
-                    baudrate=int(dev_cfg.get("baudrate", 9600)),
+                    baudrate=_t10a_baudrate(dev_cfg),
                 )
                 clients_with_interval.append((client, interval_s))
             except Exception as e:
@@ -206,18 +285,78 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                 )
                 continue
 
-            port = dev_cfg.get("port")
-            if not port:
-                logger.warning("Skip JETI serial_scpi %s: missing 'port'", sensor_id)
-                continue
-
-            baudrate = _default_jeti_baudrate(dev_cfg)
+            raw_port = dev_cfg.get("port")
+            port = str(raw_port or "").strip()
+            baudrate_candidates = _jeti_baudrate_candidates(dev_cfg)
+            baudrate = baudrate_candidates[0]
             timeout_s = float(dev_cfg.get("timeout_s", 1.0))
+            autodetect_timeout_s = float(dev_cfg.get("autodetect_timeout_s", timeout_s))
             tint_ms = float(dev_cfg.get("tint_ms", 100.0))
             avg_count = int(dev_cfg.get("avg_count", 1))
             w_start = int(dev_cfg.get("wavelength_start_nm", 380))
             w_end = int(dev_cfg.get("wavelength_end_nm", 780))
             w_step = int(dev_cfg.get("wavelength_step_nm", 1))
+
+            if port.upper() == "SIM":
+                logger.warning(
+                    "Skip JETI serial_scpi %s: port='SIM' cannot be used for real serial polling",
+                    sensor_id,
+                )
+                continue
+
+            if is_auto_port(raw_port):
+                selected_baudrate = baudrate
+
+                def probe_jeti(candidate_port: str) -> bool:
+                    nonlocal selected_baudrate
+                    for candidate_baudrate in baudrate_candidates:
+                        if JetiSpecfirmClient.probe_port(
+                            port=candidate_port,
+                            baudrate=candidate_baudrate,
+                            timeout_s=autodetect_timeout_s,
+                        ):
+                            selected_baudrate = candidate_baudrate
+                            return True
+                    return False
+
+                port = find_serial_port(
+                    sensor_name=f"JETI serial_scpi {sensor_id}",
+                    requested_port=raw_port,
+                    reserved_ports=reserved_serial_ports,
+                    match=serial_match_config(dev_cfg),
+                    probe=probe_jeti,
+                ) or ""
+                if not port:
+                    logger.warning(
+                        "Skip JETI serial_scpi %s: could not auto-detect a matching USB COM port",
+                        sensor_id,
+                    )
+                    continue
+                baudrate = selected_baudrate
+            elif "baudrate" in dev_cfg and is_auto_port(dev_cfg.get("baudrate")):
+                detected_baudrate = None
+                for candidate_baudrate in baudrate_candidates:
+                    if JetiSpecfirmClient.probe_port(
+                        port=port,
+                        baudrate=candidate_baudrate,
+                        timeout_s=autodetect_timeout_s,
+                    ):
+                        detected_baudrate = candidate_baudrate
+                        break
+                if detected_baudrate is None:
+                    logger.warning(
+                        "Skip JETI serial_scpi %s: could not auto-detect baudrate on %s",
+                        sensor_id,
+                        port,
+                    )
+                    continue
+                baudrate = detected_baudrate
+
+            port_key = serial_port_key(port)
+            if port_key in reserved_serial_ports:
+                logger.warning("Skip JETI serial_scpi %s: serial port %s is already in use", sensor_id, port)
+                continue
+            reserved_serial_ports.add(port_key)
 
             try:
                 register_sensor(

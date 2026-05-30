@@ -4,6 +4,7 @@ import json
 from dataclasses import dataclass
 
 from app.sensors import manager
+from app.sensors import serial_autodetect
 from app.sensors.interface import SensorReading
 
 
@@ -29,6 +30,7 @@ def test_default_jeti_baudrate_uses_specbos_defaults() -> None:
     assert manager._default_jeti_baudrate({"device_id": "SPECBOS-1211-2"}) == 115200
     assert manager._default_jeti_baudrate({"label": "Jeti Spectraval 1511"}) == 921600
     assert manager._default_jeti_baudrate({"device_id": "SPECBOS-1211-2", "baudrate": 230400}) == 230400
+    assert manager._default_jeti_baudrate({"device_id": "SPECBOS-1211-2", "baudrate": "auto"}) == 115200
 
 
 @dataclass
@@ -40,6 +42,20 @@ class FakeClient:
         if self.source == "real":
             return []
         return [SensorReading(sensor_id=f"{self.id}-SIM", metric="simulated", value=1.0, ts=1.0)]
+
+
+@dataclass
+class FakePortInfo:
+    device: str
+    name: str = ""
+    description: str = ""
+    hwid: str = ""
+    manufacturer: str = ""
+    product: str = ""
+    serial_number: str = ""
+    location: str = ""
+    vid: int | None = None
+    pid: int | None = None
 
 
 def _sensor_config() -> dict:
@@ -204,6 +220,81 @@ def test_real_mode_does_not_emit_simulated_sensor_readings(monkeypatch) -> None:
     readings = [r for client, _ in clients for r in client.poll()]
 
     assert readings == []
+
+
+def test_real_mode_autodetects_serial_ports_and_reserves_them(monkeypatch) -> None:
+    monkeypatch.setattr(manager, "MODE", "real")
+    monkeypatch.setattr(
+        manager,
+        "_load_config",
+        lambda: {
+            "t10a": [
+                {
+                    "device_id": "KM1",
+                    "port": "auto",
+                    "heads": [{"head_no": 0, "sensor_id": "T10A1-H1", "label": "T10A"}],
+                }
+            ],
+            "jeti_spectraval": [
+                {
+                    "sensor_id": "JETI-00",
+                    "device_id": "JETI",
+                    "transport": "serial_scpi",
+                    "port": "auto",
+                    "baudrate_candidates": [115200, 921600],
+                }
+            ],
+            "eko_ms90_plus": [],
+        },
+    )
+    monkeypatch.setattr(
+        serial_autodetect.list_ports,
+        "comports",
+        lambda: [FakePortInfo("COM3"), FakePortInfo("COM4")],
+    )
+
+    registered = {}
+    monkeypatch.setattr(manager, "register_sensor", lambda **kwargs: registered.setdefault(kwargs["sensor_id"], kwargs))
+    monkeypatch.setattr(manager, "delete_sensor_readings_for_ids", lambda sensor_ids: None)
+    monkeypatch.setattr(manager, "prune_sensors_to_ids", lambda sensor_ids: None)
+
+    class FakeT10AClient:
+        @staticmethod
+        def probe_port(**kwargs):
+            return kwargs["port"] == "COM3"
+
+        def __init__(self, **kwargs):
+            self.source = "real"
+            self.kwargs = kwargs
+
+        def poll(self):
+            return []
+
+    class FakeJetiClient:
+        @staticmethod
+        def probe_port(**kwargs):
+            return kwargs["port"] == "COM4" and kwargs["baudrate"] == 921600
+
+        def __init__(self, **kwargs):
+            self.source = "real"
+            self.kwargs = kwargs
+
+        def poll(self):
+            return []
+
+    monkeypatch.setattr(manager, "T10AClient", FakeT10AClient)
+    monkeypatch.setattr(manager, "JetiSpecfirmClient", FakeJetiClient)
+
+    clients = manager._make_clients_from_config()
+
+    assert len(clients) == 2
+    t10a_client = clients[0][0]
+    jeti_client = clients[1][0]
+    assert t10a_client.kwargs["port"] == "COM3"
+    assert jeti_client.kwargs["port"] == "COM4"
+    assert jeti_client.kwargs["baudrate"] == 921600
+    assert registered["T10A1-H1"]["config"]["port"] == "COM3"
+    assert registered["JETI-00"]["config"]["port"] == "COM4"
 
 
 def test_real_mode_clears_stale_readings_for_configured_sensors(monkeypatch) -> None:

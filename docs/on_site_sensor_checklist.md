@@ -17,21 +17,21 @@ Use this at the trailer/lab PC after the hardware is physically installed.
 ## Windows Checks
 
 1. Open Device Manager.
-2. Record the COM port for each `T-10A` body.
-3. Record the COM port for each JETI device that will use direct serial mode.
+2. Confirm a COM port appears for each `T-10A` body.
+3. Confirm a COM port appears for each JETI device that will use direct serial mode.
 4. If a JETI device is missing, install the JETI USB driver and reconnect it.
 5. Open the C-BOX web UI from the site computer, usually `http://192.168.2.20/`.
 6. In the C-BOX web UI, open `Modbus -> Setup` and confirm Modbus TCP access is enabled.
 
 ## Update `svc/data/sensors_config.json`
 
-1. Set `t10a[].port` to the actual T-10A COM port.
+1. Set `t10a[].port` to `"auto"` or omit it so the backend detects the T-10A COM port.
 2. Set `t10a[].heads[].head_no` to the actual physical T-10A adaptor/head ID.
 3. Set `jeti_spectraval[].transport` to either `file` or `serial_scpi`.
 4. If JETI uses file mode, set `jeti_spectraval[].output_path` to the actual live `.cap` file.
    **REQUIREMENT**: When configuring multiple JETI sensors (Spectraval or Specbos) in file mode, you MUST configure the Jeti software to export each sensor's data to a distinct file name (e.g., `spectraval_1.cap`, `specbos.cap`). Do not point multiple sensors to the same file, as this will cause data collisions.
-5. If JETI uses serial mode, set `jeti_spectraval[].port` to the JETI COM port.
-6. If JETI uses serial mode, set `jeti_spectraval[].baudrate`:
+5. If JETI uses serial mode, set `jeti_spectraval[].port` to `"auto"` or omit it so the backend detects the JETI COM port.
+6. If JETI uses serial mode, set `jeti_spectraval[].baudrate` or set it to `"auto"`:
    - `921600` for `spectraval 1511`
    - `115200` for `specbos 1211-2`
 7. Set `eko_ms90_plus[].host` to the C-BOX IP address, usually `192.168.2.20`.
@@ -74,7 +74,7 @@ For the full step-by-step connection instructions for each sensor and each suppo
 ## If Something Fails
 
 - No T-10A data:
-  - re-check USB COM port
+  - confirm the USB COM port appears in Device Manager
   - verify head IDs
   - verify straight CAT5 and external power for multi-point mode
   - stop the backend, then probe the port directly (9600 7E1, not 8N1):
@@ -88,7 +88,7 @@ uv run python scripts/read_t10a_serial.py COM5
 - No JETI data:
   - re-check driver install
   - confirm the PC measurement software is writing to the configured `output_path`, or
-  - confirm COM port and baudrate for serial mode
+  - confirm a COM port appears and the baudrate is correct for serial mode
 - No EKO data:
   - open the C-BOX web UI from the site computer and confirm it is reachable
   - confirm `Modbus -> Setup` has Modbus TCP access enabled

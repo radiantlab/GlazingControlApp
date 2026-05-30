@@ -46,6 +46,8 @@ class JetiSpecfirmClient(SensorClient):
         self._sensor_id = sensor_id
         self._label = label
         self._location = location
+        self._port = port
+        self._baudrate = int(baudrate)
         self._tint_ms = float(tint_ms)
         self._avg_count = int(avg_count)
         self._w_start = int(wavelength_start_nm)
@@ -60,7 +62,7 @@ class JetiSpecfirmClient(SensorClient):
 
         self.ser = serial.Serial(
             port=port,
-            baudrate=baudrate,
+            baudrate=self._baudrate,
             bytesize=serial.EIGHTBITS,
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
@@ -70,13 +72,14 @@ class JetiSpecfirmClient(SensorClient):
             "JetiSpecfirmClient[%s] opened %s (baud=%s, tint_ms=%s, avg=%s)",
             self.id,
             port,
-            baudrate,
+            self._baudrate,
             self._tint_ms,
             self._avg_count,
         )
 
-    def _read_until_idle(
-        self,
+    @staticmethod
+    def _read_until_idle_from_serial(
+        ser,
         *,
         total_timeout_s: float = 4.0,
         idle_timeout_s: float = 0.10,
@@ -86,7 +89,7 @@ class JetiSpecfirmClient(SensorClient):
         buf = bytearray()
 
         while time.monotonic() < deadline:
-            chunk = self.ser.read(4096)
+            chunk = ser.read(4096)
             if chunk:
                 buf.extend(chunk)
                 last_rx = time.monotonic()
@@ -95,6 +98,18 @@ class JetiSpecfirmClient(SensorClient):
             if buf and (time.monotonic() - last_rx) >= idle_timeout_s:
                 break
         return bytes(buf)
+
+    def _read_until_idle(
+        self,
+        *,
+        total_timeout_s: float = 4.0,
+        idle_timeout_s: float = 0.10,
+    ) -> bytes:
+        return self._read_until_idle_from_serial(
+            self.ser,
+            total_timeout_s=total_timeout_s,
+            idle_timeout_s=idle_timeout_s,
+        )
 
     def _send(self, command: str, *, timeout_s: float = 4.0) -> bytes:
         payload = command.encode("ascii") + b"\r"
@@ -115,6 +130,47 @@ class JetiSpecfirmClient(SensorClient):
             .replace(b"\x03", b" ")
             .decode("latin-1", errors="ignore")
         )
+
+    @classmethod
+    def probe_port(
+        cls,
+        *,
+        port: str,
+        baudrate: int = 921600,
+        timeout_s: float = 1.0,
+    ) -> bool:
+        ser = None
+        try:
+            ser = serial.Serial(
+                port=port,
+                baudrate=baudrate,
+                bytesize=serial.EIGHTBITS,
+                parity=serial.PARITY_NONE,
+                stopbits=serial.STOPBITS_ONE,
+                timeout=timeout_s,
+            )
+            for command in ("*IDN?", "*VERS?"):
+                ser.reset_input_buffer()
+                ser.write(command.encode("ascii") + b"\r")
+                ser.flush()
+                raw = cls._read_until_idle_from_serial(
+                    ser,
+                    total_timeout_s=timeout_s,
+                    idle_timeout_s=0.05,
+                )
+                text = cls._clean_text(raw).upper()
+                if any(token in text for token in ("JETI", "SPECFIRM", "SPECTRAVAL", "SPECBOS")):
+                    return True
+            return False
+        except Exception as e:
+            logger.debug("JETI probe failed on %s at %s baud: %s", port, baudrate, e)
+            return False
+        finally:
+            if ser is not None:
+                try:
+                    ser.close()
+                except Exception:
+                    pass
 
     def _extract_floats(self, raw: bytes) -> list[float]:
         # Remove common control bytes (ACK, BEL, NAK) before tokenizing.

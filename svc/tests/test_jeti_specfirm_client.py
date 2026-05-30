@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import app.sensors.jeti_specfirm_client as jeti_mod
 from app.sensors.jeti_specfirm_client import JetiSpecfirmClient
 
 
@@ -40,3 +41,33 @@ def test_extract_spectrum_values_falls_back_to_flat_float_stream() -> None:
 
     vals = c._extract_spectrum_values(raw)
     assert vals == [10.0, 20.0, 30.0]
+
+
+def test_probe_port_recognizes_jeti_idn_reply(monkeypatch) -> None:
+    class FakeSerial:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.reads = 0
+            self.closed = False
+
+        def reset_input_buffer(self):
+            pass
+
+        def write(self, payload):
+            self.payload = payload
+
+        def flush(self):
+            pass
+
+        def read(self, size):
+            self.reads += 1
+            if self.reads == 1:
+                return b"JETI_SDCM3 12345678\r"
+            return b""
+
+        def close(self):
+            self.closed = True
+
+    monkeypatch.setattr(jeti_mod.serial, "Serial", FakeSerial)
+
+    assert JetiSpecfirmClient.probe_port(port="COM7", baudrate=921600, timeout_s=0.1)
