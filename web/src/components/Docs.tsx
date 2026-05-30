@@ -56,7 +56,7 @@ export default function Docs() {
                             <strong>Logs:</strong>
                             <ul style={{ marginTop: "8px", paddingLeft: "20px" }}>
                                 <li style={{ marginBottom: "6px" }}><strong>Audit Log:</strong> Lists every change so far in the levels of each panel or group. Sort by date range, panels/group, and filter by specific panel ID or title. Export as CSV to keep all audits listed in their visible order.</li>
-                                <li><strong>Sensor Log:</strong> Under development (TBA).</li>
+                                <li><strong>Sensor Log:</strong> Tracks live and historical environment measurements (such as illuminance, solar irradiance, GPS status, colorimetry, and spectral data). You can view individual log entries in detail (including historical spectral graphs for JETI devices) and export all logged data as CSV.</li>
                             </ul>
                         </li>
                         <li>

@@ -99,45 +99,62 @@ export default function SensorDocs() {
                         The JETI instrument connects to the site PC using USB.
                     </p>
 
-                    {/* Important Notice Callout */}
+                    <h3 style={{ color: "var(--hmi-text-bright)", fontSize: "15px", margin: "16px 0 8px 0" }}>Method A: JETI over USB with file-based <code>.cap</code> ingestion</h3>
+                    <p style={{ lineHeight: "1.6", marginBottom: "12px" }}>
+                        Use this when the measurement software on the PC exports JETI data that the backend will watch.
+                    </p>
+                    <ol style={{ lineHeight: "1.6", paddingLeft: "20px", margin: "0 0 20px 0" }}>
+                        <li style={{ marginBottom: "8px" }}>Connect the JETI device to the PC using a USB cable. Install the official JETI USB drivers.</li>
+                        <li style={{ marginBottom: "8px" }}>Open the JETI measurement suite software on the PC and verify connection to the instrument.</li>
+                        <li style={{ marginBottom: "8px" }}>Configure the JETI software to automatically save or export new measurements as semicolon-delimited <code>.cap</code> files.</li>
+                        <li style={{ marginBottom: "8px" }}>Configure the <code>"transport"</code> to <code>"file"</code> and <code>"output_path"</code> to the file or directory in <code>sensors_config.json</code>:
+                            <ul style={{ marginTop: "6px", paddingLeft: "20px" }}>
+                                <li style={{ marginBottom: "6px" }}><strong>If pointing to a File (e.g. <code>"data/spectraval_1.cap"</code>):</strong> Instruct the JETI software to continuously overwrite this exact file.</li>
+                                <li><strong>If pointing to a Directory (e.g. <code>"data/jeti_measurements/"</code>):</strong> The JETI software can export rotating files. The watcher automatically loads the <code>.cap</code> file with the latest modification time.</li>
+                            </ul>
+                        </li>
+                    </ol>
+
                     <div style={{ 
                         borderLeft: "4px solid var(--hmi-warning)", 
                         backgroundColor: "rgba(245, 158, 11, 0.08)", 
                         padding: "12px 16px", 
                         borderRadius: "0 8px 8px 0",
-                        marginBottom: "20px"
+                        margin: "16px 0 20px 0"
                     }}>
-                        <strong style={{ color: "#fbbf24", display: "block", marginBottom: "4px" }}>⚠️ Active Deployment Support</strong>
+                        <strong style={{ color: "#fbbf24", display: "block", marginBottom: "4px" }}>⚠️ Critical Multiple Sensor Naming Rule</strong>
                         <span style={{ fontSize: "13px", lineHeight: "1.5", display: "block" }}>
-                            Currently, <strong>only file-based .cap file reading is supported</strong> in the backend service. Direct SPECFIRM serial/virtual COM SCPI polling is not active in this app version and may be added in a future update.
+                            When configuring multiple JETI sensors in file mode, you <strong>must</strong> configure the PC software to export each sensor's data to a distinct file name (e.g., <code>spectraval_1.cap</code>, <code>specbos.cap</code>). Do not point multiple sensors to the same file path, as this will cause data collisions.
                         </span>
                     </div>
 
-                    <h3 style={{ color: "var(--hmi-text-bright)", fontSize: "15px", margin: "16px 0 8px 0" }}>Physical & Software Setup:</h3>
+                    <h3 style={{ color: "var(--hmi-text-bright)", fontSize: "15px", margin: "16px 0 8px 0" }}>Method B: JETI over USB virtual COM with direct SPECFIRM polling</h3>
+                    <p style={{ lineHeight: "1.6", marginBottom: "12px" }}>
+                        Use this when you want the backend service to communicate with the JETI device directly using virtual serial.
+                    </p>
+                    <div style={{ 
+                        borderLeft: "4px solid var(--hmi-warning)", 
+                        backgroundColor: "rgba(245, 158, 11, 0.08)", 
+                        padding: "12px 16px", 
+                        borderRadius: "0 8px 8px 0",
+                        margin: "12px 0 20px 0"
+                    }}>
+                        <strong style={{ color: "#fbbf24", display: "block", marginBottom: "4px" }}>⚠️ Direct Serial Testing Notice</strong>
+                        <span style={{ fontSize: "13px", lineHeight: "1.5", display: "block" }}>
+                            JETI direct serial polling (Method B) is currently in beta and has not been fully verified with physical hardware on site. It may not function as expected. For stable deployments, file-based <code>.cap</code> ingestion (Method A) is highly recommended.
+                        </span>
+                    </div>
                     <ol style={{ lineHeight: "1.6", paddingLeft: "20px", margin: "0 0 20px 0" }}>
                         <li style={{ marginBottom: "8px" }}>Connect the JETI device to the PC using a USB cable. Install the official JETI USB drivers.</li>
-                        <li style={{ marginBottom: "8px" }}>Open the JETI measurement suite software on the PC and verify connection to the instrument.</li>
-                        <li style={{ marginBottom: "8px" }}>Configure the JETI software to automatically save or export new measurements as <strong>semicolon-delimited <code>.cap</code> files</strong>.</li>
+                        <li style={{ marginBottom: "8px" }}>Open Device Manager on Windows and locate the JETI virtual COM port (e.g. <code>COM4</code>).</li>
+                        <li style={{ marginBottom: "8px" }}>
+                            Configure the <code>"transport"</code> to <code>"serial_scpi"</code>, set <code>"port"</code> to the COM port, and set <code>"baudrate"</code> depending on the model:
+                            <ul style={{ marginTop: "6px", paddingLeft: "20px" }}>
+                                <li style={{ marginBottom: "6px" }}><code>921600</code> for <strong>spectraval 1511</strong></li>
+                                <li><code>115200</code> for <strong>specbos 1211-2</strong></li>
+                            </ul>
+                        </li>
                     </ol>
-
-                    <h3 style={{ color: "var(--hmi-text-bright)", fontSize: "15px", margin: "16px 0 8px 0" }}>File Location & Naming Rules (CRITICAL):</h3>
-                    <div style={{ backgroundColor: "var(--hmi-panel-bg)", padding: "16px", borderRadius: "8px", border: "1px solid var(--hmi-border)" }}>
-                        <p style={{ margin: "0 0 12px 0", lineHeight: "1.5", fontSize: "13px" }}>
-                            In <code>sensors_config.json</code>, set <code>"transport": "file"</code>. The behavior depends on the value of <code>"output_path"</code>:
-                        </p>
-                        <ul style={{ lineHeight: "1.6", margin: 0, paddingLeft: "20px" }}>
-                            <li style={{ marginBottom: "8px" }}>
-                                <strong>If <code>output_path</code> points to a File (e.g. <code>"data/live.cap"</code>):</strong>
-                                <br />
-                                Instruct the JETI software to continuously write/overwrite this exact file. The app reads this file directly.
-                            </li>
-                            <li style={{ marginBottom: "8px" }}>
-                                <strong>If <code>output_path</code> points to a Directory (e.g. <code>"data/jeti_measurements/"</code>):</strong>
-                                <br />
-                                The JETI software can export rotating files with dynamic names (e.g. <code>jeti_2026_05_22_1500.cap</code>). The file watcher will scan the folder and automatically load the file ending in <code>.cap</code> that has the <strong>latest modification time (mtime)</strong> on disk.
-                            </li>
-                        </ul>
-                    </div>
                 </div>
 
                 {/* Section 3: EKO MS-90+ / C-BOX */}
