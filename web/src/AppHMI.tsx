@@ -9,6 +9,7 @@ import ActiveControllersBar from "./components/ActiveControllersBar";
 import { controlManager, type ControlSource } from "./utils/controlManager";
 import { useToast } from "./utils/toast";
 import LogsPanel from "./components/LogsPanel";
+import { Link } from "react-router-dom";
 import LiveGraph from "./components/LiveGraph";
 import { type SensorInfo, type SensorReadingResponse } from "./api";
 import {
@@ -236,6 +237,21 @@ export default function AppHMI() {
     const [visibleSensorIds, setVisibleSensorIds] = useState<string[]>([]);
     const sensorVisibilityUserSet = useRef(false);
     const [targetRoutineId, setTargetRoutineId] = useState<string | null>(null);
+    const [docsDropdownOpen, setDocsDropdownOpen] = useState<boolean>(false);
+    const docsDropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (docsDropdownRef.current && !docsDropdownRef.current.contains(event.target as Node)) {
+                setDocsDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
     const [spectralModal, setSpectralModal] = useState<{ sensorId: string; fixedTs?: number } | null>(null);
 
     const connectedSensorList = sortSensorsForDisplay(getConnectedSensors(sensors, latestMetrics));
@@ -648,6 +664,43 @@ export default function AppHMI() {
                         >
                             Routines
                         </button>
+
+                        <div className={`hmi-dropdown ${docsDropdownOpen ? "open" : ""}`} ref={docsDropdownRef}>
+                            <Link to="/docs" style={{ textDecoration: "none" }}>
+                                <button
+                                    className="hmi-manage-btn"
+                                    title="View Docs"
+                                    style={{ display: "flex", alignItems: "center", gap: "6px" }}
+                                >
+                                    Docs
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="hmi-dropdown-arrow">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                    </svg>
+                                </button>
+                            </Link>
+                            <div className="hmi-dropdown-menu">
+                                <Link to="/docs" className="hmi-dropdown-item" onClick={() => setDocsDropdownOpen(false)}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                                    </svg>
+                                    General Docs
+                                </Link>
+                                <Link to="/docs/sensors" target="_blank" rel="noopener noreferrer" className="hmi-dropdown-item" onClick={() => setDocsDropdownOpen(false)}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0015 0m-15 0a7.5 7.5 0 1115 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077l1.41-.513m14.095-5.13l1.41-.513M5.106 17.785l1.15-.827m11.379-8.16l1.15-.827M8.14 21.27l.707-1.03m7.45-10.86l.707-1.03M12 3v1.5m0 15V21m-9-9h1.5m12 0H21" />
+                                    </svg>
+                                    Sensor Setup & Quickstart
+                                </Link>
+                                <Link to="/docs/routines" target="_blank" rel="noopener noreferrer" className="hmi-dropdown-item" onClick={() => setDocsDropdownOpen(false)}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+                                    </svg>
+                                    Routine Developer Docs
+                                </Link>
+                            </div>
+                        </div>
+
+
                     </div>
                 </div>
             </header>
@@ -667,6 +720,33 @@ export default function AppHMI() {
                         Sensors
                     </button>
                 </div>
+
+                {mainTab === "sensors" && (
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "16px", marginBottom: "-4px" }}>
+                        <Link to="/docs/sensors" target="_blank" rel="noopener noreferrer">
+                            <button
+                                className="hmi-manage-btn"
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                    background: "linear-gradient(135deg, rgba(30, 64, 175, 0.25) 0%, rgba(37, 99, 235, 0.2) 100%)",
+                                    border: "1px solid rgba(59, 130, 246, 0.4)",
+                                    color: "#93c5fd",
+                                    fontSize: "13px",
+                                    fontWeight: "600",
+                                    boxShadow: "0 2px 6px rgba(0, 0, 0, 0.15)"
+                                }}
+                                title="View Sensor Connection & Setup Quickstart Guide"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: "16px", height: "16px" }}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                                </svg>
+                                Sensor Docs/Quickstart
+                            </button>
+                        </Link>
+                    </div>
+                )}
 
                 {mainTab === "control" && (
                     <>
