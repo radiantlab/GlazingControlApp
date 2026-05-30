@@ -418,9 +418,10 @@ body {
     gap: 24px;
     width: 100%;
     box-sizing: border-box;
+    align-items: start;
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 1200px) {
     .rooms-layout {
         grid-template-columns: 1fr;
         gap: 20px;
@@ -436,10 +437,11 @@ body {
     box-shadow: var(--hmi-shadow);
     width: 100%;
     box-sizing: border-box;
+    min-width: 0;
     overflow-x: hidden;
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 1200px) {
     .room-section {
         padding: 16px;
     }
@@ -466,6 +468,22 @@ body {
     color: var(--hmi-text-muted);
 }
 
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.room-header-unlabeled {
+    justify-content: flex-end;
+}
+
 /* Panels Grid */
 .room-panels-grid {
     display: grid;
@@ -475,19 +493,13 @@ body {
     box-sizing: border-box;
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 900px) {
     .room-panels-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
-@media (max-width: 768px) {
-    .room-panels-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 480px) {
+@media (max-width: 520px) {
     .room-panels-grid {
         grid-template-columns: 1fr;
     }
@@ -519,6 +531,20 @@ body {
     border-color: var(--hmi-accent);
     box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.3), var(--hmi-shadow);
     animation: panel-transition-pulse 2s ease-in-out infinite;
+}
+
+.panel-tile-selected-group {
+    border-color: var(--hmi-accent);
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.45), var(--hmi-shadow);
+}
+
+.panel-tile-selected-group::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    pointer-events: none;
+    background: rgba(14, 165, 233, 0.08);
 }
 
 .panel-controlled-manual {
@@ -1424,6 +1450,12 @@ select option[disabled] {
     animation: panel-transition-pulse 2s ease-in-out infinite;
 }
 
+.room-compact-panel-selected-group {
+    border-color: var(--hmi-accent);
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.45);
+    background: rgba(14, 165, 233, 0.12);
+}
+
 .room-compact-panel.controlled-manual {
     border-top: 2px solid var(--hmi-primary);
 }
@@ -1691,56 +1723,295 @@ select option[disabled] {
 }
 
 /* Sensor visibility and graph controls */
-.sensor-visibility-controls {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+.sensor-visibility-card .room-header {
+    margin-bottom: 0;
 }
 
-.sensor-visibility-chip {
-    padding: 7px 12px;
-    border-radius: 8px;
+.sensor-visibility-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding-top: 14px;
+}
+
+.sensor-visibility-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 8px;
+    flex: 1;
+}
+
+.sensor-visibility-row {
+    min-height: 40px;
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
     border: 1px solid var(--hmi-border);
+    border-radius: 8px;
     background: var(--hmi-bg-alt);
     color: var(--hmi-text-muted);
     font-size: 12px;
-    font-weight: 600;
     cursor: pointer;
     transition: all 0.15s ease;
-    white-space: nowrap;
 }
 
-.sensor-visibility-chip:hover {
+.sensor-visibility-row:hover {
     border-color: var(--hmi-border-light);
     color: var(--hmi-text);
     background: var(--hmi-surface);
 }
 
-.sensor-visibility-chip.active {
+.sensor-visibility-row.active {
     border-color: var(--hmi-primary);
-    color: #bfdbfe;
-    background: rgba(37, 99, 235, 0.18);
+    background: rgba(37, 99, 235, 0.16);
+    color: var(--hmi-text);
+}
+
+.sensor-visibility-row input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--hmi-primary);
+}
+
+.sensor-visibility-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+.sensor-visibility-kind {
+    color: var(--hmi-text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.sensor-visibility-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.sensor-visibility-action {
+    min-width: 56px;
+    padding: 8px 10px;
+    border: 1px solid var(--hmi-border);
+    border-radius: 8px;
+    background: var(--hmi-surface);
+    color: var(--hmi-text);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.sensor-visibility-action:hover {
+    border-color: var(--hmi-border-light);
+    background: var(--hmi-bg-alt);
+}
+
+.sensor-card-header {
+    margin-bottom: 0;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.sensor-card-header .room-title {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.sensor-card-header .room-stats {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sensor-card-hide-btn {
+    padding: 6px 10px;
+    border: 1px solid var(--hmi-border);
+    border-radius: 7px;
+    background: var(--hmi-bg-alt);
+    color: var(--hmi-text);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.sensor-card-hide-btn:hover {
+    border-color: var(--hmi-border-light);
+    background: var(--hmi-surface);
+}
+
+.sensor-card-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.46fr) minmax(420px, 1fr);
+    gap: 20px;
+    padding-top: 18px;
+    align-items: start;
+}
+
+.sensor-metrics-panel {
+    min-width: 0;
+    padding-right: 20px;
+    border-right: 1px solid var(--hmi-border);
+}
+
+.sensor-metrics-heading {
+    margin-bottom: 10px;
+    color: var(--hmi-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.sensor-metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+}
+
+.sensor-metric-row {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 7px 9px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--hmi-text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.sensor-metric-row:hover {
+    border-color: var(--hmi-border-light);
+    background: var(--hmi-bg-alt);
+}
+
+.sensor-metric-row.active {
+    border-color: var(--hmi-primary);
+    background: rgba(37, 99, 235, 0.16);
+}
+
+.sensor-metric-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--hmi-text-muted);
+    font-size: 12px;
+}
+
+.sensor-metric-row.active .sensor-metric-label {
+    color: var(--hmi-text);
+}
+
+.sensor-metric-value {
+    color: var(--hmi-text);
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.sensor-metrics-meta {
+    margin-top: 10px;
+    color: var(--hmi-text-muted);
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.sensor-empty-state {
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    border: 1px dashed var(--hmi-border);
+    border-radius: 8px;
+    background: var(--hmi-bg-alt);
+    color: var(--hmi-text-muted);
+    font-size: 13px;
+    text-align: center;
+}
+
+.sensor-empty-graph {
+    min-height: 220px;
+}
+
+.sensor-graph-panel {
+    min-width: 0;
 }
 
 .sensor-graph-controls {
-    margin-top: 10px;
     display: flex;
     justify-content: flex-end;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-    padding-right: 4px;
+    margin-bottom: 8px;
 }
 
 .sensor-graph-select {
-    min-width: 260px;
+    min-width: 220px;
     max-width: 100%;
-    width: min(420px, 100%);
+    width: min(360px, 100%);
     padding: 8px 10px;
     border: 1px solid var(--hmi-border);
     border-radius: 8px;
     background: var(--hmi-bg-alt);
     color: var(--hmi-text);
+}
+
+.live-graph-chart {
+    padding: 10px 20px 20px 0;
+}
+
+.live-graph-chart-embedded {
+    padding: 0 12px 8px 0;
+}
+
+.live-graph-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--hmi-text-muted);
+}
+
+@media (max-width: 1180px) {
+    .sensor-visibility-body {
+        flex-direction: column;
+    }
+
+    .sensor-visibility-actions {
+        width: 100%;
+    }
+
+    .sensor-visibility-action {
+        flex: 1;
+    }
+
+    .sensor-card-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .sensor-metrics-panel {
+        padding-right: 0;
+        padding-bottom: 16px;
+        border-right: 0;
+        border-bottom: 1px solid var(--hmi-border);
+    }
+
+    .sensor-metrics-grid {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
 }
 
 
@@ -2759,7 +3030,7 @@ select option[disabled] {
 
 /* ========================================
    Documentation Pages Layout
-   ======================================== */
+   ======================================= */
 
 .docs-layout {
     max-width: 1000px !important;
@@ -2804,3 +3075,4 @@ select option[disabled] {
     border-radius: 4px;
     color: var(--hmi-text-bright);
 }
+

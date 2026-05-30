@@ -21,8 +21,15 @@ This app provides researchers and facility managers with a local-first system to
 - **Local-First Reliability:** Operates entirely on the local trailer network, provides responsiveness without depending on external internet access.
 - **Smart Scheduling Engine:** Create study-friendly, automated routines that adjust pane tinting based on time of day, minimizing manual intervention during research experiments.
 - **Live System Status:** Get real-time monitoring and visualization of all 18 Halio facade panels and 2 skylights from a single, unified dashboard.
+- **Sensor Visualization:** Track live and historical sensor metrics, toggle sensor visibility, select specific metrics to graph, and view real-time spectral irradiance graphs.
 - **Sensor Integration Ready:** Built to analyze and manage DIAL's advanced setup of indoor and rooftop environmental sensors (including JETI spectroradiometers and EKO pyranometers).
 - **Safe Manual Override:** The safety-first manual override protocols allow the researchers to take direct control of individual panels.
+
+<div align="center">
+  <img src="docs/images/sensors.png" alt="Sensor Visualization Mockup" width="800" />
+  <br>
+  <em>Real-time sensor monitoring, visibility toggles, and live/historical spectral irradiance graphs.</em>
+</div>
 
 For a clean machine setup, use [`DEV-SETUP.md`](./DEV-SETUP.md). The backend expects Python `>=3.11,<3.14`; the frontend uses Node.js/NPM. EKO site deployments now use the C-BOX Ethernet Modbus TCP interface (`host` plus TCP `port` 502) and no longer use USB-to-RS485 or a COM port for EKO.
 

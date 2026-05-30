@@ -44,7 +44,7 @@ if ghi is not None and sun_elev is not None:
     },
     {
         label: "Research: Melanopic EDI limits with JETI",
-        code: `mel_edi = sensors.get_latest("JETI-00", "melanopic_edi_lx")
+        code: `mel_edi = sensors.get_latest("SPECTRAVAL-1", "melanopic_edi_lx")
 sun_elev = sensors.get_latest("EKO-00", "sun_elevation_deg")
 
 log(f"Melanopic EDI: {mel_edi} lx")
@@ -61,7 +61,7 @@ if mel_edi is not None:
     },
     {
         label: "Color Quality: Maintain minimum CRI",
-        code: `cri = sensors.get_latest("JETI-00", "cri_ra")
+        code: `cri = sensors.get_latest("SPECTRAVAL-1", "cri_ra")
 lux = sensors.get_latest("T10A1-H1", "lux")
 
 log(f"CRI (Ra): {cri}, Lux: {lux}")

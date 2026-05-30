@@ -20,6 +20,7 @@ type LogsPanelProps = {
     isMock: boolean
     sensors: SensorInfo[]
     onRoutineLinkClick?: (routineId: string) => void
+    onViewSpectrum?: (sensorId: string, ts: number) => void
 }
 
 export default function LogsPanel({
@@ -31,7 +32,8 @@ export default function LogsPanel({
     onRefresh,
     isMock,
     sensors,
-    onRoutineLinkClick
+    onRoutineLinkClick,
+    onViewSpectrum
 }: LogsPanelProps) {
     const [activeTab, setActiveTab] = useState<"audit" | "sensors" | "routines">("audit")
     const [typeFilter, setTypeFilter] = useState<"all" | "panel" | "group">("all")
@@ -695,12 +697,13 @@ export default function LogsPanel({
                                                 <span>Value</span>
                                                 <span className="logs-sort-indicator">{sensorSortIndicator("value")}</span>
                                             </th>
+                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {sensorLogs.length === 0 ? (
                                             <tr>
-                                                <td colSpan={5} className="logs-empty">
+                                                <td colSpan={6} className="logs-empty">
                                                     {sensorLoading
                                                         ? "Loading sensor logs..."
                                                         : "No sensor readings match the current filters"}
@@ -714,6 +717,32 @@ export default function LogsPanel({
                                                     <td>{row.sensor_kind || "-"}</td>
                                                     <td>{row.metric}</td>
                                                     <td>{row.value.toFixed(4)}</td>
+                                                    <td>
+                                                        {row.sensor_kind === "jeti_spectraval" && onViewSpectrum && (
+                                                            <button
+                                                                className="hmi-link-btn"
+                                                                onClick={() => onViewSpectrum(row.sensor_id, row.ts)}
+                                                                title="View Spectrogram at this timestamp"
+                                                                style={{
+                                                                    background: 'none',
+                                                                    border: 'none',
+                                                                    color: 'var(--hmi-accent)',
+                                                                    textDecoration: 'underline',
+                                                                    cursor: 'pointer',
+                                                                    padding: 0,
+                                                                    font: 'inherit',
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '4px'
+                                                                }}
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: "16px", height: "16px" }}>
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+                                                                </svg>
+                                                                <span>Spectrogram</span>
+                                                            </button>
+                                                        )}
+                                                    </td>
                                                 </tr>
                                             ))
                                         )}

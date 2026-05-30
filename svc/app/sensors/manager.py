@@ -12,6 +12,7 @@ from app.config import MODE
 from app.state import (
     delete_sensor_readings_for_ids,
     insert_sensor_reading,
+    insert_sensor_spectrum,
     prune_sensors_to_ids,
     register_sensor,
 )
@@ -146,6 +147,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     "device_id": device_id,
                     "port": port or "SIM",
                     "head_no": hc.head_no,
+                    "interval_s": interval_s,
                     "timeout_s": timeout_s,
                     "protocol": protocol_cfg,
                 },
@@ -376,6 +378,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     "host": host,
                     "port": tcp_port,
                     "slave_address": slave_address,
+                    "interval_s": interval_s,
                     "timeout_s": timeout_s,
                     "float_byte_order": float_byte_order,
                 },
@@ -436,7 +439,10 @@ def _worker_loop(client: SensorClient, interval_s: float) -> None:
         if readings:
             logger.debug(f"Manager: received {len(readings)} readings from {client}")
         for r in readings:
-            insert_sensor_reading(r.sensor_id, r.ts, r.metric, r.value)
+            if r.metric == "spectrum" and r.spectrum is not None:
+                insert_sensor_spectrum(r.sensor_id, r.ts, r.spectrum)
+            else:
+                insert_sensor_reading(r.sensor_id, r.ts, r.metric, r.value)
         if _stop_flag:
             break
         time.sleep(interval_s)

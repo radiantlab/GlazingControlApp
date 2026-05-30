@@ -34,6 +34,26 @@
           "head_no": 3,
           "sensor_id": "T10A1-H4",
           "label": "T-10A #1 Head 4"
+        },
+        {
+          "head_no": 4,
+          "sensor_id": "T10A1-H5",
+          "label": "T-10A #1 Head 5"
+        },
+        {
+          "head_no": 5,
+          "sensor_id": "T10A1-H6",
+          "label": "T-10A #1 Head 6"
+        },
+        {
+          "head_no": 6,
+          "sensor_id": "T10A1-H7",
+          "label": "T-10A #1 Head 7"
+        },
+        {
+          "head_no": 7,
+          "sensor_id": "T10A1-H8",
+          "label": "T-10A #1 Head 8"
         }
       ]
     },
@@ -71,22 +91,66 @@
           "head_no": 3,
           "sensor_id": "T10A2-H4",
           "label": "T-10A #2 Head 4"
+        },
+        {
+          "head_no": 4,
+          "sensor_id": "T10A2-H5",
+          "label": "T-10A #2 Head 5"
+        },
+        {
+          "head_no": 5,
+          "sensor_id": "T10A2-H6",
+          "label": "T-10A #2 Head 6"
+        },
+        {
+          "head_no": 6,
+          "sensor_id": "T10A2-H7",
+          "label": "T-10A #2 Head 7"
+        },
+        {
+          "head_no": 7,
+          "sensor_id": "T10A2-H8",
+          "label": "T-10A #2 Head 8"
         }
       ]
     }
   ],
   "jeti_spectraval": [
     {
-      "sensor_id": "JETI-00",
-      "device_id": "JETI",
+      "sensor_id": "SPECTRAVAL-1",
+      "device_id": "JETI-SV-1",
       "transport": "file",
       "template_path": "data/251118_Jeti_Spectraval_Data.cap",
-      "output_path": "data/jeti_sim_output",
+      "output_path": "data/spectraval_1.cap",
       "watch_interval_s": 1,
       "interval_s": 5,
       "loop": true,
-      "label": "Jeti Spectraval",
-      "location": null
+      "label": "Spectraval #1",
+      "location": "Inside"
+    },
+    {
+      "sensor_id": "SPECTRAVAL-2",
+      "device_id": "JETI-SV-2",
+      "transport": "file",
+      "template_path": "data/251118_Jeti_Spectraval_Data.cap",
+      "output_path": "data/spectraval_2.cap",
+      "watch_interval_s": 1,
+      "interval_s": 5,
+      "loop": true,
+      "label": "Spectraval #2",
+      "location": "Outside"
+    },
+    {
+      "sensor_id": "SPECBOS-1",
+      "device_id": "JETI-SB-1",
+      "transport": "file",
+      "template_path": "data/251118_Jeti_Spectraval_Data.cap",
+      "output_path": "data/specbos.cap",
+      "watch_interval_s": 1,
+      "interval_s": 5,
+      "loop": true,
+      "label": "Specbos 1211",
+      "location": "Reference"
     }
   ],
   "eko_ms90_plus": [

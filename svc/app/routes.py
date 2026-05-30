@@ -4,7 +4,8 @@ from fastapi.responses import Response
 from .models import (
     Panel, Group, CommandRequest, CommandResult, GroupCreate, GroupUpdate, 
     AuditEntry, HealthResponse, DeleteGroupResponse, ErrorResponse, SensorInfo,
-    SensorReadingResponse, SensorLogEntry, RoutineRequest, RoutineStatusResponse, SavedRoutine
+    SensorReadingResponse, SensorLogEntry, RoutineRequest, RoutineStatusResponse, SavedRoutine,
+    SensorSpectrumResponse
 )
 from typing import List, Optional
 import csv
@@ -22,7 +23,9 @@ from .state import (
     get_routine,
     list_saved_routines,
     save_saved_routine,
-    delete_saved_routine
+    delete_saved_routine,
+    fetch_latest_spectrum,
+    fetch_historical_spectrum
 )
 from .routines.manager import start_routine, stop_routine, remove_routine, active_routines
 import uuid
@@ -465,6 +468,35 @@ def get_metric_history(
 ) -> List[SensorReadingResponse]:
     rows = _fetch_readings(sensor_id=sensor_id, metric=metric, ts_from=ts_from, ts_to=ts_to)
     return [SensorReadingResponse(**r) for r in rows]
+
+
+@router.get(
+    "/sensors/{sensor_id}/spectrum/latest",
+    response_model=SensorSpectrumResponse,
+    summary="Latest spectrum for a sensor",
+    tags=["Sensors"],
+)
+def get_latest_spectrum(sensor_id: str) -> SensorSpectrumResponse:
+    res = fetch_latest_spectrum(sensor_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="No spectrum found for this sensor")
+    return SensorSpectrumResponse(**res)
+
+
+@router.get(
+    "/sensors/{sensor_id}/spectrum/historical",
+    response_model=SensorSpectrumResponse,
+    summary="Historical spectrum for a sensor",
+    tags=["Sensors"],
+)
+def get_historical_spectrum(
+    sensor_id: str,
+    ts: float = Query(..., description="Timestamp of the reading"),
+) -> SensorSpectrumResponse:
+    res = fetch_historical_spectrum(sensor_id, ts)
+    if not res:
+        raise HTTPException(status_code=404, detail="No spectrum found for this sensor at this timestamp")
+    return SensorSpectrumResponse(**res)
 
 
 # --- ROUTINES -------------------------------------------------------------
