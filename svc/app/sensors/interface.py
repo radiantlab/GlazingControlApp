@@ -10,6 +10,7 @@ class SensorReading:
     metric: str         # e.g. "lux"
     value: float
     ts: float           # unix timestamp
+    spectrum: list[float] | None = None
 
 
 class SensorClient(Protocol):
