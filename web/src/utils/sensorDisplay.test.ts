@@ -15,10 +15,10 @@ const sensor = (id: string, interval_s?: number, kind = "t10a", label = id): Sen
     config: interval_s == null ? {} : { interval_s },
 });
 
-const reading = (sensor_id: string, metric: string, ts: number): SensorReadingResponse => ({
+const reading = (sensor_id: string, metric: string, ts: number, value = 1): SensorReadingResponse => ({
     sensor_id,
     metric,
-    value: 1,
+    value,
     ts,
 });
 
@@ -38,6 +38,14 @@ describe("sensorDisplay", () => {
         ];
 
         expect(connectedSensors(sensors, metrics, 1000).map(s => s.id)).toEqual(["fresh"]);
+    });
+
+    it("treats zero-valued fresh metrics as connected", () => {
+        const sensors = [sensor("capped", 10)];
+        const metrics = [reading("capped", "lux", 1000, 0)];
+
+        expect(getFreshMetricsForSensor(sensors[0], metrics, 1000)[0].value).toBe(0);
+        expect(connectedSensors(sensors, metrics, 1000).map(s => s.id)).toEqual(["capped"]);
     });
 
     it("filters stale metrics per sensor", () => {

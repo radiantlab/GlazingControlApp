@@ -201,7 +201,11 @@ class T10AClient(SensorClient):
         Meters sometimes pad with spaces, e.g. '+ 2904' instead of '+02904'.
         """
         compact = field.replace(" ", "")
-        if not compact or compact[0] not in "+-":
+        if not compact:
+            return None
+        if compact.isdigit() and set(compact[:-1] or compact) <= {"0"}:
+            return 0.0
+        if compact[0] not in "+-":
             return None
         if len(compact) == 5:
             # '+2904' -> '+02904' (insert mantissa leading zero)
@@ -259,6 +263,17 @@ class T10AClient(SensorClient):
             m = re.search(r"[+-]?(?:\d+\.\d*|\d*\.\d+)", body)
             if m:
                 return float(m.group(0))
+
+            # Pattern 5: explicit scalar zero, e.g. "0 lx" from a capped sensor.
+            # Keep this after structured parsers so header/status digits are not mistaken for data.
+            m = re.search(r"(?<![\d.])([+-]?0(?:\.0+)?)(?![\d.])", body)
+            if m:
+                before = body[: m.start()].strip()
+                after = body[m.end() :].strip().lower()
+                has_label_prefix = not before or before.endswith(("=", ":"))
+                has_unit_suffix = after.startswith(("lx", "lux", "fcd"))
+                if has_label_prefix or has_unit_suffix or not after:
+                    return 0.0
 
             return None
         except Exception as e:
