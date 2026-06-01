@@ -655,6 +655,8 @@ def fetch_sensor_log_entries(
     limit: int = 500,
     offset: int = 0,
     sensor_id: str | None = None,
+    sensor_ids: list[str] | None = None,
+    sensor_kind: str | None = None,
     metric: str | None = None,
     ts_from: float | None = None,
     ts_to: float | None = None,
@@ -686,6 +688,14 @@ def fetch_sensor_log_entries(
     if sensor_id:
         where_clauses.append("r.sensor_id = ?")
         params.append(sensor_id)
+    elif sensor_ids:
+        unique_sensor_ids = sorted(set(sensor_ids))
+        placeholders = ",".join("?" for _ in unique_sensor_ids)
+        where_clauses.append(f"r.sensor_id IN ({placeholders})")
+        params.extend(unique_sensor_ids)
+    if sensor_kind:
+        where_clauses.append("s.kind = ?")
+        params.append(sensor_kind)
     if metric:
         where_clauses.append("r.metric = ?")
         params.append(metric)
