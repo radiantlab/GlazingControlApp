@@ -36,6 +36,7 @@ from app.state import (
     save_groups,
     register_sensor,
     insert_sensor_reading,
+    fetch_latest_readings,
     fetch_sensor_log_entries,
     prune_sensors_to_ids,
     list_sensors,
@@ -776,6 +777,31 @@ class TestSensorLogOperations:
         assert len(rows) == 1
         assert rows[0]["metric"] == "ghi_w_m2"
         assert rows[0]["ts"] == 2002.0
+
+    def test_zero_sensor_reading_is_persisted_as_latest(self, temp_db):
+        """A legitimate zero reading should remain visible to connected-sensor checks."""
+        register_sensor(
+            sensor_id="KM1-00",
+            kind="t10a",
+            label="Desk center",
+            location="Desk",
+            config={"device_id": "KM1"},
+        )
+        insert_sensor_reading("KM1-00", 1000.0, "lux", 0.0)
+
+        latest = fetch_latest_readings()
+        assert latest == [
+            {
+                "sensor_id": "KM1-00",
+                "metric": "lux",
+                "value": 0.0,
+                "ts": 1000.0,
+            }
+        ]
+
+        rows = fetch_sensor_log_entries(limit=10, offset=0, sensor_id="KM1-00")
+        assert len(rows) == 1
+        assert rows[0]["value"] == 0.0
 
     def test_prune_sensors_to_ids_removes_stale_rows(self, temp_db):
         """Pruning should remove sensors and readings not in active config."""
