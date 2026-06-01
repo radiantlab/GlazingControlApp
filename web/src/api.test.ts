@@ -71,4 +71,25 @@ describe("api", () => {
             "/logs/sensors?limit=100&offset=20&sort_field=sensor_id&sort_dir=asc&sensor_id=S1&metric=lux&ts_from=10&ts_to=50",
         );
     });
+
+    it("builds grouped sensor log query parameters", async () => {
+        fetchMock.mockResolvedValue(jsonResponse([]));
+
+        await api.getSensorLogs(
+            100,
+            0,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            "ts",
+            "desc",
+            { sensorIds: ["SPECTRAVAL-1", "SPECTRAVAL-2"], sensorKind: "jeti_spectraval" },
+        );
+
+        const [path] = fetchMock.mock.calls[0];
+        expect(path).toBe(
+            "/logs/sensors?limit=100&offset=0&sort_field=ts&sort_dir=desc&sensor_ids=SPECTRAVAL-1&sensor_ids=SPECTRAVAL-2&sensor_kind=jeti_spectraval",
+        );
+    });
 });

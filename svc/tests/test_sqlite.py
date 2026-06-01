@@ -777,6 +777,44 @@ class TestSensorLogOperations:
         assert rows[0]["metric"] == "ghi_w_m2"
         assert rows[0]["ts"] == 2002.0
 
+    def test_fetch_sensor_log_entries_filters_by_kind_and_sensor_ids(self, temp_db):
+        """Sensor log query should support grouped sensor type filters."""
+        register_sensor(
+            sensor_id="SPECTRAVAL-1",
+            kind="jeti_spectraval",
+            label="Spectraval #1",
+            location=None,
+            config={},
+        )
+        register_sensor(
+            sensor_id="SPECTRAVAL-2",
+            kind="jeti_spectraval",
+            label="Spectraval #2",
+            location=None,
+            config={},
+        )
+        register_sensor(
+            sensor_id="EKO-00",
+            kind="eko_ms90_plus",
+            label="EKO MS-90+",
+            location=None,
+            config={},
+        )
+        insert_sensor_reading("SPECTRAVAL-1", 1000.0, "lux", 10.0)
+        insert_sensor_reading("SPECTRAVAL-2", 1001.0, "lux", 20.0)
+        insert_sensor_reading("EKO-00", 1002.0, "ghi_w_m2", 30.0)
+
+        rows = fetch_sensor_log_entries(
+            limit=10,
+            offset=0,
+            sensor_ids=["SPECTRAVAL-2", "SPECTRAVAL-1"],
+            sensor_kind="jeti_spectraval",
+            input_sort_field="ts",
+            input_sort_dir="asc",
+        )
+
+        assert [row["sensor_id"] for row in rows] == ["SPECTRAVAL-1", "SPECTRAVAL-2"]
+
     def test_prune_sensors_to_ids_removes_stale_rows(self, temp_db):
         """Pruning should remove sensors and readings not in active config."""
         register_sensor(

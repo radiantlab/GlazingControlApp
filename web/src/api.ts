@@ -123,6 +123,7 @@ export const api = {
         tsTo?: number,
         sortField: SensorSortField = "ts",
         sortDir: SortDir = "desc",
+        filters?: SensorLogFilters,
     ) => {
         const params = new URLSearchParams();
         params.append("limit", String(limit));
@@ -130,6 +131,8 @@ export const api = {
         params.append("sort_field", sortField);
         params.append("sort_dir", sortDir);
         if (sensorId) params.append("sensor_id", sensorId);
+        filters?.sensorIds?.forEach(id => params.append("sensor_ids", id));
+        if (filters?.sensorKind) params.append("sensor_kind", filters.sensorKind);
         if (metric) params.append("metric", metric);
         if (tsFrom != null) params.append("ts_from", String(tsFrom));
         if (tsTo != null) params.append("ts_to", String(tsTo));
@@ -143,12 +146,15 @@ export const api = {
         tsTo?: number,
         sortField: SensorSortField = "ts",
         sortDir: SortDir = "desc",
+        filters?: SensorLogFilters,
     ) => {
         const params = new URLSearchParams();
         params.append("limit", String(limit));
         params.append("sort_field", sortField);
         params.append("sort_dir", sortDir);
         if (sensorId) params.append("sensor_id", sensorId);
+        filters?.sensorIds?.forEach(id => params.append("sensor_ids", id));
+        if (filters?.sensorKind) params.append("sensor_kind", filters.sensorKind);
         if (metric) params.append("metric", metric);
         if (tsFrom != null) params.append("ts_from", String(tsFrom));
         if (tsTo != null) params.append("ts_to", String(tsTo));
@@ -243,4 +249,9 @@ export type SensorLogEntry = {
     metric: string;
     value: number;
     ts: number;
+};
+
+export type SensorLogFilters = {
+    sensorIds?: string[];
+    sensorKind?: string;
 };
