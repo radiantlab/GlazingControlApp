@@ -1,31 +1,21 @@
 services:
-  svc:
+  app:
     build:
-      context: ./svc
+      context: .
       dockerfile: Dockerfile
-    container_name: glazing-svc
+    image: glazing-control-app
+    container_name: glazing-control-app
     ports:
       - "8000:8000"
     volumes:
-      - ./svc/data:/app/data
+      - ./svc/data:/app/svc/data
     environment:
-      - SVC_HOST=0.0.0.0
-      - SVC_PORT=8000
-      - UVICORN_RELOAD=false
+      SVC_HOST: 0.0.0.0
+      SVC_PORT: "8000"
+      UVICORN_RELOAD: "false"
+      SVC_DATA_DIR: /app/svc/data
+      SVC_MODE: ${SVC_MODE:-sim}
+      HALIO_API_URL: ${HALIO_API_URL:-http://localhost:8084/api}
+      HALIO_SITE_ID: ${HALIO_SITE_ID:-}
+      HALIO_API_KEY: ${HALIO_API_KEY:-}
     restart: unless-stopped
-
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-      args:
-        # Ok since we are only running locally, we can just use localhost
-        - VITE_API_BASE=http://localhost:8000
-    container_name: glazing-web
-    ports:
-      - "8080:80"
-    depends_on:
-      - svc
-    restart: unless-stopped
-
-

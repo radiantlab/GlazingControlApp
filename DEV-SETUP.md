@@ -237,13 +237,33 @@ For EKO on site:
 
 # Build a Podman Image and Deploy It
 
+The image build itself is mode-neutral. The app chooses simulator or real mode at runtime.
+
+The normal compose run uses simulator mode by default. Use real mode only on the site computer after `svc/data/window_mapping.json` and `svc/data/sensors_config.json` have been checked for the real trailer hardware.
+
 To build a new image:
 
 ```sh
 podman build -t glazing-control-app .
 ```
 
-To run the single container in Podman:
+To run the single container in simulator mode:
+
+**On macOS / Linux:**
+```bash
+podman run --rm -p 8000:8000 \
+    -v "$(pwd)/svc/data:/app/svc/data" \
+    glazing-control-app
+```
+
+**On Windows (PowerShell):**
+```powershell
+podman run --rm -p 8000:8000 `
+    -v "${PWD}\svc\data:/app/svc/data" `
+    glazing-control-app
+```
+
+To run the single container in real mode:
 
 **On macOS / Linux:**
 ```bash
@@ -269,17 +289,76 @@ podman run --rm -p 8000:8000 `
 
 ---
 
-# Running the Multi-Container Stack (Podman Compose)
+# Running with Podman Compose
 
-You can run both the backend (`svc`) and frontend (`web`) containers together using the compose configuration:
+The compose configuration builds the same root image shown above. The backend serves the built frontend from the same container, so there is only one service to run and one port to open. Compose defaults to `SVC_MODE=sim`.
 
 1. Ensure the Podman system service/machine is running (via Podman Desktop or command line: `podman machine start`).
-2. Build and run the compose stack:
+2. Build the app image:
    ```bash
-   podman compose up --build
+   podman compose build
    ```
-   *(Note: Depending on your environment, you can also use `docker-compose up --build` if you have configured Podman's helper socket, or `podman-compose up --build`).*
-3. Once running, you can access:
-   - **Frontend UI (HMI)**: `http://localhost:8080` (updated from `80` to support rootless Podman execution without administrator privileges)
+   *(Note: `podman compose` requires a compose provider such as Docker Compose or `podman-compose`. If Podman reports that no compose provider was found, install one of those providers or use the direct `podman run` command above.)*
+3. Start the app in detached mode:
+   ```bash
+   podman compose up -d
+   ```
+4. Once running, you can access:
+   - **Frontend UI (HMI)**: `http://localhost:8000`
    - **Backend API**: `http://localhost:8000`
+5. To stop and remove the compose-managed container and network:
+   ```bash
+   podman compose down
+   ```
+
+The compose service uses `restart: unless-stopped`. If the app process exits or the container crashes while Podman is running, Podman should restart it. If you run `podman compose down`, the container is removed and will not restart until you run `podman compose up -d` again.
+
+### Run compose in real mode
+
+Use this only on the site computer with the real Halio API values and checked sensor config.
+
+**On macOS / Linux:**
+```bash
+export SVC_MODE=real
+export HALIO_API_URL=http://192.168.2.200:8084/api
+export HALIO_SITE_ID=<site-id>
+export HALIO_API_KEY=<api-key>
+podman compose up -d
+```
+
+**On Windows (PowerShell):**
+```powershell
+$env:SVC_MODE = "real"
+$env:HALIO_API_URL = "http://192.168.2.200:8084/api"
+$env:HALIO_SITE_ID = "<site-id>"
+$env:HALIO_API_KEY = "<api-key>"
+podman compose up -d
+```
+
+Alternatively, if you have an `.env` file:
+
+```powershell
+podman compose --env-file .\svc\.env up -d
+```
+
+Verify the mode after startup:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+```
+
+If `podman compose build` fails on Windows with an access error for a generated cache directory such as `.pytest_cache`, fix the directory ACLs from an elevated PowerShell terminal:
+
+```powershell
+takeown /F .pytest_cache /R /D Y
+icacls .pytest_cache /grant "$env:USERNAME:(OI)(CI)F" /T
+Remove-Item -Recurse -Force .pytest_cache
+```
+
+Then rerun:
+
+```powershell
+podman compose build
+podman compose up -d
+```
 
