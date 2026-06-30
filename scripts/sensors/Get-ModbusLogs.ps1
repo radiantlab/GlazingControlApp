@@ -29,7 +29,7 @@
 .NOTES
     - Explicitly calls curl.exe (not the PowerShell 5.1 alias for Invoke-WebRequest).
     - Skips directory entries when parsing the LIST output (lines starting with 'd').
-    - Existing local files with the same name are overwritten.
+    - Existing local files with the same byte count are skipped.
 #>
 
 [CmdletBinding()]
@@ -100,15 +100,27 @@ if (-not $listingRaw) {
     return
 }
 
-# Parse standard Unix-style LIST output. Skip directory entries (leading 'd')
-# and anything that doesn't look like a regular file line.
+# Parse Unix-style LIST output. Skip directory entries (leading 'd')
+# and anything that doesn't look like a regular file line. Some FTP servers
+# include a group column and some do not, so use a regex instead of fixed fields.
 $files = @()
-foreach ($line in $listingRaw -split "`r?`n") {
+foreach ($line in (@($listingRaw) | ForEach-Object { $_ -split '\r?\n' })) {
     if ([string]::IsNullOrWhiteSpace($line)) { continue }
     if ($line.StartsWith("d")) { continue }   # subdirectory, not a file
     if ($line.StartsWith("l")) { continue }   # symlink, skip unless you want it followed
-    $name = ($line -split '\s+', 9)[-1]
-    if ($name) { $files += $name }
+
+    if ($line -notmatch '^\S+\s+\d+\s+\S+\s+(?:\S+\s+)?(?<Size>\d+)\s+\w{3}\s+\d{1,2}\s+(?:\d{2}:\d{2}|\d{4})\s+(?<Name>.+)$') {
+        continue
+    }
+
+    $name = $Matches.Name
+    $size = [long]$Matches.Size
+    if ($name) {
+        $files += [pscustomobject]@{
+            Name = $name
+            Size = $size
+        }
+    }
 }
 
 if ($files.Count -eq 0) {
@@ -117,22 +129,37 @@ if ($files.Count -eq 0) {
     return
 }
 
-Write-Host "Found $($files.Count) file(s). Downloading to $LocalPath ..."
+Write-Host "Found $($files.Count) file(s). Syncing to $LocalPath ..."
 
 $failed = @()
-foreach ($name in $files) {
+$downloaded = 0
+$skipped = 0
+foreach ($file in $files) {
+    $name = $file.Name
     $remoteUrl = "$remoteDirUrl$([System.Uri]::EscapeDataString($name))"
     $localFile = Join-Path $LocalPath $name
+
+    if ((Test-Path -LiteralPath $localFile) -and ($null -ne $file.Size)) {
+        $localSize = (Get-Item -LiteralPath $localFile).Length
+        if ($localSize -eq $file.Size) {
+            Write-Host "  == $name (unchanged)"
+            $skipped++
+            continue
+        }
+    }
+
     Write-Host "  -> $name"
     & $curl.Source -s --user $userArg -o "$localFile" "$remoteUrl"
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "     FAILED (curl exit $LASTEXITCODE): $name"
         $failed += $name
+    } else {
+        $downloaded++
     }
 }
 
 if ($failed.Count -gt 0) {
-    Write-Warning "$($failed.Count) of $($files.Count) file(s) failed: $($failed -join ', ')"
+    Write-Warning "$($failed.Count) of $($files.Count) file(s) failed; downloaded $downloaded, skipped $skipped. Failed: $($failed -join ', ')"
 } else {
-    Write-Host "All $($files.Count) file(s) downloaded successfully to $LocalPath"
+    Write-Host "Sync complete. Downloaded $downloaded file(s), skipped $skipped unchanged file(s), failed 0."
 }
