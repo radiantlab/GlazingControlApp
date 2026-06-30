@@ -43,6 +43,31 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function ConvertTo-FtpAbsolutePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $normalizedPath = $Path.Replace('\', '/').TrimEnd('/')
+    if (-not $normalizedPath.StartsWith('/')) {
+        $normalizedPath = "/$normalizedPath"
+    }
+
+    $segments = $normalizedPath.TrimStart('/').Split('/', [System.StringSplitOptions]::RemoveEmptyEntries)
+    $escapedSegments = foreach ($segment in $segments) {
+        [System.Uri]::EscapeDataString($segment)
+    }
+
+    # curl FTP URLs use a path relative to the login directory by default.
+    # Encoding the leading slash makes this an absolute server path, like ftp.exe "cd /path".
+    if ($escapedSegments.Count -eq 0) {
+        return "%2F"
+    }
+
+    return "%2F$($escapedSegments -join '/')"
+}
+
 # Confirm curl.exe (the real one) is present, not just the IWR alias.
 $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
 if (-not $curl) {
@@ -57,7 +82,8 @@ $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr
 [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
 
 $userArg = "${Username}:${plainPassword}"
-$remoteDirUrl = "ftp://$FtpHost$RemotePath/"
+$remotePathForUrl = ConvertTo-FtpAbsolutePath -Path $RemotePath
+$remoteDirUrl = "ftp://$FtpHost/$remotePathForUrl/"
 
 if (-not (Test-Path -LiteralPath $LocalPath)) {
     New-Item -ItemType Directory -Path $LocalPath -Force | Out-Null
@@ -95,7 +121,7 @@ Write-Host "Found $($files.Count) file(s). Downloading to $LocalPath ..."
 
 $failed = @()
 foreach ($name in $files) {
-    $remoteUrl = "$remoteDirUrl$name"
+    $remoteUrl = "$remoteDirUrl$([System.Uri]::EscapeDataString($name))"
     $localFile = Join-Path $LocalPath $name
     Write-Host "  -> $name"
     & $curl.Source -s --user $userArg -o "$localFile" "$remoteUrl"
