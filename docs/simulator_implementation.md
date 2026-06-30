@@ -2,7 +2,7 @@
 
 ## Overview
 
-The electrochromic glazing control system now supports seamless switching between a development simulator and real Halio hardware. This document explains the architecture, implementation, and how to use both modes.
+The electrochromic DIAL Control Center now supports seamless switching between a development simulator and real Halio hardware. This document explains the architecture, implementation, and how to use both modes.
 
 ## Architecture
 

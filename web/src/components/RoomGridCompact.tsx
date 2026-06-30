@@ -55,16 +55,16 @@ export default function RoomGridCompact({
     return (
         <div className="room-grid-compact">
             <section className="room-compact-section" aria-label="Room 1">
-                <div className="room-compact-header room-header-unlabeled">
-                    <h3 className="visually-hidden">Room 1</h3>
+                <div className="room-compact-header">
+                    <h3>Room 1</h3>
                     <span className="room-compact-count">{room1.length} panels</span>
                 </div>
                 <div className="room-compact-grid">{room1.map(renderPanel)}</div>
             </section>
 
             <section className="room-compact-section" aria-label="Room 2">
-                <div className="room-compact-header room-header-unlabeled">
-                    <h3 className="visually-hidden">Room 2</h3>
+                <div className="room-compact-header">
+                    <h3>Room 2</h3>
                     <span className="room-compact-count">{room2.length} panels</span>
                 </div>
                 <div className="room-compact-grid">{room2.map(renderPanel)}</div>

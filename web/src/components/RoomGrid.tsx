@@ -279,8 +279,8 @@ export default function RoomGrid({
         <div className="room-grid-container">
             <div className="rooms-layout">
                 <section className="room-section" aria-label="Room 1">
-                    <div className="room-header room-header-unlabeled">
-                        <h2 className="visually-hidden">Room 1</h2>
+                    <div className="room-header">
+                        <h2 className="room-title">Room 1</h2>
                         <div className="room-stats">
                             <span>{room1.length} panels</span>
                         </div>
@@ -289,8 +289,8 @@ export default function RoomGrid({
                 </section>
 
                 <section className="room-section" aria-label="Room 2">
-                    <div className="room-header room-header-unlabeled">
-                        <h2 className="visually-hidden">Room 2</h2>
+                    <div className="room-header">
+                        <h2 className="room-title">Room 2</h2>
                         <div className="room-stats">
                             <span>{room2.length} panels</span>
                         </div>

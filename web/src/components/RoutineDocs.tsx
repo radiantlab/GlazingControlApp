@@ -10,7 +10,7 @@ export default function RoutineDocs() {
                     <div className="hmi-brand">
                         <div className="hmi-logo"></div>
                         <div className="hmi-brand-text">
-                            <h1>Glazing Control System</h1>
+                            <h1>DIAL Control Center</h1>
                             <p>Electrochromic Panel Management</p>
                         </div>
                     </div>
@@ -39,7 +39,7 @@ export default function RoutineDocs() {
                 <div className="room-section">
                     <h2 className="room-header">Overview</h2>
                     <p style={{ lineHeight: "1.6", margin: 0 }}>
-                        The Routine Builder allows you to write custom <strong>Python</strong> scripts that interact with the sensors, panels, and groups within the Glazing Control App. These routines are executed asynchronously on the backend server, allowing them to run independently of the browser dashboard.
+                        The Routine Builder allows you to write custom <strong>Python</strong> scripts that interact with the sensors, panels, and groups within the DIAL Control Center. These routines are executed asynchronously on the backend server, allowing them to run independently of the browser dashboard.
                     </p>
                 </div>
 
@@ -67,7 +67,7 @@ export default function RoutineDocs() {
                 <div className="room-section">
                     <h2 className="room-header">Python API Wrappers</h2>
                     <p style={{ lineHeight: "1.6", marginBottom: "16px" }}>
-                        To make interacting with the Glazing Control System simple, three global wrapper objects are injected into your script automatically: <code>sensors</code>, <code>panels</code>, and <code>groups</code>.
+                        To make interacting with the DIAL Control Center simple, three global wrapper objects are injected into your script automatically: <code>sensors</code>, <code>panels</code>, and <code>groups</code>.
                     </p>
 
                     <div style={{ backgroundColor: "var(--hmi-panel-bg)", padding: "20px", borderRadius: "8px", border: "1px solid var(--hmi-border)", marginBottom: "24px" }}>

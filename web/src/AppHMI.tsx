@@ -598,7 +598,7 @@ export default function AppHMI() {
                     <div className="hmi-brand">
                         <div className="hmi-logo"></div>
                         <div className="hmi-brand-text">
-                            <h1>Glazing Control System</h1>
+                            <h1>DIAL Control Center</h1>
                             <p>Electrochromic Panel Management</p>
                         </div>
                     </div>

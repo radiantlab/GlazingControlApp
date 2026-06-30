@@ -159,6 +159,53 @@ def test_list_panels_creates_missing_single_window_groups(monkeypatch):
     ]
 
 
+def test_list_panels_creates_single_group_per_dial_driver(monkeypatch):
+    monkeypatch.setattr("app.adapter.HAS_REQUESTS", True)
+    monkeypatch.setattr("app.adapter.HALIO_API_KEY", "test-key")
+    monkeypatch.setattr("app.adapter.HALIO_SITE_ID", "test-site")
+    monkeypatch.setattr("app.adapter.HALIO_API_URL", "http://halio/api")
+
+    driver_names = [
+        *(f"DR-1.{i}" for i in range(1, 10)),
+        *(f"DR-2.{i}" for i in range(1, 10)),
+        "SK-1.1",
+        "SK-1.2",
+    ]
+    windows = [
+        {"id": f"window-{index}", "name": name}
+        for index, name in enumerate(driver_names, start=1)
+    ]
+    created_payloads = []
+
+    def fake_get(url, headers=None, timeout=10):
+        if url == "http://halio/api/sites/test-site/windows?attributes=1":
+            return FakeResponse(200, {"results": windows})
+        if url == "http://halio/api/sites/test-site/groups":
+            return FakeResponse(200, {"results": []})
+        if url.endswith("/live-tint-data"):
+            return FakeResponse(200, {"results": {"level": 0}})
+        raise AssertionError(f"Unexpected GET {url}")
+
+    def fake_post(url, headers=None, json=None, timeout=10):
+        if url == "http://halio/api/sites/test-site/groups":
+            created_payloads.append(json)
+            group_name = json["group"]["name"]
+            return FakeResponse(201, {"results": {"id": f"group-{group_name}", "name": group_name}})
+        raise AssertionError(f"Unexpected POST {url}")
+
+    monkeypatch.setattr("app.adapter.requests.get", fake_get)
+    monkeypatch.setattr("app.adapter.requests.post", fake_post)
+
+    adapter = RealAdapter()
+    panels = adapter.list_panels()
+
+    assert len(panels) == 20
+    assert [payload["group"]["name"] for payload in created_payloads] == driver_names
+    assert [payload["group"]["windows"] for payload in created_payloads] == [
+        [window["id"]] for window in windows
+    ]
+
+
 def test_create_group_uses_halio_post_shape(monkeypatch):
     monkeypatch.setattr("app.adapter.HAS_REQUESTS", True)
     monkeypatch.setattr("app.adapter.HALIO_API_KEY", "test-key")
