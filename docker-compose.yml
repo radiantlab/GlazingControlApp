@@ -8,12 +8,19 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./svc/data:/app/svc/data
+      - type: bind
+        source: ./svc/data
+        target: /app/svc/data
+      - type: bind
+        source: ${SVC_DB_BACKUP_DIR:-./svc/db-backups}
+        target: /app/db-backups
     environment:
       SVC_HOST: 0.0.0.0
       SVC_PORT: "8000"
       UVICORN_RELOAD: "false"
       SVC_DATA_DIR: /app/svc/data
+      SVC_DB_BACKUP_INTERVAL_HOURS: ${SVC_DB_BACKUP_INTERVAL_HOURS:-0}
+      SVC_DB_BACKUP_DIR: /app/db-backups
       SVC_MODE: ${SVC_MODE:-sim}
       HALIO_API_URL: ${HALIO_API_URL:-http://localhost:8084/api}
       HALIO_SITE_ID: ${HALIO_SITE_ID:-}

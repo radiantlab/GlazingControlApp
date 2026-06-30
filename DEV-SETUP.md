@@ -253,6 +253,9 @@ To run the single container in simulator mode:
 ```bash
 podman run --rm -p 8000:8000 \
     -v "$(pwd)/svc/data:/app/svc/data" \
+    -v "$(pwd)/svc/db-backups:/app/db-backups" \
+    -e SVC_DB_BACKUP_DIR=/app/db-backups \
+    -e SVC_DB_BACKUP_INTERVAL_HOURS=24 \
     glazing-control-app
 ```
 
@@ -260,6 +263,9 @@ podman run --rm -p 8000:8000 \
 ```powershell
 podman run --rm -p 8000:8000 `
     -v "${PWD}\svc\data:/app/svc/data" `
+    -v "${PWD}\svc\db-backups:/app/db-backups" `
+    -e SVC_DB_BACKUP_DIR=/app/db-backups `
+    -e SVC_DB_BACKUP_INTERVAL_HOURS=24 `
     glazing-control-app
 ```
 
@@ -269,7 +275,10 @@ To run the single container in real mode:
 ```bash
 podman run --rm -p 8000:8000 \
     -v "$(pwd)/svc/data:/app/svc/data" \
+    -v "$(pwd)/svc/db-backups:/app/db-backups" \
     -e SVC_MODE=real \
+    -e SVC_DB_BACKUP_DIR=/app/db-backups \
+    -e SVC_DB_BACKUP_INTERVAL_HOURS=24 \
     -e HALIO_API_URL= \
     -e HALIO_SITE_ID= \
     -e HALIO_API_KEY= \
@@ -280,7 +289,10 @@ podman run --rm -p 8000:8000 \
 ```powershell
 podman run --rm -p 8000:8000 `
     -v "${PWD}\svc\data:/app/svc/data" `
+    -v "${PWD}\svc\db-backups:/app/db-backups" `
     -e SVC_MODE=real `
+    -e SVC_DB_BACKUP_DIR=/app/db-backups `
+    -e SVC_DB_BACKUP_INTERVAL_HOURS=24 `
     -e HALIO_API_URL= `
     -e HALIO_SITE_ID= `
     -e HALIO_API_KEY= `
@@ -312,6 +324,47 @@ The compose configuration builds the same root image shown above. The backend se
    ```
 
 The compose service uses `restart: unless-stopped`. If the app process exits or the container crashes while Podman is running, Podman should restart it. If you run `podman compose down`, the container is removed and will not restart until you run `podman compose up -d` again.
+
+### Persistent database and backups
+
+The SQLite database is `audit.db` inside `svc/data`. Compose bind-mounts `./svc/data` to `/app/svc/data`, so the database persists on the host across container rebuilds, container restarts, and image updates.
+
+To write periodic SQLite backup copies to a Box-synced directory, set these before `podman compose up -d`:
+
+**On Windows (PowerShell):**
+```powershell
+$env:SVC_DB_BACKUP_INTERVAL_HOURS = "24"
+$env:SVC_DB_BACKUP_DIR = "$env:USERPROFILE\Box\GlazingControlBackups"
+podman compose up -d
+```
+
+**On macOS / Linux:**
+```bash
+export SVC_DB_BACKUP_INTERVAL_HOURS=24
+export SVC_DB_BACKUP_DIR="$HOME/Box/GlazingControlBackups"
+podman compose up -d
+```
+
+The app writes backup files named like `audit-20260630-120000.db`. Set `SVC_DB_BACKUP_INTERVAL_HOURS=0` to disable backups. The first backup is written when the app starts, then again every configured interval.
+
+### Restart after machine reboot
+
+`restart: unless-stopped` is the container restart policy. It restarts the app after a crash and after Podman is running again, but the machine also has to start Podman itself after boot.
+
+On Linux, enable the Podman restart service:
+
+```bash
+sudo systemctl enable --now podman-restart.service
+```
+
+For Podman Desktop or Podman Machine on Windows/macOS, enable Podman Desktop to start at login, or configure a user login/startup task that runs:
+
+```powershell
+podman machine start
+podman compose -f C:\path\to\GlazingControlApp\docker-compose.yml up -d
+```
+
+Do not use `podman compose down` for routine restarts on the site computer; it removes the container. Use `podman compose stop` to stop it temporarily, then `podman compose up -d` to bring it back.
 
 ### Run compose in real mode
 

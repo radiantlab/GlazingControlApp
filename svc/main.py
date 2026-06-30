@@ -20,6 +20,7 @@ _SVC_DIR = Path(__file__).resolve().parent
 load_dotenv(dotenv_path=_SVC_DIR / ".env")
 
 from app.routes import router
+from app.db_backup import start_database_backup_worker_from_env
 from app.state import bootstrap_default_if_empty, initialize_database
 from app.sensors.manager import start_sensor_workers, stop_sensor_workers
 from app.routines.manager import resume_routines
@@ -41,12 +42,15 @@ WEB_DIST_DIR = Path(os.getenv("WEB_DIST_DIR", ROOT_DIR / "web" / "dist"))
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    db_backup_worker = start_database_backup_worker_from_env()
     start_sensor_workers()
     resume_routines()
     try:
         yield
     finally:
         stop_sensor_workers()
+        if db_backup_worker is not None:
+            db_backup_worker.stop()
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):

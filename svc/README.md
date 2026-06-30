@@ -103,6 +103,8 @@ The adapter automatically:
 | `SVC_MODE` | `sim` | Mode: `sim` or `real` |
 | `SVC_MIN_DWELL_SECONDS` | `20` | Minimum seconds between tint changes |
 | `SVC_DATA_DIR` | `data` | Directory for state/log database and config files |
+| `SVC_DB_BACKUP_INTERVAL_HOURS` | `0` | SQLite backup interval in hours. Set to `0` or leave unset to disable backups. |
+| `SVC_DB_BACKUP_DIR` | - | Directory where SQLite backup copies are written when backups are enabled. |
 | `HALIO_API_URL` | - | Halio API base URL (real mode only) |
 | `HALIO_SITE_ID` | - | Your Halio site UUID (real mode only) |
 | `HALIO_API_KEY` | - | Your Halio API key (real mode only) |
