@@ -1,417 +1,167 @@
-# What you need to install
+# Development and production setup
 
-1. `Git`  
-Get it from `https://git-scm.com`  
-Check installation  
-```bash
-git --version
-```
+The service has two explicit environments:
 
-2. `Python >=3.11,<3.14`  
-Get it from `https://python.org`  
-On Windows check `Add Python to PATH`  
-Check installation  
-```bash
-python --version
-```
-The backend declares this in `svc/pyproject.toml`. The repo-local `svc/.python-version` is for tools that read it.
+- `development` uses simulated panels and sensors by default.
+- `production` uses Halio and physical sensors and never falls back to simulated data.
 
-3. `UV` (Recommended package manager)  
-Get it from `https://github.com/astral-sh/uv`  
-Installation (one-liner):
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-Or use pip: `pip install uv`  
-Or use homebrew: `brew install uv`  
-Check installation  
-```bash
-uv --version
-```
+`SVC_ENVIRONMENT` is required. The former `SVC_MODE=sim|real` contract is not
+accepted.
 
-4. `Node.js (LTS) and NPM`  
-Get it from `https://nodejs.org`  
-Check installation  
-```bash
-node --version
-npm --version
-```
+## Prerequisites
 
----
+- Python `>=3.11,<3.14`
+- [uv](https://docs.astral.sh/uv/)
+- Node.js 20 and npm
+- Docker or Podman for container deployments
 
-# Repository setup
+## Local development
 
-1. Clone the repository and go inside  
-```bash
-cd GlazingControlApp
-```
-
----
-
-# Run the service
-
-## Using UV (Recommended)
-
-1. Open a terminal in the `svc` folder  
-```bash
-cd svc
-```
-
-2. Install dependencies and sync virtual environment  
-UV will automatically create and manage a virtual environment:
-```bash
-uv sync
-```
-
-3. Create your `.env` file from the example
-
-3.1 Windows  
-```cmd
-copy .env.example .env
-```
-
-3.2 Mac/Linux  
-```bash
-cp .env.example .env
-```
-
-4. Start the server  
-```bash
-uv run python main.py
-```
-Or activate the virtual environment first:
-```bash
-source .venv/bin/activate  # Mac/Linux
-# or
-.venv\Scripts\activate  # Windows
-python main.py
-```
-
-You should see Uvicorn running on port 8000
-
-Open the API docs in a browser at `http://127.0.0.1:8000/docs`
-
-### Start the backend in real mode on Windows PowerShell
-
-Use this on the site computer after `svc/data/sensors_config.json` has the real sensor values:
+From the repository root:
 
 ```powershell
+Copy-Item svc/.env.example svc/.env
 cd svc
-$env:SVC_MODE = "real"
 uv sync
 uv run python main.py
 ```
 
-For the EKO C-BOX, set `eko_ms90_plus[].host` to the C-BOX IP address, usually `192.168.2.20`, and `eko_ms90_plus[].port` to TCP port `502`. The app no longer uses a USB-to-RS485 adapter or COM port for EKO.
+In another terminal:
 
----
-
-## Using pip and venv (Legacy)
-
-If you prefer to use pip and venv instead of UV:
-
-1. Open a terminal in the `svc` folder  
-```bash
-cd svc
-```
-
-2. Create and activate a virtual environment
-
-2.1 Windows PowerShell  
 ```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-2.2 Windows CMD  
-```cmd
-.venv\Scripts\activate
-```
-
-2.3 Mac Linux  
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-3. Install packages  
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-4. Create your `.env` file from the example
-
-4.1 Windows  
-```cmd
-copy .env.example .env
-```
-
-4.2 Mac Linux  
-```bash
-cp .env.example .env
-```
-
-5. Start the server  
-```bash
-python main.py
-```
-
-You should see Uvicorn running on port 8000
-
-Open the API docs in a browser at `http://127.0.0.1:8000/docs`
-
----
-
-# Run the web app
-
-1. Open a new terminal in the `web` folder  
-```bash
 cd web
-```
-
-2. Install packages  
-```bash
-npm install
-```
-
-3. Start the dev server  
-```bash
+npm ci
 npm run dev
 ```
 
-Open the link shown by Vite usually `http://127.0.0.1:5173`  
-You should see the control interface
+The backend uses:
 
-## Frontend build and checks
+- Configuration: `svc/config/development`
+- Runtime data: `svc/.runtime/development`
+- Database: `svc/.runtime/development/audit.db`
 
-```bash
-cd web
-npm run typecheck
-npm test
-npm run build
-```
+These paths do not touch the production-compatible `svc/data` directory.
 
-Windows PowerShell uses the same commands.
-
----
-
-# Use the app
-
-1. The header shows service status  
-2. Pick a group set a level press `Tint Group`  
-3. Move a slider on any panel and press `Apply`  
-4. Press `Refresh` in the header to reload state
-
-## Verify live sensors
-
-After the backend is running:
+To test a physical device while remaining in development, set only the
+required override:
 
 ```powershell
+$env:SVC_DEVELOPMENT_USE_PHYSICAL_T10A = "true"
+$env:SVC_DEVELOPMENT_USE_PHYSICAL_JETI = "true"
+$env:SVC_DEVELOPMENT_USE_PHYSICAL_EKO = "true"
+```
+
+Normal development should leave all three values false.
+
+## Containerized development
+
+Use the dedicated development definition:
+
+```powershell
+podman compose -f docker-compose.development.yml up --build
+```
+
+It uses the `glazing-development-data` named volume. It does not bind
+`./svc/data`.
+
+## Production data safety
+
+The historical Compose definition bound host `./svc/data` to container
+`/app/svc/data`. Therefore the existing host `svc/data/audit.db` may contain
+production history and must not be moved or deleted.
+
+Production continues to open:
+
+```text
+/app/svc/data/audit.db
+```
+
+The upgraded deployment requires the absolute existing host directory through
+`SVC_PRODUCTION_DATA_DIR`; it will not silently use a development directory.
+
+### 1. Rotate credentials
+
+Rotate any Halio API key stored in an older `svc/.env`. Do not reuse that file
+as the new production environment file.
+
+### 2. Create external production configuration
+
+Copy `svc/config/production.example` to a site-owned directory outside version
+control and update `sensors_config.json`.
+
+Sensor `output_path` values are relative to the production data directory. For
+example:
+
+```json
+{
+  "output_path": "sensors/spectraval_1.cap"
+}
+```
+
+The application validates the entire production sensor configuration before
+creating or changing its database.
+
+### 3. Create the production environment file
+
+Copy `svc/.env.production.example` to the ignored
+`svc/.env.production` and set:
+
+- `SVC_PRODUCTION_DATA_DIR` to the absolute directory containing the existing `audit.db`.
+- `SVC_PRODUCTION_CONFIG_DIR` to the external production configuration directory.
+- `SVC_DB_BACKUP_DIR` to an absolute backup directory.
+- The rotated Halio URL, site ID, and API key.
+
+### 4. Verify and back up the existing database
+
+Stop the old application, then run from the repository root:
+
+```powershell
+uv run --project svc python scripts/production_preflight.py `
+  --data-dir "C:\absolute\path\to\existing\svc\data" `
+  --backup-dir "C:\absolute\path\to\backups"
+```
+
+The command refuses a missing `audit.db`, runs SQLite integrity checks, prints
+table counts, and creates an integrity-checked backup.
+
+### 5. Start production
+
+```powershell
+podman compose --env-file svc/.env.production up -d --build
+```
+
+Verify:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
 Invoke-RestMethod http://127.0.0.1:8000/sensors
 Invoke-RestMethod http://127.0.0.1:8000/metrics/latest
 ```
 
-Then open the HMI and verify the sensor cards, live graphs, and `Logs -> Sensor log`.
+Health must report `environment: production`, `control_source: physical`, and
+`sensor_source: physical`. Disconnected configured hardware is exposed through
+`sensor_status: degraded` and `sensor_errors`; it never causes simulated
+production readings.
 
-For EKO on site:
+## Tests
 
-1. Open the C-BOX web UI from the site computer, usually `http://192.168.2.20/`.
-2. Confirm the live readings page updates.
-3. Open `Modbus -> Setup`.
-4. Confirm Modbus TCP access is enabled.
+```powershell
+cd svc
+uv run pytest tests
+
+cd ../web
+npm test
+npm run typecheck
+npm run build
+```
+
+The backend test setup uses a temporary database and cannot write to
+`svc/data/audit.db`.
 
 ## Troubleshooting
 
-- `uv: command not found`: install uv, then open a new terminal and run `uv --version`.
-- Wrong Python version: install Python 3.11, 3.12, or 3.13 and run `uv python pin 3.13` from `svc` if needed.
-- Missing Python packages: run `cd svc` then `uv sync`. For pip/venv, rerun `pip install -r requirements.txt`.
-- `npm: command not found`: install Node.js LTS and open a new terminal.
-- Frontend dependency issues: run `cd web`, delete `node_modules` if needed, then `npm install`.
-- Backend port already in use: stop the other process using port `8000`, or run `uv run uvicorn main:app --host 0.0.0.0 --port 8001`.
-- C-BOX web UI unreachable: confirm the site computer is on the C-BOX network, verify the IP address, and check Ethernet cabling/firewall rules.
-- EKO Modbus read failures: confirm C-BOX Modbus TCP is enabled and TCP `502` is reachable.
-- `GET /sensors` is empty in real mode: check `SVC_MODE=real`, `SENSORS_CONFIG_FILE`, and required sensor config fields. Real mode does not create simulated sensors as fallback.
-
----
-
-# Build a Podman Image and Deploy It
-
-The image build itself is mode-neutral. The app chooses simulator or real mode at runtime.
-
-The normal compose run uses simulator mode by default. Use real mode only on the site computer after `svc/data/window_mapping.json` and `svc/data/sensors_config.json` have been checked for the real trailer hardware.
-
-To build a new image:
-
-```sh
-podman build -t glazing-control-app .
-```
-
-To run the single container in simulator mode:
-
-**On macOS / Linux:**
-```bash
-podman run --rm -p 8000:8000 \
-    -v "$(pwd)/svc/data:/app/svc/data" \
-    -v "$(pwd)/svc/db-backups:/app/db-backups" \
-    -e SVC_DB_BACKUP_DIR=/app/db-backups \
-    -e SVC_DB_BACKUP_INTERVAL_HOURS=24 \
-    glazing-control-app
-```
-
-**On Windows (PowerShell):**
-```powershell
-podman run --rm -p 8000:8000 `
-    -v "${PWD}\svc\data:/app/svc/data" `
-    -v "${PWD}\svc\db-backups:/app/db-backups" `
-    -e SVC_DB_BACKUP_DIR=/app/db-backups `
-    -e SVC_DB_BACKUP_INTERVAL_HOURS=24 `
-    glazing-control-app
-```
-
-To run the single container in real mode:
-
-**On macOS / Linux:**
-```bash
-podman run --rm -p 8000:8000 \
-    -v "$(pwd)/svc/data:/app/svc/data" \
-    -v "$(pwd)/svc/db-backups:/app/db-backups" \
-    -e SVC_MODE=real \
-    -e SVC_DB_BACKUP_DIR=/app/db-backups \
-    -e SVC_DB_BACKUP_INTERVAL_HOURS=24 \
-    -e HALIO_API_URL= \
-    -e HALIO_SITE_ID= \
-    -e HALIO_API_KEY= \
-    glazing-control-app
-```
-
-**On Windows (PowerShell):**
-```powershell
-podman run --rm -p 8000:8000 `
-    -v "${PWD}\svc\data:/app/svc/data" `
-    -v "${PWD}\svc\db-backups:/app/db-backups" `
-    -e SVC_MODE=real `
-    -e SVC_DB_BACKUP_DIR=/app/db-backups `
-    -e SVC_DB_BACKUP_INTERVAL_HOURS=24 `
-    -e HALIO_API_URL= `
-    -e HALIO_SITE_ID= `
-    -e HALIO_API_KEY= `
-    glazing-control-app
-```
-
----
-
-# Running with Podman Compose
-
-The compose configuration builds the same root image shown above. The backend serves the built frontend from the same container, so there is only one service to run and one port to open. Compose defaults to `SVC_MODE=sim`.
-
-1. Ensure the Podman system service/machine is running (via Podman Desktop or command line: `podman machine start`).
-2. Build the app image:
-   ```bash
-   podman compose build
-   ```
-   *(Note: `podman compose` requires a compose provider such as Docker Compose or `podman-compose`. If Podman reports that no compose provider was found, install one of those providers or use the direct `podman run` command above.)*
-3. Start the app in detached mode:
-   ```bash
-   podman compose up -d
-   ```
-4. Once running, you can access:
-   - **Frontend UI (HMI)**: `http://localhost:8000`
-   - **Backend API**: `http://localhost:8000`
-5. To stop and remove the compose-managed container and network:
-   ```bash
-   podman compose down
-   ```
-
-The compose service uses `restart: unless-stopped`. If the app process exits or the container crashes while Podman is running, Podman should restart it. If you run `podman compose down`, the container is removed and will not restart until you run `podman compose up -d` again.
-
-### Persistent database and backups
-
-The SQLite database is `audit.db` inside `svc/data`. Compose bind-mounts `./svc/data` to `/app/svc/data`, so the database persists on the host across container rebuilds, container restarts, and image updates.
-
-To write periodic SQLite backup copies to a Box-synced directory, set these before `podman compose up -d`:
-
-**On Windows (PowerShell):**
-```powershell
-$env:SVC_DB_BACKUP_INTERVAL_HOURS = "24"
-$env:SVC_DB_BACKUP_DIR = "$env:USERPROFILE\Box\GlazingControlBackups"
-podman compose up -d
-```
-
-**On macOS / Linux:**
-```bash
-export SVC_DB_BACKUP_INTERVAL_HOURS=24
-export SVC_DB_BACKUP_DIR="$HOME/Box/GlazingControlBackups"
-podman compose up -d
-```
-
-The app writes backup files named like `audit-20260630-120000.db`. Set `SVC_DB_BACKUP_INTERVAL_HOURS=0` to disable backups. The first backup is written when the app starts, then again every configured interval.
-
-### Restart after machine reboot
-
-`restart: unless-stopped` is the container restart policy. It restarts the app after a crash and after Podman is running again, but the machine also has to start Podman itself after boot.
-
-On Linux, enable the Podman restart service:
-
-```bash
-sudo systemctl enable --now podman-restart.service
-```
-
-For Podman Desktop or Podman Machine on Windows/macOS, enable Podman Desktop to start at login, or configure a user login/startup task that runs:
-
-```powershell
-podman machine start
-podman compose -f C:\path\to\GlazingControlApp\docker-compose.yml up -d
-```
-
-Do not use `podman compose down` for routine restarts on the site computer; it removes the container. Use `podman compose stop` to stop it temporarily, then `podman compose up -d` to bring it back.
-
-### Run compose in real mode
-
-Use this only on the site computer with the real Halio API values and checked sensor config.
-
-**On macOS / Linux:**
-```bash
-export SVC_MODE=real
-export HALIO_API_URL=http://192.168.2.200:8084/api
-export HALIO_SITE_ID=<site-id>
-export HALIO_API_KEY=<api-key>
-podman compose up -d
-```
-
-**On Windows (PowerShell):**
-```powershell
-$env:SVC_MODE = "real"
-$env:HALIO_API_URL = "http://192.168.2.200:8084/api"
-$env:HALIO_SITE_ID = "<site-id>"
-$env:HALIO_API_KEY = "<api-key>"
-podman compose up -d
-```
-
-Alternatively, if you have an `.env` file:
-
-```powershell
-podman compose --env-file .\svc\.env up -d
-```
-
-Verify the mode after startup:
-
-```powershell
-Invoke-RestMethod http://127.0.0.1:8000/health
-```
-
-If `podman compose build` fails on Windows with an access error for a generated cache directory such as `.pytest_cache`, fix the directory ACLs from an elevated PowerShell terminal:
-
-```powershell
-takeown /F .pytest_cache /R /D Y
-icacls .pytest_cache /grant "$env:USERNAME:(OI)(CI)F" /T
-Remove-Item -Recurse -Force .pytest_cache
-```
-
-Then rerun:
-
-```powershell
-podman compose build
-podman compose up -d
-```
-
+- Missing `SVC_ENVIRONMENT`: use the development example or production Compose definition.
+- `SVC_MODE is no longer supported`: remove the old variable rather than mapping it silently.
+- Production refuses startup: correct the reported Halio or sensor configuration error.
+- Empty production database: stop immediately and verify `SVC_PRODUCTION_DATA_DIR`; do not continue with a newly created directory.
+- Physical sensor unavailable after valid startup: check the cable, COM port, export path, C-BOX IP, and Modbus TCP port 502. Production does not substitute simulated readings.

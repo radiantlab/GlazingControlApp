@@ -25,7 +25,14 @@ const groups = [
 
 describe("App", () => {
     beforeEach(() => {
-        mockedApi.health.mockResolvedValue({ status: "ok", mode: "sim" });
+        mockedApi.health.mockResolvedValue({
+            status: "ok",
+            environment: "development",
+            control_source: "simulated",
+            sensor_source: "simulated",
+            sensor_status: "healthy",
+            sensor_errors: [],
+        });
         mockedApi.panels.mockResolvedValue(panels);
         mockedApi.groups.mockResolvedValue(groups);
         mockedApi.setPanelLevel.mockResolvedValue({
@@ -43,7 +50,7 @@ describe("App", () => {
     it("loads health, panels, and groups on mount", async () => {
         render(<App />);
 
-        expect(await screen.findByText(/ok\s+mode\s+sim/i)).toBeInTheDocument();
+        expect(await screen.findByText(/ok\s+environment\s+development/i)).toBeInTheDocument();
         expect(await screen.findByText("Facade 1")).toBeInTheDocument();
         expect(screen.getByLabelText("group")).toHaveValue("G-facade");
     });

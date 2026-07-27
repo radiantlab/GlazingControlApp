@@ -12,7 +12,8 @@ import csv
 import io
 from datetime import datetime, timezone
 from .service import ControlService
-from .config import MODE
+from .config import ENVIRONMENT, Environment
+from .sensors.manager import get_sensor_health, get_sensor_source
 from .state import (
     fetch_audit_entries,
     list_sensors as _list_sensors,
@@ -46,12 +47,24 @@ def get_service() -> ControlService:
     "/health",
     response_model=HealthResponse,
     summary="Health check",
-    description="Returns service health status and current operation mode (sim or real)",
+    description="Returns service health status, environment, and effective data sources",
     tags=["Health"]
 )
 def health() -> HealthResponse:
     """Health check endpoint."""
-    return HealthResponse(status="ok", mode=MODE)
+    sensor_status, sensor_errors = get_sensor_health()
+    return HealthResponse(
+        status="degraded" if sensor_status == "degraded" else "ok",
+        environment=ENVIRONMENT.value,
+        control_source=(
+            "physical"
+            if ENVIRONMENT is Environment.PRODUCTION
+            else "simulated"
+        ),
+        sensor_source=get_sensor_source(),
+        sensor_status=sensor_status,
+        sensor_errors=sensor_errors,
+    )
 
 
 @router.get(
@@ -116,10 +129,10 @@ def set_level(
     response_model=Group,
     status_code=status.HTTP_201_CREATED,
     summary="Create a group",
-    description="Create a new group with specified name and member panel IDs. Only available in sim mode.",
+    description="Create a new group with specified name and member panel IDs. Only available in development.",
     responses={
         201: {"description": "Group created successfully"},
-        400: {"model": ErrorResponse, "description": "Invalid request or operation not supported in current mode"}
+        400: {"model": ErrorResponse, "description": "Invalid request or operation not supported in the current environment"}
     },
     tags=["Groups"]
 )
@@ -136,11 +149,11 @@ def create_group(body: GroupCreate, service: ControlService = Depends(get_servic
     "/groups/{group_id}",
     response_model=Group,
     summary="Update a group",
-    description="Update a group's name and/or member panel IDs. Only available in sim mode.",
+    description="Update a group's name and/or member panel IDs. Only available in development.",
     responses={
         200: {"description": "Group updated successfully"},
         404: {"model": ErrorResponse, "description": "Group not found"},
-        400: {"model": ErrorResponse, "description": "Invalid request or operation not supported in current mode"}
+        400: {"model": ErrorResponse, "description": "Invalid request or operation not supported in the current environment"}
     },
     tags=["Groups"]
 )
@@ -162,7 +175,7 @@ def update_group(
     "/groups/{group_id}",
     response_model=DeleteGroupResponse,
     summary="Delete a group",
-    description="Delete a group by ID. Only available in sim mode.",
+    description="Delete a group by ID. Only available in development.",
     responses={
         200: {"description": "Group deleted successfully"},
         404: {"model": ErrorResponse, "description": "Group not found"}

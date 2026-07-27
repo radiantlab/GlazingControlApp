@@ -1,4 +1,7 @@
-from app.adapter import RealAdapter
+"""Production Halio adapter and service-selection tests."""
+
+from app.adapter import HalioAdapter
+from app.config import Environment
 from app.service import ControlService
 
 
@@ -12,10 +15,10 @@ class FakeResponse:
         return self._payload
 
 
-def test_real_group_acceptance_with_unknown_members(monkeypatch):
-    monkeypatch.setattr("app.service.MODE", "real")
+def test_production_group_acceptance_with_unknown_members(monkeypatch):
+    monkeypatch.setattr("app.service.ENVIRONMENT", Environment.PRODUCTION)
 
-    class FakeRealAdapter:
+    class FakeHalioAdapter:
         def set_group(self, group_id, level, min_dwell):
             return []
 
@@ -25,7 +28,7 @@ def test_real_group_acceptance_with_unknown_members(monkeypatch):
         def list_groups(self):
             return []
 
-    monkeypatch.setattr("app.service.RealAdapter", FakeRealAdapter)
+    monkeypatch.setattr("app.service.HalioAdapter", FakeHalioAdapter)
 
     service = ControlService()
     ok, applied, msg = service.set_group_level("halio-group", 55)
@@ -59,7 +62,7 @@ def test_list_groups_uses_group_details_for_member_ids(monkeypatch):
 
     monkeypatch.setattr("app.adapter.requests.get", fake_get)
 
-    adapter = RealAdapter()
+    adapter = HalioAdapter()
     groups = adapter.list_groups()
 
     assert len(groups) == 1
@@ -98,7 +101,7 @@ def test_panel_uses_existing_single_window_group(monkeypatch):
 
     monkeypatch.setattr("app.adapter.requests.get", fake_get)
 
-    adapter = RealAdapter()
+    adapter = HalioAdapter()
     calls = {}
 
     def fake_send_group_tint(group_id, level, expected_panel_ids=None):
@@ -149,7 +152,7 @@ def test_list_panels_creates_missing_single_window_groups(monkeypatch):
     monkeypatch.setattr("app.adapter.requests.get", fake_get)
     monkeypatch.setattr("app.adapter.requests.post", fake_post)
 
-    adapter = RealAdapter()
+    adapter = HalioAdapter()
     panels = adapter.list_panels()
 
     assert len(panels) == 1
@@ -196,7 +199,7 @@ def test_list_panels_creates_single_group_per_dial_driver(monkeypatch):
     monkeypatch.setattr("app.adapter.requests.get", fake_get)
     monkeypatch.setattr("app.adapter.requests.post", fake_post)
 
-    adapter = RealAdapter()
+    adapter = HalioAdapter()
     panels = adapter.list_panels()
 
     assert len(panels) == 20
@@ -240,7 +243,7 @@ def test_create_group_uses_halio_post_shape(monkeypatch):
     monkeypatch.setattr("app.adapter.requests.post", fake_post)
     monkeypatch.setattr("app.adapter.requests.get", fake_get)
 
-    adapter = RealAdapter()
+    adapter = HalioAdapter()
     group = adapter.create_group("My Group", ["window-1", "window-2"])
 
     assert captured_payloads == [

@@ -6,6 +6,7 @@ import subprocess
 import threading
 from typing import Dict, Any
 
+from app.config import ROUTINES_DIR
 from app.state import (
     save_routine, 
     get_routine, 
@@ -16,8 +17,6 @@ from app.state import (
 
 # { "routine_id": {"process": Popen, "logs": [str], "timer": threading.Timer | None} }
 active_routines: Dict[str, Dict[str, Any]] = {}
-
-ROUTINES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "data", "routines")
 
 PREAMBLE = """
 import requests

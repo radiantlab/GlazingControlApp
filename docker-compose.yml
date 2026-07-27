@@ -1,3 +1,7 @@
+# Production deployment.
+#
+# SVC_PRODUCTION_DATA_DIR must be the absolute host directory that currently
+# contains audit.db. This intentionally preserves /app/svc/data/audit.db.
 services:
   app:
     build:
@@ -9,20 +13,31 @@ services:
       - "8000:8000"
     volumes:
       - type: bind
-        source: ./svc/data
+        source: ${SVC_PRODUCTION_DATA_DIR:?Set SVC_PRODUCTION_DATA_DIR to the existing absolute production data directory}
         target: /app/svc/data
+        bind:
+          create_host_path: false
       - type: bind
-        source: ${SVC_DB_BACKUP_DIR:-./svc/db-backups}
+        source: ${SVC_PRODUCTION_CONFIG_DIR:?Set SVC_PRODUCTION_CONFIG_DIR to the production configuration directory}
+        target: /app/svc/config
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SVC_DB_BACKUP_DIR:?Set SVC_DB_BACKUP_DIR to an absolute host backup directory}
         target: /app/db-backups
+        bind:
+          create_host_path: false
     environment:
+      SVC_ENVIRONMENT: production
       SVC_HOST: 0.0.0.0
       SVC_PORT: "8000"
       UVICORN_RELOAD: "false"
       SVC_DATA_DIR: /app/svc/data
-      SVC_DB_BACKUP_INTERVAL_HOURS: ${SVC_DB_BACKUP_INTERVAL_HOURS:-0}
+      SVC_CONFIG_DIR: /app/svc/config
+      SVC_DB_BACKUP_INTERVAL_HOURS: ${SVC_DB_BACKUP_INTERVAL_HOURS:-24}
       SVC_DB_BACKUP_DIR: /app/db-backups
-      SVC_MODE: ${SVC_MODE:-sim}
-      HALIO_API_URL: ${HALIO_API_URL:-http://localhost:8084/api}
-      HALIO_SITE_ID: ${HALIO_SITE_ID:-}
-      HALIO_API_KEY: ${HALIO_API_KEY:-}
+      HALIO_API_URL: ${HALIO_API_URL:?Set HALIO_API_URL}
+      HALIO_SITE_ID: ${HALIO_SITE_ID:?Set HALIO_SITE_ID}
+      HALIO_API_KEY: ${HALIO_API_KEY:?Set HALIO_API_KEY}
     restart: unless-stopped

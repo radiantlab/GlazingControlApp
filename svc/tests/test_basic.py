@@ -1,9 +1,5 @@
 import time
-import os
 from fastapi.testclient import TestClient
-
-# Force simulator mode for tests even if local svc/.env is set to real.
-os.environ["SVC_MODE"] = "sim"
 
 from main import app
 from app.state import reset_default_panel_timestamps, load_snapshot
@@ -27,8 +23,14 @@ def test_health():
     r = client.get("/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
-    # Verify we're running in simulator mode for tests
-    assert r.json()["mode"] == "sim"
+    assert r.json() == {
+        "status": "ok",
+        "environment": "development",
+        "control_source": "simulated",
+        "sensor_source": "simulated",
+        "sensor_status": "healthy",
+        "sensor_errors": [],
+    }
 
 
 def test_list_panels_groups():

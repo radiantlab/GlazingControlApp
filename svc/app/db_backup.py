@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
-from .config import AUDIT_DB_FILE
+from .config import AUDIT_DB_FILE, ENVIRONMENT
 
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,7 @@ def backup_database_once(
     db_file: str = AUDIT_DB_FILE,
     backup_dir: str,
     timestamp: datetime | None = None,
+    environment: str = ENVIRONMENT.value,
 ) -> Path:
     """Write a consistent SQLite backup copy and return the completed file path."""
     source_path = Path(db_file)
@@ -41,7 +42,7 @@ def backup_database_once(
         raise FileNotFoundError(f"SQLite database does not exist: {source_path}")
 
     stamp = (timestamp or datetime.now()).strftime("%Y%m%d-%H%M%S")
-    destination = destination_dir / f"audit-{stamp}.db"
+    destination = destination_dir / f"{environment}-audit-{stamp}.db"
     temp_destination = destination.with_suffix(".db.tmp")
 
     source_conn = sqlite3.connect(str(source_path))

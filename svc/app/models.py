@@ -52,8 +52,25 @@ class AuditEntry(BaseModel):
 
 class HealthResponse(BaseModel):
     """Health check response."""
-    status: str = Field(description="Service status (always 'ok' if service is running)")
-    mode: str = Field(description="Current operation mode: 'sim' (simulator) or 'real' (Halio API)")
+    status: Literal["ok", "degraded"] = Field(
+        description="Overall service health"
+    )
+    environment: Literal["development", "production"] = Field(
+        description="Current deployment environment"
+    )
+    control_source: Literal["simulated", "physical"] = Field(
+        description="Effective panel-control source"
+    )
+    sensor_source: Literal["simulated", "physical", "mixed"] = Field(
+        description="Effective sensor source"
+    )
+    sensor_status: Literal["healthy", "degraded"] = Field(
+        description="Whether configured sensor clients are operating without errors"
+    )
+    sensor_errors: List[str] = Field(
+        default_factory=list,
+        description="Current sensor startup or polling errors",
+    )
 
 
 class GroupCreate(BaseModel):

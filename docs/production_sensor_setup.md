@@ -1,8 +1,8 @@
-# Real Sensor Setup
+# Production Sensor Setup
 
-This runbook is for the trailer/lab PC when the app is running in `SVC_MODE=real`.
+This runbook is for the trailer/lab PC in the `production` environment.
 
-The current real-mode implementation supports the hardware shown in the current wiring diagram and sensor manuals:
+The production implementation supports the hardware shown in the current wiring diagram and sensor manuals:
 
 - Konica Minolta `T-10A` illuminance meters over USB/virtual COM
 - JETI `spectraval 1511` and `specbos 1211-2` over either:
@@ -53,29 +53,17 @@ Bring or confirm access to:
 
 ## 3) Configure The App
 
-The default runtime config file is:
+Production sensor configuration is mounted read-only at:
 
-- `svc/data/sensors_config.json`
+- `/app/svc/config/sensors_config.json`
 
-You do not need to set `SENSORS_CONFIG_FILE` if you use that default file.
+Create it from `svc/config/production.example/sensors_config.json` and store it
+in the external directory selected by `SVC_PRODUCTION_CONFIG_DIR`.
 
-If you do use a custom file, prefer an absolute path. The service also resolves common relative paths now, but absolute paths are still the least ambiguous choice on site.
-
-### Recommended startup from `svc/`
-
-```powershell
-cd svc
-$env:SVC_MODE = "real"
-uv run python main.py
-```
-
-### If you must use a custom sensor config file
+### Recommended production startup
 
 ```powershell
-cd svc
-$env:SVC_MODE = "real"
-$env:SENSORS_CONFIG_FILE = "C:\path\to\sensors_config.json"
-uv run python main.py
+podman compose --env-file svc/.env.production up -d
 ```
 
 ## 4) T-10A Setup
@@ -90,7 +78,7 @@ The app supports one practical connection path for `T-10A`: head chain to T-10A 
 4. Connect the T-10A body to the PC by USB.
 5. Power on the T-10A body and confirm it is detected by Windows.
 6. Open Device Manager and record the assigned COM port under `Ports (COM & LPT)`.
-7. Update `svc/data/sensors_config.json`:
+7. Update the production `sensors_config.json`:
    - set `t10a[].port` to the actual COM port
    - set `heads[].head_no` to the physical head/adaptor ID
    - keep `heads[].sensor_id` and `heads[].label` aligned with the physical head location
@@ -105,7 +93,7 @@ The app supports one practical connection path for `T-10A`: head chain to T-10A 
 5. Assign a unique physical ID to each head/adaptor. The supported range is `00` through `29`.
 6. Connect the T-10A body to the PC by USB.
 7. Open Device Manager and record the COM port for that T-10A body.
-8. Update `svc/data/sensors_config.json`:
+8. Update the production `sensors_config.json`:
    - set the device `port`
    - set each `heads[].head_no` to the actual physical ID
    - keep each `sensor_id` and `label` tied to the installed head location
@@ -134,11 +122,11 @@ Use this when the measurement workflow on the PC writes JETI `.cap` output that 
 3. Open the JETI software on the PC and confirm the device is detected.
 4. Configure the JETI software to save or export measurements to a known `.cap` file or to a folder that receives rotating `.cap` files.
 5. Record the exact file path or folder path being written on the PC.
-6. Update `svc/data/sensors_config.json`:
+6. Update the production `sensors_config.json`:
    - set `jeti_spectraval[].transport` to `"file"`
    - set `jeti_spectraval[].output_path` to that exact file or folder
    - set `watch_interval_s` if you want faster or slower pickup
-7. Start the backend in real mode.
+7. Start the backend in production.
 8. Trigger or wait for a fresh JETI measurement so the `.cap` output updates.
 9. Confirm the app begins receiving JETI metrics in `GET /metrics/latest`.
 
@@ -153,26 +141,26 @@ Use this when you want the backend to talk to the JETI device directly instead o
 5. Decide which device model is connected:
    - `spectraval 1511` typically uses `921600`
    - `specbos 1211-2` typically uses `115200`
-6. Update `svc/data/sensors_config.json`:
+6. Update the production `sensors_config.json`:
    - set `jeti_spectraval[].transport` to `"serial_scpi"`
    - set `jeti_spectraval[].port` to the JETI COM port
    - set `jeti_spectraval[].baudrate` to the correct device baud rate
    - set `tint_ms` and `avg_count` if the measurement timing needs adjustment
-7. Start the backend in real mode.
+7. Start the backend in production.
 8. Confirm the JETI sensor appears in `GET /sensors`.
 9. Confirm the JETI sensor reports `lux` and spectral/color metrics in `GET /metrics/latest`.
 
 ### JETI watch-outs
 
 - The schematic confirms USB to the PC. The file-vs-serial choice is a software integration choice, not a different physical cable path.
-- File mode only works if the configured `output_path` exactly matches the real file or folder on the PC.
+- File transport works only if the configured `output_path` exactly matches the physical file or folder on the PC.
 - The backend can now recover if the watched `.cap` file or folder appears after startup, but the path still has to be correct.
 - Direct serial mode requires the correct COM port and baudrate before anything else will work.
 - The backend now parses SPECFIRM format `2` correctly as `wavelength<TAB>value` pairs.
 
 ## 6) EKO MS-90+ / C-BOX Setup
 
-The app supports one real connection path for EKO: the sensors wire into the `C-BOX`, and the PC talks to the `C-BOX` over Ethernet using Modbus TCP. The old USB-to-RS485 / COM-port method is not used by the app.
+The app supports one physical connection path for EKO: the sensors wire into the `C-BOX`, and the PC talks to the `C-BOX` over Ethernet using Modbus TCP. The old USB-to-RS485 / COM-port method is not used by the app.
 
 ### Method A: MS-90 plus optional MS-80S into C-BOX, then C-BOX Ethernet to PC/network
 
@@ -184,13 +172,13 @@ The app supports one real connection path for EKO: the sensors wire into the `C-
 4. Confirm the web UI shows live EKO readings under the device page.
 5. Open `Modbus -> Setup` in the C-BOX web UI.
 6. Confirm `Modbus TCP Access` is enabled. The site screenshots show `Allow ModbusTCP access from any IP address`.
-7. Update `svc/data/sensors_config.json`:
+7. Update the production `sensors_config.json`:
    - set `eko_ms90_plus[].host` to the C-BOX IP address
    - set `eko_ms90_plus[].port` to `502`
    - confirm `slave_address` is usually `1`
    - set `timeout_s` to `3.0` unless site testing needs a different value
    - leave `float_byte_order` at `ABCD` unless testing shows otherwise
-8. Start the backend in real mode.
+8. Start the backend in production.
 9. Confirm the EKO sensor appears in `GET /sensors`.
 10. Confirm `ghi_w_m2`, `dni_w_m2`, `dhi_w_m2`, and sun-position metrics appear in `GET /metrics/latest`.
 
@@ -228,7 +216,7 @@ EKO config example:
 
 After wiring and config:
 
-1. Start the backend in `real` mode.
+1. Start the backend in the `production` environment.
 2. Confirm the service sees all configured sensors:
 
 ```powershell
@@ -253,7 +241,7 @@ Invoke-RestMethod http://127.0.0.1:8000/metrics/latest
    - metric
    - value
 
-## 8) Expected Real Metrics
+## 8) Expected Production Metrics
 
 ### T-10A
 

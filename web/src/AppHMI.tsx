@@ -265,7 +265,7 @@ export default function AppHMI() {
 
     async function refresh() {
         try {
-            // Try real API first
+            // Try the backend API first
             const [p, g, h, s, m] = await Promise.all([
                 api.panels(),
                 api.groups(),
@@ -283,7 +283,7 @@ export default function AppHMI() {
                 setGroupId(prev => prev || g[0].id);
             }
 
-            setHealth(`${h.status} • ${h.mode}`);
+            setHealth(`${h.status} • ${h.environment}`);
             setUsingMock(false);
         } catch (err) {
             // Fall back to mock data if API is unavailable
@@ -298,7 +298,7 @@ export default function AppHMI() {
                     setGroupId(prev => prev || g[0].id);
                 }
 
-                setHealth(`${h.status} • ${h.mode} (mock)`);
+                setHealth(`${h.status} • ${h.environment} (mock)`);
                 setUsingMock(true);
             } catch (mockErr) {
                 setSensors([]);
@@ -1052,13 +1052,13 @@ export default function AppHMI() {
 
                 {mainTab === "sensors" && !usingMock && sensors.length === 0 && (
                     <div className="room-section" style={{ marginTop: 20, padding: "12px 16px", color: "#9ca3af" }}>
-                        No sensors are currently registered. Check `svc/data/sensors_config.json` and restart the service.
+                        No sensors are currently registered. Check the selected environment configuration and restart the service.
                     </div>
                 )}
 
                 {mainTab === "sensors" && usingMock && (
                     <div className="room-section" style={{ marginTop: 20, padding: "12px 16px", color: "#9ca3af" }}>
-                        Sensor metrics are unavailable in frontend mock mode. Start backend sim mode to see live sensor metrics.
+                        Sensor metrics are unavailable in frontend mock mode. Start the backend development environment to see simulated sensor metrics.
                     </div>
                 )}
 

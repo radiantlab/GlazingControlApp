@@ -8,7 +8,7 @@ export type RoomPanels = {
 type RoomId = "room1" | "room2";
 type PanelLocation = {
     room: RoomId;
-    kind: "skylight" | "driver" | "sim";
+    kind: "skylight" | "driver" | "simulated";
     position: number;
 };
 
@@ -33,10 +33,10 @@ function parsePanelLocation(panel: Panel): PanelLocation | null {
     if (panelMatch) {
         const panelNum = Number.parseInt(panelMatch[1], 10);
         if (panelNum >= 1 && panelNum <= 9) {
-            return { room: "room1", kind: "sim", position: panelNum };
+            return { room: "room1", kind: "simulated", position: panelNum };
         }
         if (panelNum >= 10 && panelNum <= 18) {
-            return { room: "room2", kind: "sim", position: panelNum - 9 };
+            return { room: "room2", kind: "simulated", position: panelNum - 9 };
         }
     }
 
@@ -77,7 +77,7 @@ function panelSort(a: Panel, b: Panel): number {
     const bLocation = parsePanelLocation(b);
 
     if (aLocation && bLocation) {
-        const kindRank = { skylight: 0, driver: 1, sim: 1 };
+        const kindRank = { skylight: 0, driver: 1, simulated: 1 };
         const byKind = kindRank[aLocation.kind] - kindRank[bLocation.kind];
         if (byKind !== 0) return byKind;
 

@@ -45,10 +45,10 @@ export default function SensorDocs() {
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: "20px", height: "20px" }}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
                         </svg>
-                        Quickstart Checklist (SVC_MODE = real)
+                        Quickstart Checklist (SVC_ENVIRONMENT = production)
                     </h2>
                     <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.6", color: "var(--hmi-text-muted)" }}>
-                        When operating in the research trailer/site PC, the service runs in <strong>real mode</strong> to pull actual sensor instruments. Use this guide to ensure all physical USB/Ethernet links are connected, drivers are verified, and the local software exports are properly configured.
+                        When operating in the research trailer/site PC, the service runs in <strong>production</strong> to pull actual sensor instruments. Use this guide to ensure all physical USB/Ethernet links are connected, drivers are verified, and the local software exports are properly configured.
                     </p>
                 </div>
 
@@ -74,7 +74,7 @@ export default function SensorDocs() {
                         <ol style={{ lineHeight: "1.6", margin: 0, paddingLeft: "20px" }}>
                             <li>Power on the T-10A body. Open Device Manager on Windows and locate the virtual COM port (e.g. <code>COM3</code>).</li>
                             <li>
-                                Update <code>svc/data/sensors_config.json</code> under the <code>t10a</code> array:
+                                Update the production <code>sensors_config.json</code> under the <code>t10a</code> array:
                                 <pre style={{ backgroundColor: "#0d1117", padding: "10px", borderRadius: "6px", overflowX: "auto", margin: "8px 0", color: "#c9d1d9", fontSize: "12px" }}>
 {`"t10a": [
   {
@@ -200,10 +200,10 @@ export default function SensorDocs() {
                     
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
                         <div style={{ backgroundColor: "var(--hmi-panel-bg)", padding: "16px", borderRadius: "8px", border: "1px solid var(--hmi-border)" }}>
-                            <h4 style={{ color: "var(--hmi-text-bright)", margin: "0 0 8px 0", fontSize: "14px" }}>Start Backend in Real Mode</h4>
+                            <h4 style={{ color: "var(--hmi-text-bright)", margin: "0 0 8px 0", fontSize: "14px" }}>Start Backend in Production</h4>
                             <pre style={{ backgroundColor: "#0d1117", padding: "10px", borderRadius: "6px", color: "#c9d1d9", fontSize: "11px", margin: 0, overflowX: "auto" }}>
 {`cd svc
-$env:SVC_MODE = "real"
+$env:SVC_ENVIRONMENT = "production"
 uv run python main.py`}
                             </pre>
                         </div>

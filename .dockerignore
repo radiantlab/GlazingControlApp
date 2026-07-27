@@ -9,6 +9,8 @@ web/node_modules
 web/dist
 svc/.venv
 svc/.env
+svc/.env.production
+svc/.runtime
 svc/__pycache__
 svc/.pytest_cache
 svc/data/*.db

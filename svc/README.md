@@ -1,223 +1,106 @@
 # Control service
 
-What this gives you today
-- Lists panels and groups
-- Sets tint level for a single panel or a group
-- Enforces dwell time per panel
-- Writes an audit log to SQLite database `svc/data/audit.db`
-- Simulator for development (default)
-- Halio API integration for real hardware
+FastAPI service for Halio glazing control, sensor collection, routines, and
+audit logging.
 
-## Setup
+## Environments
 
-Python `>=3.11,<3.14` is expected. The repo includes `svc/.python-version` for local tooling.
+`SVC_ENVIRONMENT` is required:
 
-### Using UV (Recommended)
+- `development`: simulated panel backend and simulated sensors by default.
+- `production`: Halio panel backend and physical sensors only.
 
-```bash
-cd svc
+Legacy `SVC_MODE`, `sim`, and `real` environment values are rejected.
+
+## Local development
+
+```powershell
+Copy-Item .env.example .env
 uv sync
 uv run python main.py
 ```
 
-UV automatically creates and manages a virtual environment. You can also activate it manually:
-```bash
-source .venv/bin/activate  # macOS/Linux
-# or
-. .venv\Scripts\activate  # Windows
-python main.py
-```
-
-### Using pip and venv (Legacy)
-
-```bash
-cd svc
-python -m venv .venv
-# Windows
-. .venv/Scripts/activate
-# macOS or Linux
-# source .venv/bin/activate
-
-pip install --upgrade pip
-pip install -r requirements.txt
-python main.py
-```
+Development reads `config/development` and writes only to
+`.runtime/development`.
 
 ## Configuration
 
-The service operates in two modes:
+| Variable | Development default | Production |
+|---|---|---|
+| `SVC_ENVIRONMENT` | Required | Required |
+| `SVC_DATA_DIR` | `.runtime/development` | Required mounted data directory |
+| `SVC_CONFIG_DIR` | `config/development` | Required read-only config directory |
+| `SVC_MIN_DWELL_SECONDS` | `20` | `20` unless overridden |
+| `SVC_DB_BACKUP_INTERVAL_HOURS` | `0` | Compose default `24` |
+| `SVC_DB_BACKUP_DIR` | Disabled | Required by production Compose |
+| `HALIO_API_URL` | Unused | Required |
+| `HALIO_SITE_ID` | Unused | Required |
+| `HALIO_API_KEY` | Unused | Required |
 
-### Simulator Mode (Default)
+Physical-device testing in development is opt-in:
 
-For development and testing without hardware. Uses simple panel IDs (P01, P02, etc.).
+- `SVC_DEVELOPMENT_USE_PHYSICAL_T10A=true`
+- `SVC_DEVELOPMENT_USE_PHYSICAL_JETI=true`
+- `SVC_DEVELOPMENT_USE_PHYSICAL_EKO=true`
 
-```bash
-export SVC_MODE=sim
-export SVC_MIN_DWELL_SECONDS=20
-python main.py
-```
+Health reports `sensor_source: mixed` when any override is enabled.
 
-Features:
-- Fast iteration without real hardware
-- Persistent state across restarts
-- 2-second simulated transition time (Until real time is discovered)
-- Simple panel/group management
+## Storage
 
-### Real Hardware Mode (Halio API)
+The SQLite database remains named `audit.db` for production compatibility, but
+it contains audits, panel state, groups, sensors, readings, spectra, and
+routines. Every database and generated routine path is derived from
+`SVC_DATA_DIR`.
 
-For production use with actual electrochromic panels via Halio API.
+Production retains `/app/svc/data/audit.db`. Development containers use an
+isolated named volume at `/app/svc/data`.
 
-```bash
-export SVC_MODE=real
-export HALIO_API_URL=https://api.halio.com
-export HALIO_SITE_ID=site-uuid
-export HALIO_API_KEY=api-key
-export SVC_MIN_DWELL_SECONDS=20
-python main.py
-```
+## Sensors
 
-**Required Setup:**
+Environment-specific `sensors_config.json` supports:
 
-1. **Get Halio credentials** from Halio account
-2. **Configure window mapping** in `svc/data/window_mapping.json`:
-   ```json
-   {
-     "P01": "actual-halio-window-uuid-1",
-     "P02": "actual-halio-window-uuid-2",
-     ...
-   }
-   ```
-3. **Install requests library** (included in requirements.txt)
+- `t10a`: Konica Minolta T-10A over serial, simulated in development.
+- `jeti_spectraval`: `.cap` watcher or direct SPECFIRM serial; development file transport includes a simulator writer.
+- `eko_ms90_plus`: EKO C-BOX over Modbus TCP, simulated in development.
 
-The adapter automatically:
-- Translates panel IDs to Halio window UUIDs
-- Handles Halio's async tinting (202 Accepted responses)
-- Manages site/window/group architecture
-- Enforces dwell times locally
-- Caches window states for performance
+Relative JETI output paths resolve beneath `SVC_DATA_DIR`; paths that escape the
+runtime directory are rejected. Production validates all configured physical
+ports, hosts, transports, and output paths before database initialization.
 
-### Environment Variables
+Use `config/production.example/sensors_config.json` as the production template.
+See [production_sensor_setup.md](../docs/production_sensor_setup.md) for site
+setup.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SVC_MODE` | `sim` | Mode: `sim` or `real` |
-| `SVC_MIN_DWELL_SECONDS` | `20` | Minimum seconds between tint changes |
-| `SVC_DATA_DIR` | `data` | Directory for state/log database and config files |
-| `SVC_DB_BACKUP_INTERVAL_HOURS` | `0` | SQLite backup interval in hours. Set to `0` or leave unset to disable backups. |
-| `SVC_DB_BACKUP_DIR` | - | Directory where SQLite backup copies are written when backups are enabled. |
-| `HALIO_API_URL` | - | Halio API base URL (real mode only) |
-| `HALIO_SITE_ID` | - | Your Halio site UUID (real mode only) |
-| `HALIO_API_KEY` | - | Your Halio API key (real mode only) |
-| `SENSORS_CONFIG_FILE` | `svc/data/sensors_config.json` | Sensor runtime config. If you override it, prefer an absolute path. |
-| `SVC_ENABLE_T10A_IN_SIM` | `false` | Enable T-10A polling in sim mode |
-| `SVC_ENABLE_JETI_SERIAL_IN_SIM` | `false` | Enable JETI serial polling in sim mode |
-| `SVC_ENABLE_EKO_IN_SIM` | `false` | Enable real EKO C-BOX Modbus TCP polling in sim mode |
+## API
 
-### Sensor Integration (Real Mode)
-
-The backend supports three real sensor paths via `svc/data/sensors_config.json`:
-
-- `t10a`: Konica Minolta T-10A via USB virtual COM (9600, 7E1)
-- `jeti_spectraval`: one or more JETI devices (`spectraval 1511` or `specbos 1211-2`) via either
-  - `transport: "file"` (watch a live `.cap` file or folder written by the PC measurement workflow), or
-  - `transport: "serial_scpi"` (direct SPECFIRM serial)
-- `eko_ms90_plus`: EKO C-BOX over Ethernet Modbus TCP. The app does not use USB-to-RS485 for EKO anymore.
-
-EKO TCP config example:
+`GET /health` returns:
 
 ```json
 {
-  "eko_ms90_plus": [
-    {
-      "sensor_id": "EKO-00",
-      "device_id": "EKO-CBOX-01",
-      "host": "192.168.2.20",
-      "port": 502,
-      "slave_address": 1,
-      "float_byte_order": "ABCD",
-      "interval_s": 5,
-      "timeout_s": 3.0,
-      "label": "EKO MS-90+",
-      "location": "Roof"
-    }
-  ]
+  "status": "ok",
+  "environment": "development",
+  "control_source": "simulated",
+  "sensor_source": "simulated",
+  "sensor_status": "healthy",
+  "sensor_errors": []
 }
 ```
 
-See the sample config in [`svc/data/sensors_config.json`](./data/sensors_config.json) and
-the detailed runbook in [`docs/real_sensor_setup.md`](../docs/real_sensor_setup.md).
+Other primary endpoints:
 
-For a shorter field checklist, use [`docs/on_site_sensor_checklist.md`](../docs/on_site_sensor_checklist.md).
-
-### Sensor Integration (Sim Mode)
-
-In `SVC_MODE=sim`, the backend now emits live sample data for all three sensor families:
-
-- `t10a`: simulated lux for each configured head
-- `jeti_spectraval`: existing `.cap` sim writer + watcher flow
-- `eko_ms90_plus`: simulated irradiance/solar-position/temperature telemetry
-
-This means the HMI can render:
-
-- live latest values per sensor
-- one live graph per sensor with metric selection
-- live sensor logs with CSV export
-
-without physical hardware attached.
-
-If you need to poll real serial devices while still in sim mode, set:
-
-- `SVC_ENABLE_T10A_IN_SIM=true`
-- `SVC_ENABLE_JETI_SERIAL_IN_SIM=true`
-- `SVC_ENABLE_EKO_IN_SIM=true` for the real EKO Modbus TCP path
-
-In `SVC_MODE=real`, simulated sensor clients are never created. Missing, misconfigured, or unreachable real sensors are logged clearly and do not produce simulated readings.
-
-### Launching Real Mode On The Site Computer
-
-Windows PowerShell:
-
-```powershell
-cd svc
-$env:SVC_MODE = "real"
-uv sync
-uv run python main.py
-```
-
-Then verify:
-
-```powershell
-Invoke-RestMethod http://127.0.0.1:8000/sensors
-Invoke-RestMethod http://127.0.0.1:8000/metrics/latest
-```
-
-For EKO, first verify the C-BOX web UI loads from the site computer, for example `http://192.168.2.20/` or the configured C-BOX IP. In the C-BOX UI, open `Modbus -> Setup` and confirm Modbus TCP access is enabled.
-
-### Sensor Log APIs
-
-The following endpoints are available in both `sim` and `real` modes:
-
-- `GET /logs/sensors`:
-  returns sensor reading log rows with filters (`sensor_id`, `metric`, `ts_from`, `ts_to`) and sorting.
-- `GET /logs/sensors/export`:
-  exports filtered sensor logs as CSV.
-
-Existing sensor metric APIs remain:
-
+- `GET /panels`, `GET /groups`
+- `POST /commands/set-level`
 - `GET /sensors`
-- `GET /metrics/latest`
-- `GET /metrics/history`
+- `GET /metrics/latest`, `GET /metrics/history`
+- `GET /logs/audit`, `GET /logs/sensors`
 
-## Testing
+Group creation, editing, and deletion are available only in development.
 
-Run tests with:
-```bash
-uv run pytest tests/
+## Tests
+
+```powershell
+uv run pytest tests
 ```
 
-Or with pip/venv:
-```bash
-pytest tests/
-```
-
-Tests run in simulator mode by default
+Tests use a temporary runtime directory and cannot write to the production
+database.

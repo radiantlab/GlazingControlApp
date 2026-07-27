@@ -23,7 +23,7 @@ Use this at the trailer/lab PC after the hardware is physically installed.
 5. Open the C-BOX web UI from the site computer, usually `http://192.168.2.20/`.
 6. In the C-BOX web UI, open `Modbus -> Setup` and confirm Modbus TCP access is enabled.
 
-## Update `svc/data/sensors_config.json`
+## Update the production `sensors_config.json`
 
 1. Set `t10a[].port` to the actual T-10A COM port.
 2. Set `t10a[].heads[].head_no` to the actual physical T-10A adaptor/head ID.
@@ -41,13 +41,11 @@ Use this at the trailer/lab PC after the hardware is physically installed.
 ## Start The Backend
 
 ```powershell
-cd svc
-$env:SVC_MODE = "real"
-uv sync
-uv run python main.py
+podman compose --env-file svc/.env.production up -d
 ```
 
-Use `SENSORS_CONFIG_FILE` only if you are not using the default `svc/data/sensors_config.json`.
+The file must come from the external directory selected by
+`SVC_PRODUCTION_CONFIG_DIR`; it is mounted read-only in the container.
 
 ## Acceptance Checks
 
@@ -69,7 +67,7 @@ Then open the HMI and confirm:
 - `Logs -> Sensor log` is filling with new rows
 - sensor CSV export works
 
-For the full step-by-step connection instructions for each sensor and each supported method, use [`docs/real_sensor_setup.md`](./real_sensor_setup.md).
+For the full step-by-step connection instructions for each sensor and each supported method, use [`docs/production_sensor_setup.md`](./production_sensor_setup.md).
 
 ## If Something Fails
 
@@ -92,6 +90,6 @@ uv run python scripts/read_t10a_serial.py COM5
 - No EKO data:
   - open the C-BOX web UI from the site computer and confirm it is reachable
   - confirm `Modbus -> Setup` has Modbus TCP access enabled
-  - verify `host`, TCP `port`, and `slave_address` in `svc/data/sensors_config.json`
+  - verify `host`, TCP `port`, and `slave_address` in the production `sensors_config.json`
   - confirm firewall/network rules allow TCP `502` to the C-BOX
   - try a different `float_byte_order` if values are present but incorrect

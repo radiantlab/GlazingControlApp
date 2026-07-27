@@ -83,7 +83,7 @@ def _db_connection(row_factory: Optional[Callable[[sqlite3.Cursor, tuple], Any]]
         conn.close()
 
 
-def initialize_database() -> None:
+def initialize_database(*, migrate_legacy: bool = True) -> None:
     """
     Initialize database and run all migrations once at application startup.
     
@@ -95,14 +95,16 @@ def initialize_database() -> None:
     - JSON data is migrated to database (one-time)
     """
     _ensure_dirs()
-    _migrate_from_legacy_panels_json()
+    if migrate_legacy:
+        _migrate_from_legacy_panels_json()
     _ensure_panel_state_db()
     _ensure_groups_db()
     _ensure_sensor_db()
     _ensure_routines_db()
     _ensure_saved_routines_db()
-    _migrate_json_state_to_db()
-    _migrate_groups_json_to_db()
+    if migrate_legacy:
+        _migrate_json_state_to_db()
+        _migrate_groups_json_to_db()
 
 
 def _migrate_from_legacy_panels_json() -> None:
@@ -335,8 +337,7 @@ def update_panel_state(panel_id: str, level: int) -> None:
 
 
 def save_snapshot(s: Snapshot) -> None:
-    """Save snapshot by writing config, state, and groups separately."""
-    save_config(s.panels)
+    """Save mutable snapshot state without rewriting read-only configuration."""
     save_state(s.panels)
     save_groups(s.groups)
 

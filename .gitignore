@@ -212,6 +212,7 @@ __marimo__/
 # Service runtime files
 svc/.venv/
 svc/.env
+svc/.env.production
 
 # Visual Studio local settings
 .vs/
@@ -223,8 +224,12 @@ docs/TintSpecificAPIPages.pdf
 # web node and build
 web/node_modules/
 web/dist/
+web/.npm-cache/
 
 # Service runtime/state data
+svc/.runtime/
+svc/.test-tmp*/
+svc/config/production/
 svc/data/audit.json
 svc/data/audit.db
 svc/data/*.db-journal

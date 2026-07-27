@@ -15,8 +15,8 @@ class EkoMs90PlusSimClient(SensorClient):
     """
     Simulated EKO MS-90+ telemetry source.
 
-    Emits the same key metrics as the real C-BOX integration so dashboards and
-    logs behave the same in sim and real modes.
+    Emits the same key metrics as the physical C-BOX integration so dashboards
+    and logs behave consistently across development and production.
     """
 
     def __init__(
