@@ -105,6 +105,12 @@ function formatLatestUnit(amount: number, unit: LatestTimeUnit): string {
     return unit
 }
 
+function sensorDisplayName(sensor: SensorInfo | undefined, fallback: string): string {
+    const base = sensor?.label || fallback
+    const customLabel = sensor?.config?.custom_label
+    return customLabel ? `${customLabel} (${base})` : base
+}
+
 function sensorTypeLabelForLogRow(row: SensorLogEntry): string {
     return sensorTypeForDisplay({
         id: row.sensor_id,
@@ -527,16 +533,18 @@ export default function LogsPanel({
             ? sensorLogs
             : sensorLogs.slice(0, SENSOR_LOG_RENDER_LIMIT)
 
+        const sensorsById = new Map(sensors.map(sensor => [sensor.id, sensor]))
+
         return rows.map((row, idx) => ({
             key: `${row.ts}-${row.sensor_id}-${row.metric}-${idx}`,
             row,
             time: formatLogDateTime(row.ts),
-            sensorLabel: row.sensor_label || row.sensor_id,
+            sensorLabel: sensorDisplayName(sensorsById.get(row.sensor_id), row.sensor_label || row.sensor_id),
             typeLabel: sensorTypeLabelForLogRow(row),
             value: row.value.toFixed(4),
             canViewSpectrum: row.sensor_kind === "jeti_spectraval" && Boolean(onViewSpectrum),
         }))
-    }, [onViewSpectrum, sensorLogs, sensorShowAllRows])
+    }, [onViewSpectrum, sensorLogs, sensorShowAllRows, sensors])
 
     const hiddenSensorRowCount = Math.max(0, sensorLogs.length - visibleSensorRows.length)
 
@@ -938,7 +946,7 @@ export default function LogsPanel({
                                                 <option value="">{allSensorDevicesLabel}</option>
                                                 {activeSensorGroup?.sensors.map(sensor => (
                                                     <option key={sensor.id} value={sensor.id}>
-                                                        {sensor.label || sensor.id}
+                                                        {sensorDisplayName(sensor, sensor.id)}
                                                     </option>
                                                 ))}
                                             </select>
