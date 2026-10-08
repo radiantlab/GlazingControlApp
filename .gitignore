@@ -245,8 +245,6 @@ svc/data/routines/
 svc/db-backups/
 
 # JETI simulator output (configured as either file or directory)
-svc/data/jeti_sim_output
-svc/data/jeti_sim_output/
 svc/data/*.glazing-cursor.json
 
 # Vendor manuals, extracted text, and ad hoc sensor docs used for local AI context
@@ -257,6 +255,8 @@ svc/data/*.glazing-cursor.json
 *.cap
 # Development simulator template referenced by config/development/sensors_config.json
 !svc/config/development/jeti_template.cap
+# Real captures used as test fixtures
+!svc/tests/fixtures/*.cap
 
 # Local Modbus log downloads
 scripts/sensors/modbus_logs/
