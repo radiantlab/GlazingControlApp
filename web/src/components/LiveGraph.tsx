@@ -15,7 +15,7 @@ interface LiveGraphProps {
     endTs?: number;
 }
 
-export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, variant = "card", yAxisLabel, valueFormatter, endTs }: LiveGraphProps) {
+function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, variant = "card", yAxisLabel, valueFormatter, endTs }: LiveGraphProps) {
     const [data, setData] = useState<SensorReadingResponse[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -136,3 +136,16 @@ export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, 
         </div>
     );
 }
+
+export default React.memo(LiveGraph, (prevProps, nextProps) => {
+    return (
+        prevProps.sensorId === nextProps.sensorId &&
+        prevProps.metric === nextProps.metric &&
+        prevProps.color === nextProps.color &&
+        prevProps.label === nextProps.label &&
+        prevProps.height === nextProps.height &&
+        prevProps.variant === nextProps.variant &&
+        prevProps.yAxisLabel === nextProps.yAxisLabel &&
+        prevProps.endTs === nextProps.endTs
+    );
+});
