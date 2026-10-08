@@ -15,6 +15,7 @@ from app.config import (
     ENVIRONMENT,
     SENSOR_INPUT_DIR,
     SENSOR_ACQUISITION,
+    SENSOR_INGEST_TOKEN,
     SENSORS_CONFIG_FILE,
     Environment,
     SensorAcquisition,
@@ -251,6 +252,20 @@ def validate_sensor_configuration() -> dict:
                     f"{family} entry {item.get('device_id') or item.get('sensor_id')} "
                     "has an invalid acquisition value; use embedded or external"
                 ) from exc
+            if (
+                SENSOR_ACQUISITION is SensorAcquisition.EMBEDDED
+                and _is_enabled(item)
+                and _device_acquisition(item) is SensorAcquisition.EXTERNAL
+                and not SENSOR_INGEST_TOKEN
+            ):
+                # Without a token /sensors/ingest answers 404, so the agent's
+                # readings would never arrive. Global external mode already
+                # requires the token in app.config.
+                raise SensorConfigurationError(
+                    f"{family} entry {item.get('device_id') or item.get('sensor_id')} "
+                    "is marked external; set SVC_SENSOR_INGEST_TOKEN so the "
+                    "Sensor Agent can post its readings"
+                )
 
     for item in t10a_configs:
         if not _is_enabled(item):

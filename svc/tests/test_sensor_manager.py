@@ -286,6 +286,7 @@ def test_external_acquisition_registers_sensors_without_opening_hardware(
 def test_embedded_mode_hands_external_devices_to_the_agent(monkeypatch) -> None:
     registered = {}
     monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
+    monkeypatch.setattr(manager, "SENSOR_INGEST_TOKEN", "test-token")
     monkeypatch.setattr(manager, "SENSOR_ACQUISITION", SensorAcquisition.EMBEDDED)
     config = _sensor_config()
     config["t10a"][0]["acquisition"] = "external"
@@ -331,6 +332,20 @@ def test_invalid_device_acquisition_is_rejected(monkeypatch) -> None:
 
     with pytest.raises(manager.SensorConfigurationError, match="acquisition"):
         manager.validate_sensor_configuration()
+
+
+def test_enabled_external_device_requires_ingest_token(monkeypatch) -> None:
+    monkeypatch.setattr(manager, "SENSOR_ACQUISITION", SensorAcquisition.EMBEDDED)
+    monkeypatch.setattr(manager, "SENSOR_INGEST_TOKEN", "")
+    config = _sensor_config()
+    config["t10a"][0]["acquisition"] = "external"
+    monkeypatch.setattr(manager, "_load_config", lambda: config)
+
+    with pytest.raises(manager.SensorConfigurationError, match="SVC_SENSOR_INGEST_TOKEN"):
+        manager.validate_sensor_configuration()
+
+    config["t10a"][0]["enabled"] = False
+    manager.validate_sensor_configuration()
 
 
 def test_embedded_health_checks_staleness_only_for_external_devices(
