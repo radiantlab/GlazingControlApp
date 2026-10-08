@@ -1,115 +1,41 @@
-# High Level Architecture Diagram
+# Architecture
 
 ```mermaid
-graph TB
-    subgraph "Frontend Layer"
-        UI[React Web App<br/>AppHMI.tsx]
-        API_CLIENT[API Client<br/>api.ts]
-        COMPONENTS[Components<br/>RoomGrid, SidePanel, etc.]
-    end
+flowchart TD
+    SETTINGS[Validated Settings<br/>SVC_ENVIRONMENT]
+    SETTINGS -->|development| DEV[Panel Simulator]
+    SETTINGS -->|production| HALIO[HalioAdapter]
+    DEV --> SERVICE[ControlService]
+    HALIO --> SERVICE
+    SERVICE --> API[FastAPI]
+    API --> WEB[React HMI]
 
-    subgraph "Backend API Layer"
-        MAIN[main.py<br/>FastAPI Server]
-        ROUTES[routes.py<br/>REST Endpoints]
-        HEALTH["/health"]
-        PANELS["/panels"]
-        GROUPS["/groups"]
-        COMMANDS["/commands/set-level"]
-        AUDIT["/logs/audit"]
-    end
+    SETTINGS --> SENSOR_CONFIG[Environment Sensor Config]
+    SENSOR_CONFIG -->|development default| SIM_SENSORS[Simulated Sensors]
+    SENSOR_CONFIG -->|production| PHYSICAL_SENSORS[Physical Sensors]
+    SENSOR_CONFIG -->|explicit development override| PHYSICAL_SENSORS
 
-    subgraph "Service Layer"
-        SERVICE[ControlService<br/>service.py]
-        CONFIG[config.py<br/>Environment Config]
-    end
-
-    subgraph "Backend Implementations"
-        SIM[Simulator<br/>simulator.py<br/>Development Mode]
-        ADAPTER[RealAdapter<br/>adapter.py<br/>Production Mode]
-    end
-
-    subgraph "Data Layer"
-        STATE[state.py<br/>State Management]
-        CONFIG_FILE[panels_config.json<br/>Panel Structure Only<br/>Read-Only]
-        AUDIT_DB[audit.db<br/>SQLite Database<br/>Audit Logs, Panel State, Groups]
-        MAPPING[window_mapping.json<br/>Panel → UUID Mapping<br/>Read-Only]
-    end
-
-    subgraph "External Systems"
-        HALIO_API[Halio API<br/>192.168.2.200:8084/api]
-    end
-
-    %% Frontend connections
-    UI --> API_CLIENT
-    UI --> COMPONENTS
-    API_CLIENT --> ROUTES
-
-    %% API Layer connections
-    MAIN --> ROUTES
-    ROUTES --> HEALTH
-    ROUTES --> PANELS
-    ROUTES --> GROUPS
-    ROUTES --> COMMANDS
-    ROUTES --> AUDIT
-
-    %% Service Layer connections
-    ROUTES --> SERVICE
-    SERVICE --> CONFIG
-    CONFIG --> |SVC_MODE=sim| SIM
-    CONFIG --> |SVC_MODE=real| ADAPTER
-
-    %% Data Layer connections
-    SERVICE --> STATE
-    SIM --> STATE
-    STATE --> CONFIG_FILE
-    STATE --> AUDIT_DB
-    ADAPTER --> MAPPING
-
-    %% External connections
-    ADAPTER -->|X-API-Key Auth<br/>GET/POST Requests| HALIO_API
-
-    %% Styling
-    classDef frontend fill:#4A90E2,stroke:#2E5C8A,stroke-width:2px,color:#fff
-    classDef api fill:#F5A623,stroke:#B8751A,stroke-width:2px,color:#fff
-    classDef service fill:#50C878,stroke:#2E7D4E,stroke-width:2px,color:#fff
-    classDef backend fill:#9B59B6,stroke:#6B3A7A,stroke-width:2px,color:#fff
-    classDef data fill:#E74C3C,stroke:#A93226,stroke-width:2px,color:#fff
-    classDef external fill:#34495E,stroke:#1A252F,stroke-width:2px,color:#fff
-
-    class UI,API_CLIENT,COMPONENTS frontend
-    class MAIN,ROUTES,HEALTH,PANELS,GROUPS,COMMANDS,AUDIT api
-    class SERVICE,CONFIG service
-    class SIM,ADAPTER backend
-    class STATE,CONFIG_FILE,AUDIT_DB,MAPPING data
-    class HALIO_API external
+    SIM_SENSORS --> DB[(Environment audit.db)]
+    PHYSICAL_SENSORS --> DB
+    SERVICE --> DB
+    ROUTINES[Routine Workers] --> SERVICE
+    ROUTINES --> DB
 ```
 
-## Component Flow
+## Environment boundary
 
-### Request Flow (Setting Panel Level)
-```
-User Action → React Component → API Client → FastAPI Route 
-→ ControlService → Backend (Simulator Or RealAdapter) 
-→ State Management → Data Files
-```
+- `development` uses the panel simulator and simulated sensors by default.
+- `production` uses `HalioAdapter` and physical sensors only.
+- Invalid or missing production configuration stops startup before database initialization.
+- Development physical-device overrides are explicit and reported as
+  `sensor_source: mixed`.
 
-### Mode Switching
-- **Sim Mode**: `SVC_MODE=sim` → Uses `Simulator` → Reads/Writes local JSON files
-- **Real Mode**: `SVC_MODE=real` → Uses `RealAdapter` → Makes HTTP requests to Halio API
+## Storage boundary
 
-### Data Flow
-- **Config Data** (panels_config.json): Panel structure only (id, name, group_id assignment) - Read-only
-- **Runtime Data** (audit.db): SQLite database storing:
-  - Audit logs: All control actions with actor, timestamp, result
-  - Panel state: Current tint levels and timestamps
-  - Groups: Group definitions (id, name, member_ids)
-- **Window Mapping** (window_mapping.json): Maps panel IDs (P01, P02) to Halio UUIDs - Read-only
+Production retains `/app/svc/data/audit.db`, backed by an explicitly configured
+host directory. Development Compose mounts a named volume at the same container
+path. Configuration is mounted separately at `/app/svc/config` and is not
+writable by runtime code.
 
-## Key Design Decisions
-
-1. **Service Layer Abstraction**: `ControlService` provides a stable interface regardless of backend
-2. **Mode Switching**: Zero code changes needed when switching between sim/real modes
-3. **State Separation**: Config (static structure in JSON) vs Runtime data (dynamic state in SQLite) separated for clarity. All JSON files are read-only; SQLite handles all writes.
-4. **Error Handling**: All layers handle errors gracefully, returning empty arrays/None on failure
-5. **Audit Trail**: All control actions logged with actor, timestamp, and result
-
+The SQLite database contains audit records, panel state, development groups,
+sensor metadata/readings/spectra, and routines.

@@ -1,15 +1,13 @@
-
+# Glazing Configuration
 
 Room 1 is the room on the right when entering the facility.
 Room 2 is the room on the left when entering the facility.
-
-# Glazing Configuration
 
 ## Glazing Configuration in Room 1
 
 skylight:
 
-SK 1.1 
+SK 1.1
 
 3x3 panels:
 

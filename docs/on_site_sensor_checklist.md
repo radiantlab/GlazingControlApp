@@ -8,7 +8,9 @@ Use this at the trailer/lab PC after the hardware is physically installed.
 2. If a T-10A body has multiple heads, connect external power to that setup.
 3. Connect each `T-10A` body to the PC by USB.
 4. Connect each JETI device to the PC by USB.
-5. If the JETI path will use file mode, confirm the PC software is configured to write a live `.cap` file or folder.
+5. If the JETI path will use file mode, confirm LiVal is writing a live
+   line-oriented capture file. Prefer a `.cap` filename in a managed capture
+   folder.
 6. If the JETI path will use direct serial mode, confirm the JETI USB driver is installed and a COM port appears in Windows.
 7. Connect the EKO `MS-90` and optional `MS-80S` to the `C-BOX`.
 8. Connect the `C-BOX` Ethernet port to the site computer/network.
@@ -23,12 +25,13 @@ Use this at the trailer/lab PC after the hardware is physically installed.
 5. Open the C-BOX web UI from the site computer, usually `http://192.168.2.20/`.
 6. In the C-BOX web UI, open `Modbus -> Setup` and confirm Modbus TCP access is enabled.
 
-## Update `svc/data/sensors_config.json`
+## Update the production `sensors_config.json`
 
 1. Set `t10a[].port` to the actual T-10A COM port.
 2. Set `t10a[].heads[].head_no` to the actual physical T-10A adaptor/head ID.
 3. Set `jeti_spectraval[].transport` to either `file` or `serial_scpi`.
-4. If JETI uses file mode, set `jeti_spectraval[].output_path` to the actual live `.cap` file.
+4. If JETI uses file mode, set `jeti_spectraval[].output_path` to the actual
+   managed capture file or folder.
    **REQUIREMENT**: When configuring multiple JETI sensors (Spectraval or Specbos) in file mode, you MUST configure the Jeti software to export each sensor's data to a distinct file name (e.g., `spectraval_1.cap`, `specbos.cap`). Do not point multiple sensors to the same file, as this will cause data collisions.
 5. If JETI uses serial mode, set `jeti_spectraval[].port` to the JETI COM port.
 6. If JETI uses serial mode, set `jeti_spectraval[].baudrate`:
@@ -41,13 +44,11 @@ Use this at the trailer/lab PC after the hardware is physically installed.
 ## Start The Backend
 
 ```powershell
-cd svc
-$env:SVC_MODE = "real"
-uv sync
-uv run python main.py
+podman compose --env-file svc/.env.production up -d
 ```
 
-Use `SENSORS_CONFIG_FILE` only if you are not using the default `svc/data/sensors_config.json`.
+The file must come from the external directory selected by
+`SVC_PRODUCTION_CONFIG_DIR`; it is mounted read-only in the container.
 
 ## Acceptance Checks
 
@@ -69,7 +70,11 @@ Then open the HMI and confirm:
 - `Logs -> Sensor log` is filling with new rows
 - sensor CSV export works
 
-For the full step-by-step connection instructions for each sensor and each supported method, use [`docs/real_sensor_setup.md`](./real_sensor_setup.md).
+For the full step-by-step connection instructions for each sensor and each
+supported method, use
+[`docs/production_sensor_setup.md`](./production_sensor_setup.md). For the
+production LiVal capture diagnosis and integration options, use
+[`docs/jeti_lival_integration.md`](./jeti_lival_integration.md).
 
 ## If Something Fails
 
@@ -88,10 +93,12 @@ uv run python scripts/read_t10a_serial.py COM5
 - No JETI data:
   - re-check driver install
   - confirm the PC measurement software is writing to the configured `output_path`, or
+  - confirm the active LiVal capture file rather than relying on
+    `LastCapturePath` or `lival_session.log`
   - confirm COM port and baudrate for serial mode
 - No EKO data:
   - open the C-BOX web UI from the site computer and confirm it is reachable
   - confirm `Modbus -> Setup` has Modbus TCP access enabled
-  - verify `host`, TCP `port`, and `slave_address` in `svc/data/sensors_config.json`
+  - verify `host`, TCP `port`, and `slave_address` in the production `sensors_config.json`
   - confirm firewall/network rules allow TCP `502` to the C-BOX
   - try a different `float_byte_order` if values are present but incorrect

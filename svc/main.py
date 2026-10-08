@@ -20,8 +20,14 @@ _SVC_DIR = Path(__file__).resolve().parent
 load_dotenv(dotenv_path=_SVC_DIR / ".env")
 
 from app.routes import router
+from app.config import IS_DEVELOPMENT, validate_runtime_configuration
+from app.db_backup import start_database_backup_worker_from_env
 from app.state import bootstrap_default_if_empty, initialize_database
-from app.sensors.manager import start_sensor_workers, stop_sensor_workers
+from app.sensors.manager import (
+    start_sensor_workers,
+    stop_sensor_workers,
+    validate_sensor_configuration,
+)
 from app.routines.manager import resume_routines
 
 # Configure logging to show all INFO level logs from our modules
@@ -41,12 +47,15 @@ WEB_DIST_DIR = Path(os.getenv("WEB_DIST_DIR", ROOT_DIR / "web" / "dist"))
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    db_backup_worker = start_database_backup_worker_from_env()
     start_sensor_workers()
     resume_routines()
     try:
         yield
     finally:
         stop_sensor_workers()
+        if db_backup_worker is not None:
+            db_backup_worker.stop()
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -115,10 +124,14 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
 
 def create_app() -> FastAPI:
+    # Validate files before creating or changing any runtime database.
+    validate_runtime_configuration()
+    validate_sensor_configuration()
     # Initialize database and run migrations once at startup
-    initialize_database()
-    # Bootstrap default panels/groups if needed
-    bootstrap_default_if_empty()
+    initialize_database(migrate_legacy=IS_DEVELOPMENT)
+    # Production panels and groups come from Halio, never local defaults.
+    if IS_DEVELOPMENT:
+        bootstrap_default_if_empty()
 
     app = FastAPI(title="ECG Control Service", version="0.1.0", lifespan=lifespan)
 

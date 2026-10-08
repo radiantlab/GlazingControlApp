@@ -57,6 +57,7 @@ class JetiSpecfirmClient(SensorClient):
             else 0
         )
         self._configured = False
+        self.last_error: str | None = None
 
         self.ser = serial.Serial(
             port=port,
@@ -227,9 +228,11 @@ class JetiSpecfirmClient(SensorClient):
                         ts=ts,
                     )
                 )
+            self.last_error = None
             return out
         except Exception as e:
             logger.error("JETI[%s] serial poll failed: %s", self.id, e)
+            self.last_error = str(e)
             return []
 
     def close(self) -> None:

@@ -23,7 +23,15 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
     return (await res.json()) as T;
 }
 export const api = {
-    health: () => http<{ status: string; mode: string }>("/health"),
+    health: () => http<{
+        status: string;
+        environment: "development" | "production";
+        control_source: "simulated" | "physical";
+        sensor_source: "simulated" | "physical" | "mixed";
+        sensor_acquisition: "embedded" | "external";
+        sensor_status: "healthy" | "degraded";
+        sensor_errors: string[];
+    }>("/health"),
     panels: () => http<Panel[]>("/panels"),
     groups: () => http<Group[]>("/groups"),
     createGroup: (name: string, memberIds: string[]) =>
