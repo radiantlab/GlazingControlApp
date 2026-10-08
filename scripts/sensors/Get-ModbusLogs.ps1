@@ -5,17 +5,16 @@
 .DESCRIPTION
     Uses curl.exe (built into Windows 11) rather than ftp.exe or Invoke-WebRequest,
     because curl handles FTP LIST/RETR more predictably and gives clear exit codes
-    per file. Requires plain anonymous-free FTP auth (user:pass), as confirmed
-    working in your ftp.exe test.
+    per file. Uses plain FTP user/password authentication (not anonymous FTP).
 
 .PARAMETER FtpHost
     IP or hostname of the data logger. Defaults to 192.168.40.50
 
 .PARAMETER Username
-    FTP username. Deafults to admin.
+    FTP username. Defaults to admin.
 
 .PARAMETER Password
-    FTP password. Defaults to admin. If omitted, you will be prompted (not echoed to screen).
+    FTP password as a SecureString. If omitted, you will be prompted (not echoed to screen).
 
 .PARAMETER RemotePath
     Remote directory to mirror. Defaults to /var/log/modbus.
@@ -36,7 +35,7 @@
 param(
     [string]$FtpHost = "192.168.40.50",
     [string]$Username = "admin",
-    [securestring]$Password = (ConvertTo-SecureString "admin" -AsPlainText -Force),
+    [securestring]$Password,
     [string]$RemotePath = "/var/log/modbus",
     [string]$LocalPath = ".\modbus_logs"
 )

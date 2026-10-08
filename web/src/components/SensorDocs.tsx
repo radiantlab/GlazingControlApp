@@ -84,7 +84,7 @@ export default function SensorDocs() {
     "port": "auto",
     "port_identity": { "serial_number": "replace-with-usb-serial" },
     "heads": [
-      { "head_no": 1, "sensor_id": "T10A1-H1", "label": "Desk Lux", "location": "Desk" }
+      { "head_no": 0, "sensor_id": "T10A1-H1", "label": "Desk Lux", "location": "Desk" }
     ],
     "interval_s": 60
   }
