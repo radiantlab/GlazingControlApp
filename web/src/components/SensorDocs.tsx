@@ -72,14 +72,17 @@ export default function SensorDocs() {
                     <h3 style={{ color: "var(--hmi-text-bright)", fontSize: "15px", margin: "16px 0 8px 0" }}>Configuration:</h3>
                     <div style={{ backgroundColor: "var(--hmi-panel-bg)", padding: "16px", borderRadius: "8px", border: "1px solid var(--hmi-border)" }}>
                         <ol style={{ lineHeight: "1.6", margin: 0, paddingLeft: "20px" }}>
-                            <li>Power on the T-10A body. Open Device Manager on Windows and locate the virtual COM port (e.g. <code>COM3</code>).</li>
+                            <li>Power on the T-10A body. Run <code>.\scripts\sensors\Start-SensorAgent.ps1 -Command list-ports</code> and record the body's USB serial number. Use <code>"port": "auto"</code> with <code>port_identity</code> instead of a fixed COM number, which can change when USB devices reconnect.</li>
                             <li>
                                 Update the production <code>sensors_config.json</code> under the <code>t10a</code> array:
                                 <pre style={{ backgroundColor: "#0d1117", padding: "10px", borderRadius: "6px", overflowX: "auto", margin: "8px 0", color: "#c9d1d9", fontSize: "12px" }}>
 {`"t10a": [
   {
-    "device_id": "T10A-00",
-    "port": "COM3",
+    "enabled": true,
+    "device_id": "KM1",
+    "acquisition": "external",
+    "port": "auto",
+    "port_identity": { "serial_number": "replace-with-usb-serial" },
     "heads": [
       { "head_no": 1, "sensor_id": "T10A1-H1", "label": "Desk Lux", "location": "Desk" }
     ],
@@ -87,6 +90,9 @@ export default function SensorDocs() {
   }
 ]`}
                                 </pre>
+                            </li>
+                            <li>
+                                The Linux container cannot open Windows COM ports. Entries marked <code>"acquisition": "external"</code> are read by the native Windows Sensor Agent (<code>Start-SensorAgent.ps1</code>), which posts readings to the API. Set <code>SVC_SENSOR_INGEST_TOKEN</code> in <code>svc/.env.production</code> before starting it.
                             </li>
                         </ol>
                     </div>
@@ -101,18 +107,13 @@ export default function SensorDocs() {
 
                     <h3 style={{ color: "var(--hmi-text-bright)", fontSize: "15px", margin: "16px 0 8px 0" }}>Method A: JETI over USB with file-based <code>.cap</code> ingestion</h3>
                     <p style={{ lineHeight: "1.6", marginBottom: "12px" }}>
-                        Use this when the measurement software on the PC exports JETI data that the backend will watch.
+                        Use this when LiVal stays open and writes a continuous capture file. The API container reads that file through a read-only mount; the Sensor Agent is not involved.
                     </p>
                     <ol style={{ lineHeight: "1.6", paddingLeft: "20px", margin: "0 0 20px 0" }}>
                         <li style={{ marginBottom: "8px" }}>Connect the JETI device to the PC using a USB cable. Install the official JETI USB drivers.</li>
                         <li style={{ marginBottom: "8px" }}>Open the JETI measurement suite software on the PC and verify connection to the instrument.</li>
-                        <li style={{ marginBottom: "8px" }}>Configure the JETI software to automatically save or export new measurements as semicolon-delimited <code>.cap</code> files.</li>
-                        <li style={{ marginBottom: "8px" }}>Configure the <code>"transport"</code> to <code>"file"</code> and <code>"output_path"</code> to the file or directory in <code>sensors_config.json</code>:
-                            <ul style={{ marginTop: "6px", paddingLeft: "20px" }}>
-                                <li style={{ marginBottom: "6px" }}><strong>If pointing to a File (e.g. <code>"data/spectraval_1.cap"</code>):</strong> Instruct the JETI software to continuously overwrite this exact file.</li>
-                                <li><strong>If pointing to a Directory (e.g. <code>"data/jeti_measurements/"</code>):</strong> The JETI software can export rotating files. The watcher automatically loads the <code>.cap</code> file with the latest modification time.</li>
-                            </ul>
-                        </li>
+                        <li style={{ marginBottom: "8px" }}>In LiVal, enable Continuous mode and select a capture file. Set <code>SVC_JETI_CAPTURE_PATH</code> in <code>svc/.env.production</code> to that file's exact Windows path. Compose mounts it read-only at <code>/app/svc/sensor-input/specbos-lival.capture</code>.</li>
+                        <li style={{ marginBottom: "8px" }}>In <code>sensors_config.json</code>, set <code>"transport"</code> to <code>"file"</code> and <code>"input_path"</code> to <code>"specbos-lival.capture"</code> (the production template already does). Relative <code>input_path</code> values resolve under <code>SVC_SENSOR_INPUT_DIR</code> (<code>/app/svc/sensor-input</code>).</li>
                     </ol>
 
                     <div style={{ 
@@ -146,9 +147,9 @@ export default function SensorDocs() {
                     </div>
                     <ol style={{ lineHeight: "1.6", paddingLeft: "20px", margin: "0 0 20px 0" }}>
                         <li style={{ marginBottom: "8px" }}>Connect the JETI device to the PC using a USB cable. Install the official JETI USB drivers.</li>
-                        <li style={{ marginBottom: "8px" }}>Open Device Manager on Windows and locate the JETI virtual COM port (e.g. <code>COM4</code>).</li>
+                        <li style={{ marginBottom: "8px" }}>Run <code>.\scripts\sensors\Start-SensorAgent.ps1 -Command list-ports</code> and record the JETI port's USB identity.</li>
                         <li style={{ marginBottom: "8px" }}>
-                            Configure the <code>"transport"</code> to <code>"serial_scpi"</code>, set <code>"port"</code> to the COM port, and set <code>"baudrate"</code> depending on the model:
+                            Configure the <code>"transport"</code> to <code>"serial_scpi"</code>, set <code>"acquisition"</code> to <code>"external"</code>, set <code>"port"</code> to <code>"auto"</code> with a matching <code>"port_identity"</code>, and set <code>"baudrate"</code> depending on the model:
                             <ul style={{ marginTop: "6px", paddingLeft: "20px" }}>
                                 <li style={{ marginBottom: "6px" }}><code>921600</code> for <strong>spectraval 1511</strong></li>
                                 <li><code>115200</code> for <strong>specbos 1211-2</strong></li>
@@ -168,7 +169,7 @@ export default function SensorDocs() {
                     <ol style={{ lineHeight: "1.6", paddingLeft: "20px", margin: "0 0 20px 0" }}>
                         <li style={{ marginBottom: "8px" }}>Verify the EKO sensors are wired into the C-BOX and powered.</li>
                         <li style={{ marginBottom: "8px" }}>Connect the C-BOX Ethernet port to the local trailer network.</li>
-                        <li style={{ marginBottom: "8px" }}>Open a web browser on the PC and visit the C-BOX Web UI (default IP: <code>http://192.168.2.20/</code>). Confirm live values appear.</li>
+                        <li style={{ marginBottom: "8px" }}>Open a web browser on the PC and visit the C-BOX Web UI (trailer C-BOX: <code>http://192.168.40.50/</code>). Confirm live values appear.</li>
                         <li style={{ marginBottom: "8px" }}>Go to <code>Modbus {"->"} Setup</code> and verify <strong>Modbus TCP Access</strong> is enabled (allow access from any IP address).</li>
                     </ol>
 
@@ -182,10 +183,10 @@ export default function SensorDocs() {
   {
     "sensor_id": "EKO-00",
     "device_id": "EKO-CBOX-01",
-    "host": "192.168.2.20",
+    "host": "192.168.40.50",
     "port": 502,
     "slave_address": 1,
-    "float_byte_order": "ABCD",
+    "float_byte_order": "CDAB",
     "interval_s": 5,
     "timeout_s": 3.0
   }
@@ -202,9 +203,11 @@ export default function SensorDocs() {
                         <div style={{ backgroundColor: "var(--hmi-panel-bg)", padding: "16px", borderRadius: "8px", border: "1px solid var(--hmi-border)" }}>
                             <h4 style={{ color: "var(--hmi-text-bright)", margin: "0 0 8px 0", fontSize: "14px" }}>Start Backend in Production</h4>
                             <pre style={{ backgroundColor: "#0d1117", padding: "10px", borderRadius: "6px", color: "#c9d1d9", fontSize: "11px", margin: 0, overflowX: "auto" }}>
-{`cd svc
-$env:SVC_ENVIRONMENT = "production"
-uv run python main.py`}
+{`# From the repository root (docker compose works the same):
+podman compose --env-file svc/.env.production up -d --build
+
+# Only if a device is marked "acquisition": "external":
+.\\scripts\\sensors\\Start-SensorAgent.ps1 -Command continuous`}
                             </pre>
                         </div>
 

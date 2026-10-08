@@ -89,14 +89,23 @@ as the new production environment file.
 Copy `svc/config/production.example` to a site-owned directory outside version
 control and update `sensors_config.json`.
 
-Sensor `output_path` values are relative to the production data directory. For
-example:
+A JETI file entry reads its capture through `input_path`. Relative values
+resolve under `SVC_SENSOR_INPUT_DIR` (`/app/svc/sensor-input` in Compose), where
+Compose mounts the file named by `SVC_JETI_CAPTURE_PATH`. The template already
+contains:
 
 ```json
 {
-  "output_path": "sensors/spectraval_1.cap"
+  "input_path": "specbos-lival.capture"
 }
 ```
+
+The legacy `output_path` key resolves under the production data directory and
+is used only by the native Sensor Agent.
+
+Devices the Linux container cannot open (T-10A, JETI `serial_scpi`) carry
+`"acquisition": "external"` and are read by the native Windows Sensor Agent.
+See [docs/production_sensor_setup.md](./docs/production_sensor_setup.md).
 
 The application validates the entire production sensor configuration before
 creating or changing its database.
@@ -109,10 +118,20 @@ Copy `svc/.env.production.example` to the ignored
 - `SVC_PRODUCTION_DATA_DIR` to the absolute directory containing the existing `audit.db`.
 - `SVC_PRODUCTION_CONFIG_DIR` to the external production configuration directory.
 - `SVC_DB_BACKUP_DIR` to an absolute backup directory.
+- `SVC_JETI_CAPTURE_PATH` to the absolute path of the active LiVal capture
+  file (a file, not a directory). Compose mounts it read-only.
+- `SVC_SENSOR_INGEST_TOKEN` to a long random value if any device in
+  `sensors_config.json` is marked `"acquisition": "external"`. The Sensor Agent
+  uses the same value. The API refuses to start without it while an enabled
+  device is marked external.
 - The rotated Halio URL, site ID, and API key. `HALIO_API_URL` is the v3 API
   served by the controller's admin console port, including the `/api/v3`
   prefix, for example `http://192.168.2.200:8083/api/v3`. The legacy
   `:8084/api` endpoint no longer accepts connections.
+
+Every Compose bind mount uses `create_host_path: false`. The data directory,
+configuration directory, and capture file must already exist. The preflight in
+step 4 creates only the backup directory.
 
 ### 4. Verify and back up the existing database
 
@@ -125,13 +144,16 @@ uv run --project svc python scripts/production_preflight.py `
 ```
 
 The command refuses a missing `audit.db`, runs SQLite integrity checks, prints
-table counts, and creates an integrity-checked backup.
+table counts, creates the backup directory if needed, and writes an
+integrity-checked backup.
 
 ### 5. Start production
 
 ```powershell
 podman compose --env-file svc/.env.production up -d --build
 ```
+
+`docker compose` takes the same arguments.
 
 Verify:
 
@@ -173,4 +195,4 @@ The backend test setup uses a temporary database and cannot write to
   `curl http://<controller>:8083/api/v3/sites/<site-id>/groups` should return
   `"success":true`.
 - Empty production database: stop immediately and verify `SVC_PRODUCTION_DATA_DIR`; do not continue with a newly created directory.
-- Physical sensor unavailable after valid startup: check the cable, COM port, export path, C-BOX IP, and Modbus TCP port 502. Production does not substitute simulated readings.
+- Physical sensor unavailable after valid startup: check the cable, the Sensor Agent and its `port_identity` for COM devices, `SVC_JETI_CAPTURE_PATH`, the C-BOX IP, and Modbus TCP port 502. Production does not substitute simulated readings.

@@ -17,14 +17,28 @@ live `SVC_DATA_DIR`.
 
 Production uses two cooperating processes:
 
-- Podman (or Docker if installed later) runs the API/UI and is the only process
-  that writes `audit.db`.
-- The native Windows Sensor Agent owns T-10A/JETI COM ports, watches JETI
-  files, polls the EKO C-BOX, and forwards authenticated, idempotent events.
+- Podman (or Docker if installed later) runs the API/UI with
+  `SVC_SENSOR_ACQUISITION=embedded` and is the only process that writes
+  `audit.db`. The container itself polls the EKO C-BOX over Modbus TCP and
+  reads the LiVal capture file that Compose mounts from `SVC_JETI_CAPTURE_PATH`.
+- The native Windows Sensor Agent reads the devices the container cannot reach:
+  entries marked `"acquisition": "external"` in `sensors_config.json`, which
+  are the T-10A bodies and any JETI using `serial_scpi`. It owns their COM
+  ports and forwards authenticated, idempotent events to `POST /sensors/ingest`.
 
-Create `svc/.env.production` from `svc/.env.production.example`. Use one long
-random value for `SVC_SENSOR_INGEST_TOKEN`; the container and native agent both
-load that value. Then inventory ports without opening them:
+The agent reads the same `sensors_config.json` as the container (by default
+`SVC_PRODUCTION_CONFIG_DIR\sensors_config.json`, or `SENSOR_AGENT_CONFIG`).
+When any device is marked external it reads only those devices; when none is
+marked it reads every device, which is the legacy all-external mode
+(`SVC_SENSOR_ACQUISITION=external`). In the embedded setup with no device
+marked external, do not run the agent: it would fall back to reading every
+device, including the ones the container already polls.
+
+Create `svc/.env.production` from `svc/.env.production.example`. When any
+device is marked external, set `SVC_SENSOR_INGEST_TOKEN` to one long random
+value; the container and native agent both load it, and the container refuses
+to start without it while an enabled device is marked external. Then inventory
+ports without opening them:
 
 ```powershell
 .\scripts\sensors\Start-SensorAgent.ps1 -Command list-ports
