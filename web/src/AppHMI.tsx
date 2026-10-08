@@ -13,7 +13,7 @@ import { Link } from "react-router-dom";
 import LiveGraph from "./components/LiveGraph";
 import { type SensorInfo, type SensorReadingResponse } from "./api";
 import {
-    getFreshMetricsForSensor,
+    getDisplayMetricsForSensor,
     pruneVisibleSensorIds,
     sortSensorsForDisplay,
 } from "./utils/sensorDisplay";
@@ -883,7 +883,7 @@ export default function AppHMI() {
                 )}
 
                 {mainTab === "sensors" && !usingMock && visibleSensors.map(sensor => {
-                    const sensorMetrics = getFreshMetricsForSensor(sensor, latestMetrics);
+                    const { metrics: sensorMetrics, stale } = getDisplayMetricsForSensor(sensor, latestMetrics);
                     const metricMap = new Map<string, SensorReadingResponse>();
                     sensorMetrics.forEach(m => metricMap.set(m.metric, m));
                     const metricNames = Array.from(metricMap.keys());
@@ -949,6 +949,7 @@ export default function AppHMI() {
                                     <span>{sensorKindLabel}</span>
                                     {sensor.location && <span style={{ marginLeft: 8 }}>{sensor.location}</span>}
                                     <span style={{ marginLeft: 8 }}>{orderedMetricNames.length} metrics</span>
+                                    {stale && <span style={{ marginLeft: 8 }}>not reporting</span>}
                                     {sensor.kind === "jeti_spectraval" && (
                                         <button
                                             className="hmi-manage-btn"
@@ -972,7 +973,7 @@ export default function AppHMI() {
 
                             <div className="sensor-card-layout">
                                 <div className="sensor-metrics-panel">
-                                    <div className="sensor-metrics-heading">Live metrics</div>
+                                    <div className="sensor-metrics-heading">{stale ? "Last readings" : "Live metrics"}</div>
                                     <div className="sensor-metrics-grid">
                                         {orderedMetricNames.map(metric => {
                                             const reading = metricMap.get(metric);
@@ -1002,7 +1003,9 @@ export default function AppHMI() {
                                         })}
                                     </div>
                                     <div className="sensor-metrics-meta">
-                                        Graphing {METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric} - updated {formatMetricTimestamp(selectedReading.ts)}
+                                        Graphing {METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric} - {stale
+                                            ? `last reading ${new Date(selectedReading.ts * 1000).toLocaleString()}`
+                                            : `updated ${formatMetricTimestamp(selectedReading.ts)}`}
                                     </div>
                                 </div>
 
@@ -1035,6 +1038,7 @@ export default function AppHMI() {
                                         color={sensorGraphColor(sensor.kind)}
                                         height={graphHeight}
                                         variant="embedded"
+                                        endTs={stale ? selectedReading.ts : undefined}
                                     />
                                 </div>
                             </div>
