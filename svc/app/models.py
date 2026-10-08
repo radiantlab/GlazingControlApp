@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import List, Optional, Literal, Dict
-from pydantic import BaseModel, Field, conint
+from typing import Annotated, List, Optional, Literal, Dict
+from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StringConstraints, conint, model_validator
 
 TintLevel = conint(ge=0, le=100)
 
@@ -52,8 +52,28 @@ class AuditEntry(BaseModel):
 
 class HealthResponse(BaseModel):
     """Health check response."""
-    status: str = Field(description="Service status (always 'ok' if service is running)")
-    mode: str = Field(description="Current operation mode: 'sim' (simulator) or 'real' (Halio API)")
+    status: Literal["ok", "degraded"] = Field(
+        description="Overall service health"
+    )
+    environment: Literal["development", "production"] = Field(
+        description="Current deployment environment"
+    )
+    control_source: Literal["simulated", "physical"] = Field(
+        description="Effective panel-control source"
+    )
+    sensor_source: Literal["simulated", "physical", "mixed"] = Field(
+        description="Effective sensor source"
+    )
+    sensor_acquisition: Literal["embedded", "external"] = Field(
+        description="Whether this process or the Windows Sensor Agent owns acquisition"
+    )
+    sensor_status: Literal["healthy", "degraded"] = Field(
+        description="Whether configured sensor clients are operating without errors"
+    )
+    sensor_errors: List[str] = Field(
+        default_factory=list,
+        description="Current sensor startup or polling errors",
+    )
 
 
 class GroupCreate(BaseModel):
@@ -108,6 +128,62 @@ class SensorSpectrumResponse(BaseModel):
     wavelength_end: int
     wavelength_step: int
     values: List[float]
+
+
+IngestIdentifier = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=128),
+]
+MetricName = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z][A-Za-z0-9_.:-]*$",
+    ),
+]
+
+
+class SensorIngestEvent(BaseModel):
+    """One physical observation forwarded by a host-side sensor collector."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    event_id: IngestIdentifier
+    sensor_id: IngestIdentifier
+    observed_ts: FiniteFloat = Field(gt=0, description="Unix timestamp in seconds")
+    metrics: Dict[MetricName, FiniteFloat] = Field(min_length=1, max_length=256)
+    spectrum: Optional[List[FiniteFloat]] = Field(
+        default=None,
+        min_length=1,
+        max_length=10000,
+    )
+    spectrum_wavelength_start: int = Field(default=380, ge=1)
+    spectrum_wavelength_step: int = Field(default=1, ge=1)
+    source: Optional[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=256)]] = None
+
+    @model_validator(mode="after")
+    def validate_spectrum_metadata(self) -> "SensorIngestEvent":
+        if self.spectrum is None and (
+            self.spectrum_wavelength_start != 380
+            or self.spectrum_wavelength_step != 1
+        ):
+            raise ValueError(
+                "spectrum wavelength metadata requires a spectrum"
+            )
+        return self
+
+
+class SensorIngestBatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    events: List[SensorIngestEvent] = Field(min_length=1, max_length=1000)
+
+
+class SensorIngestResult(BaseModel):
+    accepted: int
+    duplicates: int
 
 
 class RoutineRequest(BaseModel):

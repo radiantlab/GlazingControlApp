@@ -48,9 +48,9 @@ export default function Docs() {
                     <h2 className="room-header">Nav Bar Info</h2>
                     <ol style={{ lineHeight: "1.6", paddingLeft: "20px", margin: 0 }}>
                         <li style={{ marginBottom: "12px" }}>
-                            <strong>Sim vs. Real:</strong>
+                            <strong>Development vs. Production:</strong>
                             <br />
-                            We have a simulator option and a real option, the simulator being the default. When in the trailer and connected to Wi-Fi, switch to real.
+                            Development uses simulated panels and sensors by default. The research trailer uses production with Halio and physical sensors.
                         </li>
                         <li style={{ marginBottom: "12px" }}>
                             <strong>Logs:</strong>

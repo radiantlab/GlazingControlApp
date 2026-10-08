@@ -27,7 +27,7 @@ describe("RoomGrid", () => {
         expect(screen.getByRole("heading", { name: "Room 2" })).toHaveClass("room-title");
     });
 
-    it("splits real-mode Halio panels by deployment names when ids are UUIDs", () => {
+    it("splits production Halio panels by deployment names when ids are UUIDs", () => {
         const realPanels: Panel[] = [
             { id: "uuid-dr-1-1", name: "DR-1.1", level: 10, last_change_ts: 1000 },
             { id: "uuid-dr-2-1", name: "DR-2.1", level: 20, last_change_ts: 1000 },

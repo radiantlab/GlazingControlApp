@@ -51,6 +51,7 @@ class T10AClient(SensorClient):
         self.id = device_id      # e.g. "KM1"
         self.port = port
         self.heads = heads
+        self.last_error: str | None = None
 
         protocol_cfg = protocol or {}
         self._head_index_base = int(protocol_cfg.get("head_index_base", 0))
@@ -280,6 +281,7 @@ class T10AClient(SensorClient):
         Returns one SensorReading per head with metric 'lux'.
         """
         readings: list[SensorReading] = []
+        errors: list[str] = []
         now = time.time()
 
         for head in self.heads:
@@ -308,7 +310,9 @@ class T10AClient(SensorClient):
                 )
             except Exception as e:
                 logger.error("T10A[%s] poll failed for head %s: %s", self.id, head.head_no, e)
+                errors.append(f"head {head.head_no}: {e}")
 
+        self.last_error = "; ".join(errors) if errors else None
         return readings
 
     def close(self) -> None:

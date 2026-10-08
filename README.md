@@ -62,7 +62,7 @@ To run the local control service and researcher UI on your machine:
 3. **Access the Application:**
    Open your browser and navigate to `http://localhost:3000` (or the port specified in your console output) to view the researcher UI.
 
-*Note: For real sensor deployment and site-specific facility notes, please refer to our [Setup Documentation](docs/real_sensor_setup.md).*
+*Note: For production sensor deployment and site-specific facility notes, see the [production setup documentation](docs/production_sensor_setup.md).*
 
 ## The Team
 

@@ -100,6 +100,12 @@ class TestDatabaseContextManager:
         # Connection should be closed after context exits
         # (We can't directly test this, but if it wasn't closed, we'd get errors)
     
+    def test_context_manager_waits_out_backup_lock(self, temp_db):
+        """Writers should outlast a full-database backup instead of failing."""
+        with _db_connection() as conn:
+            busy_timeout_ms = conn.execute("PRAGMA busy_timeout").fetchone()[0]
+        assert busy_timeout_ms >= 30_000
+    
     def test_context_manager_commits_on_success(self, temp_db):
         """Context manager should commit transactions on success."""
         _ensure_audit_db()
@@ -777,8 +783,8 @@ class TestSensorLogOperations:
         assert rows[0]["metric"] == "ghi_w_m2"
         assert rows[0]["ts"] == 2002.0
 
-    def test_prune_sensors_to_ids_removes_stale_rows(self, temp_db):
-        """Pruning should remove sensors and readings not in active config."""
+    def test_prune_sensors_to_ids_marks_stale_sensor_inactive(self, temp_db):
+        """Pruning should hide inactive sensors while preserving their history."""
         register_sensor(
             sensor_id="KEEP-01",
             kind="t10a",
@@ -803,7 +809,9 @@ class TestSensorLogOperations:
         assert sensor_ids == {"KEEP-01"}
 
         rows = fetch_sensor_log_entries(limit=100, offset=0, sensor_id="DROP-01")
-        assert rows == []
+        assert len(rows) == 1
+        assert rows[0]["sensor_id"] == "DROP-01"
+        assert rows[0]["value"] == 20.0
     
     def test_multiple_operations_in_sequence(self, temp_db, temp_state_file):
         """Test multiple operations in sequence."""

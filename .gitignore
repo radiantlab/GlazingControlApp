@@ -212,6 +212,7 @@ __marimo__/
 # Service runtime files
 svc/.venv/
 svc/.env
+svc/.env.production
 
 # Visual Studio local settings
 .vs/
@@ -223,8 +224,15 @@ docs/TintSpecificAPIPages.pdf
 # web node and build
 web/node_modules/
 web/dist/
+web/.npm-cache/
 
 # Service runtime/state data
+svc/.runtime/
+svc/.test-tmp*/
+svc/sensor-agent-data/
+svc/data/.sensor-agent-cursors/
+svc/data/.sensor-cursors/
+svc/config/production/
 svc/data/audit.json
 svc/data/audit.db
 svc/data/*.db-journal
@@ -239,6 +247,7 @@ svc/db-backups/
 # JETI simulator output (configured as either file or directory)
 svc/data/jeti_sim_output
 svc/data/jeti_sim_output/
+svc/data/*.glazing-cursor.json
 
 # Vendor manuals, extracted text, and ad hoc sensor docs used for local AI context
 /docs/SensorDocs/
@@ -246,7 +255,12 @@ svc/data/jeti_sim_output/
 # Local temporary research repo / scratch workspace
 /.tmp_luox/
 *.cap
+# Development simulator template referenced by config/development/sensors_config.json
+!svc/config/development/jeti_template.cap
 
 # Local Modbus log downloads
 scripts/sensors/modbus_logs/
+
+# Local scheduled sensor captures
+scripts/sensors/backups/
 

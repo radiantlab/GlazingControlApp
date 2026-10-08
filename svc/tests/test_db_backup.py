@@ -23,7 +23,7 @@ def test_backup_database_once_creates_consistent_sqlite_copy(tmp_path):
         timestamp=datetime(2026, 6, 30, 12, 0, 0),
     )
 
-    assert backup_path == backup_dir / "audit-20260630-120000.db"
+    assert backup_path == backup_dir / "development-audit-20260630-120000.db"
     assert backup_path.exists()
 
     with sqlite3.connect(backup_path) as conn:

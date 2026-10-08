@@ -85,9 +85,9 @@ export const mockApi = {
         return newGroup;
     },
     
-    async health(): Promise<{ status: string; mode: string }> {
+    async health(): Promise<{ status: string; environment: "development" }> {
         await delay(50);
-        return { status: "ok", mode: "mock" };
+        return { status: "ok", environment: "development" };
     },
     
     async setPanelLevel(panelId: string, level: number): Promise<{ ok: boolean; applied_to: string[]; message: string }> {
