@@ -48,8 +48,9 @@ services:
       SVC_SENSOR_INPUT_DIR: /app/svc/sensor-input
       SVC_DB_BACKUP_INTERVAL_HOURS: ${SVC_DB_BACKUP_INTERVAL_HOURS:-24}
       SVC_DB_BACKUP_DIR: /app/db-backups
-      # Optional compatibility endpoint for other collectors. EKO and LiVal
-      # acquisition are owned by this container.
+      # EKO and LiVal acquisition are owned by this container. Devices marked
+      # "acquisition": "external" (COM-port sensors) are read by the Windows
+      # Sensor Agent, which needs this token to post to /sensors/ingest.
       SVC_SENSOR_INGEST_TOKEN: ${SVC_SENSOR_INGEST_TOKEN:-}
       SVC_SENSOR_ACQUISITION: embedded
       HALIO_API_URL: ${HALIO_API_URL:?Set HALIO_API_URL}

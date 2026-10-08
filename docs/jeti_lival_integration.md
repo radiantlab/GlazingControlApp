@@ -32,11 +32,13 @@ The following was verified on July 27, 2026:
   directory. It does not identify the file handle already open for the current
   capture session.
 
-The current production Sensor Agent watches
-`svc\data\jeti_capture` for `.cap` files. The active LiVal capture is on the
-Desktop, so the watcher does not see it and no JETI metrics reach the API. The
-HMI currently hides registered sensors that have no fresh metrics, which is why
-only the live EKO sensor is visible.
+At that time the Sensor Agent watched `svc\data\jeti_capture` for `.cap`
+files. The active LiVal capture was on the Desktop, so the watcher did not see
+it and no JETI metrics reached the API. The current design (see
+Recommendation) mounts the active capture file into the API container instead.
+
+The HMI keeps a registered sensor visible when it stops reporting: the card
+shows its last stored readings with a "not reporting" marker.
 
 JETI documents capturing as a Continuous mode feature that writes every
 measurement line-by-line, including its timestamp, photometric value, and
@@ -52,7 +54,8 @@ Any production solution should:
 - avoid reading `lival_session.log` as measurement data;
 - survive service and workstation restarts without duplicating rows;
 - define whether existing capture history is skipped or backfilled;
-- send readings through the authenticated Sensor Agent ingestion endpoint;
+- give the API container read-only access to the capture file, so it never
+  modifies LiVal's data;
 - keep the API container as the sole writer of `audit.db`; and
 - retain a recoverable copy of LiVal's original capture data.
 
@@ -62,7 +65,7 @@ Any production solution should:
 | --- | --- | --- | --- | --- |
 | 1. Capture directly into the managed data folder | Yes | Yes | Low | Requires changing LiVal's active capture target |
 | 2. Add an NTFS hard-link bridge to the current file | Yes | Yes | Low/medium | Link must be refreshed if LiVal replaces the source file |
-| 3. Support an explicit external host capture path | Yes | Yes | Medium | Requires acquisition/API configuration separation |
+| 3. Mount the external capture file into the container | Yes | Yes | Low | Path must be updated when LiVal starts a new capture file |
 | 4. Let the Sensor Agent own `COM4` | Yes | No | Medium | LiVal cannot use the instrument concurrently |
 | 5. Import closed capture files in batches | No | Yes | Low | Measurements appear only after file rotation or LiVal shutdown |
 
@@ -107,24 +110,32 @@ guardrails:
 
 Use this as a temporary bridge, not the preferred permanent layout.
 
-### Option 3: Explicit external host capture path
+### Option 3: Mounted external capture file
 
-The Sensor Agent can explicitly identify the current Desktop capture through:
+Set the exact Windows path of the active capture in `svc/.env.production`:
 
 `SVC_JETI_CAPTURE_PATH=C:/Users/daquser/Desktop/JETI_Specbos_260722-xxx.xlsx`
 
-The applicable JETI configuration names that variable through:
+`docker-compose.yml` bind-mounts that one file read-only at
+`/app/svc/sensor-input/specbos-lival.capture`, with
+`create_host_path: false`, so the file must exist before the container
+starts. The production template's `SPECBOS-1` entry reads it through:
 
-`"capture_path_env": "SVC_JETI_CAPTURE_PATH"`
+```json
+{
+  "transport": "file",
+  "input_path": "specbos-lival.capture",
+  "input_kind": "file"
+}
+```
 
-The production API container should not be given or expected to validate a
-Windows Desktop path. The native Windows Sensor Agent loads the same
-`.env.production` file used with Compose, reads the file, persists its cursor
-under the production data directory, and sends new rows through the
-authenticated ingestion endpoint.
+`input_path` resolves under `SVC_SENSOR_INPUT_DIR` (`/app/svc/sensor-input` in
+Compose). The container's watcher persists its cursor in the production data
+directory and writes observations directly to `audit.db`. No Sensor Agent and
+no ingestion token are involved.
 
-Choose this when operators must keep LiVal captures outside the managed data
-directory.
+If LiVal starts a new capture file, update `SVC_JETI_CAPTURE_PATH` and recreate
+the container.
 
 ### Option 4: Direct serial acquisition
 
@@ -149,23 +160,28 @@ to a file that can already be integrated more directly.
 
 ## Recommendation
 
-1. Use Option 3 now so LiVal can keep its existing Desktop capture and filename.
+1. Use Option 3. LiVal keeps its existing Desktop capture and filename, and the
+   API container reads the file through the read-only mount.
 2. Schedule `Get-JetiLogs.ps1` with only `-SourceFile` and `-DataDirectory` for
    an independent incremental daily backup.
 3. Consider Option 1 at a future LiVal capture transition if consolidating all
    production data under `svc\data` becomes desirable.
 4. Use Option 4 only if the app is intended to replace LiVal as the measurement
-   owner.
+   owner. That entry needs `"transport": "serial_scpi"` and
+   `"acquisition": "external"`, because only the native Sensor Agent can open
+   `COM4`.
 
 ## Acceptance Checks
 
 After enabling an option:
 
 1. Confirm the source capture size and modification time advance.
-2. Confirm `agent.log` reports a successful JETI poll and ingestion delivery.
-3. Confirm `GET /metrics/latest` contains fresh `SPECBOS-1` metrics.
-4. Confirm the metric timestamp and lux value agree with the corresponding
+2. Confirm the container log (`podman logs glazing-control-app`) shows no JETI
+   watcher errors.
+3. Confirm `GET /health` reports no `SPECBOS-1` entry in `sensor_errors`.
+4. Confirm `GET /metrics/latest` contains fresh `SPECBOS-1` metrics.
+5. Confirm the metric timestamp and lux value agree with the corresponding
    LiVal row.
-5. Confirm the outbox has no growing pending backlog.
-6. Restart the Sensor Agent and confirm no duplicate or missing row.
-7. Confirm the Specbos card appears in the HMI and continues updating.
+6. Restart the container and confirm no duplicate or missing row.
+7. Confirm the Specbos card in the HMI shows current readings, not the
+   "not reporting" marker, and continues updating.

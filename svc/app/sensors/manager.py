@@ -15,6 +15,7 @@ from app.config import (
     ENVIRONMENT,
     SENSOR_INPUT_DIR,
     SENSOR_ACQUISITION,
+    SENSOR_INGEST_TOKEN,
     SENSORS_CONFIG_FILE,
     Environment,
     SensorAcquisition,
@@ -103,24 +104,28 @@ def get_sensor_health() -> tuple[str, list[str]]:
             for sensor_id, message in sorted(_sensor_errors.items())
         ]
 
-    if SENSOR_ACQUISITION is SensorAcquisition.EXTERNAL:
-        now = time.time()
-        for item in fetch_sensor_ingest_status():
-            sensor_id = item["sensor_id"]
-            received_ts = item.get("received_ts")
-            if received_ts is None:
-                errors.append(
-                    f"{sensor_id}: no observation received from the external Sensor Agent"
-                )
-                continue
-            # The status helper supplies the configured threshold when present.
-            stale_after_s = float(item.get("stale_after_s") or 180.0)
-            age_s = max(0.0, now - float(received_ts))
-            if age_s >= stale_after_s:
-                errors.append(
-                    f"{sensor_id}: external observation is {age_s:.0f}s old "
-                    f"(stale threshold {stale_after_s:.0f}s)"
-                )
+    now = time.time()
+    for item in fetch_sensor_ingest_status():
+        if (
+            SENSOR_ACQUISITION is not SensorAcquisition.EXTERNAL
+            and item.get("acquisition") != SensorAcquisition.EXTERNAL.value
+        ):
+            continue
+        sensor_id = item["sensor_id"]
+        received_ts = item.get("received_ts")
+        if received_ts is None:
+            errors.append(
+                f"{sensor_id}: no observation received from the external Sensor Agent"
+            )
+            continue
+        # The status helper supplies the configured threshold when present.
+        stale_after_s = float(item.get("stale_after_s") or 180.0)
+        age_s = max(0.0, now - float(received_ts))
+        if age_s >= stale_after_s:
+            errors.append(
+                f"{sensor_id}: external observation is {age_s:.0f}s old "
+                f"(stale threshold {stale_after_s:.0f}s)"
+            )
     return ("degraded" if errors else "healthy", errors)
 
 
@@ -214,12 +219,53 @@ def _resolve_config_path(raw_path: str) -> str:
     return str(path.resolve(strict=False))
 
 
+def _device_acquisition(dev_cfg: dict) -> SensorAcquisition:
+    """Return who reads a device: this process or the external Sensor Agent.
+
+    SVC_SENSOR_ACQUISITION=external hands every device to the agent. Under
+    embedded, a single device can still opt out with "acquisition": "external",
+    which is how COM-port sensors reach a container that cannot open them.
+    """
+    if SENSOR_ACQUISITION is SensorAcquisition.EXTERNAL:
+        return SensorAcquisition.EXTERNAL
+    raw = str(dev_cfg.get("acquisition") or SensorAcquisition.EMBEDDED.value)
+    return SensorAcquisition(raw.strip().lower())
+
+
 def validate_sensor_configuration() -> dict:
     """Validate the complete environment-specific sensor configuration."""
     config = _load_config()
     t10a_configs = _require_list(config, "t10a")
     jeti_configs = _require_list(config, "jeti_spectraval")
     eko_configs = _require_list(config, "eko_ms90_plus")
+
+    for family, items in (
+        ("t10a", t10a_configs),
+        ("jeti_spectraval", jeti_configs),
+        ("eko_ms90_plus", eko_configs),
+    ):
+        for item in items:
+            try:
+                _device_acquisition(item)
+            except ValueError as exc:
+                raise SensorConfigurationError(
+                    f"{family} entry {item.get('device_id') or item.get('sensor_id')} "
+                    "has an invalid acquisition value; use embedded or external"
+                ) from exc
+            if (
+                SENSOR_ACQUISITION is SensorAcquisition.EMBEDDED
+                and _is_enabled(item)
+                and _device_acquisition(item) is SensorAcquisition.EXTERNAL
+                and not SENSOR_INGEST_TOKEN
+            ):
+                # Without a token /sensors/ingest answers 404, so the agent's
+                # readings would never arrive. Global external mode already
+                # requires the token in app.config.
+                raise SensorConfigurationError(
+                    f"{family} entry {item.get('device_id') or item.get('sensor_id')} "
+                    "is marked external; set SVC_SENSOR_INGEST_TOKEN so the "
+                    "Sensor Agent can post its readings"
+                )
 
     for item in t10a_configs:
         if not _is_enabled(item):
@@ -379,9 +425,6 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
 
     is_development = ENVIRONMENT is Environment.DEVELOPMENT
     is_production = ENVIRONMENT is Environment.PRODUCTION
-    external_acquisition = (
-        SENSOR_ACQUISITION is SensorAcquisition.EXTERNAL
-    )
     development_uses_physical_t10a = _env_flag(
         "SVC_DEVELOPMENT_USE_PHYSICAL_T10A"
     )
@@ -423,6 +466,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
         interval_s = float(dev_cfg.get("interval_s", 60.0))
         timeout_s = float(dev_cfg.get("timeout_s", 1.0))
         protocol_cfg = dev_cfg.get("protocol", {})
+        acquisition = _device_acquisition(dev_cfg)
 
         if use_physical_t10a and (not port or port == "SIM"):
             logger.warning(
@@ -453,6 +497,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     "interval_s": interval_s,
                     "timeout_s": timeout_s,
                     "protocol": protocol_cfg,
+                    "acquisition": acquisition.value,
                     "custom_label": h.get("custom_label"),
                     "device_custom_label": dev_cfg.get("custom_label"),
                 },
@@ -462,7 +507,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
         if not heads_cfg:
             continue
 
-        if external_acquisition:
+        if acquisition is SensorAcquisition.EXTERNAL:
             logger.info(
                 "External Sensor Agent owns T10A device %s; API registered %d head(s)",
                 device_id,
@@ -567,7 +612,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
             w_end = int(dev_cfg.get("wavelength_end_nm", 780))
             w_step = int(dev_cfg.get("wavelength_step_nm", 1))
 
-            if external_acquisition:
+            if _device_acquisition(dev_cfg) is SensorAcquisition.EXTERNAL:
                 register_sensor(
                     sensor_id=sensor_id,
                     kind="jeti_spectraval",
@@ -700,13 +745,13 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                         dev_cfg.get("max_read_bytes", 4 * 1024 * 1024)
                     ),
                     "source_timezone": dev_cfg.get("source_timezone"),
-                    "acquisition": SENSOR_ACQUISITION.value,
+                    "acquisition": _device_acquisition(dev_cfg).value,
                     "loop": loop,
                 },
             )
             configured_sensor_ids.add(sensor_id)
 
-            if external_acquisition:
+            if _device_acquisition(dev_cfg) is SensorAcquisition.EXTERNAL:
                 logger.info(
                     "External Sensor Agent owns JETI file source %s",
                     device_id,
@@ -827,12 +872,12 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     "stale_after_s": stale_after_s,
                     "timeout_s": timeout_s,
                     "float_byte_order": float_byte_order,
-                    "acquisition": SENSOR_ACQUISITION.value,
+                    "acquisition": _device_acquisition(dev_cfg).value,
                 },
             )
             configured_sensor_ids.add(sensor_id)
 
-            if external_acquisition:
+            if _device_acquisition(dev_cfg) is SensorAcquisition.EXTERNAL:
                 logger.info(
                     "External Sensor Agent owns EKO device %s at %s:%s",
                     device_id,

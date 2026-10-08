@@ -199,6 +199,7 @@ def test_ingest_status_reports_last_event_for_active_sensors() -> None:
             "observed_ts": None,
             "received_ts": None,
             "source": None,
+            "acquisition": None,
             "stale_after_s": 180.0,
         },
         {
@@ -207,6 +208,7 @@ def test_ingest_status_reports_last_event_for_active_sensors() -> None:
             "observed_ts": 1_720_000_001.0,
             "received_ts": status[1]["received_ts"],
             "source": "windows-host:COM5",
+            "acquisition": None,
             "stale_after_s": 180.0,
         },
     ]

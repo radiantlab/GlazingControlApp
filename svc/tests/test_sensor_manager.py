@@ -283,6 +283,90 @@ def test_external_acquisition_registers_sensors_without_opening_hardware(
     assert set(pruned) == {"T10A1-H1", "JETI-00", "EKO-00"}
 
 
+def test_embedded_mode_hands_external_devices_to_the_agent(monkeypatch) -> None:
+    registered = {}
+    monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
+    monkeypatch.setattr(manager, "SENSOR_INGEST_TOKEN", "test-token")
+    monkeypatch.setattr(manager, "SENSOR_ACQUISITION", SensorAcquisition.EMBEDDED)
+    config = _sensor_config()
+    config["t10a"][0]["acquisition"] = "external"
+    config["jeti_spectraval"] = []
+    monkeypatch.setattr(manager, "_load_config", lambda: config)
+    monkeypatch.setattr(
+        manager,
+        "register_sensor",
+        lambda **kwargs: registered.__setitem__(kwargs["sensor_id"], kwargs["config"]),
+    )
+    monkeypatch.setattr(manager, "prune_sensors_to_ids", lambda sensor_ids: None)
+    monkeypatch.setattr(
+        manager,
+        "resolve_serial_port",
+        lambda _config: (_ for _ in ()).throw(
+            AssertionError("API container attempted serial discovery")
+        ),
+    )
+    monkeypatch.setattr(
+        manager,
+        "T10AClient",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("API container opened T-10A")
+        ),
+    )
+    monkeypatch.setattr(
+        manager,
+        "EkoCBoxModbusTcpClient",
+        lambda **kwargs: FakeClient(kwargs["device_id"], "physical"),
+    )
+
+    clients = manager._make_clients_from_config()
+
+    assert [client.id for client, _interval in clients] == ["EKO-CBOX-01"]
+    assert registered["T10A1-H1"]["acquisition"] == "external"
+    assert registered["EKO-00"]["acquisition"] == "embedded"
+
+
+def test_invalid_device_acquisition_is_rejected(monkeypatch) -> None:
+    config = _sensor_config()
+    config["eko_ms90_plus"][0]["acquisition"] = "agent"
+    monkeypatch.setattr(manager, "_load_config", lambda: config)
+
+    with pytest.raises(manager.SensorConfigurationError, match="acquisition"):
+        manager.validate_sensor_configuration()
+
+
+def test_enabled_external_device_requires_ingest_token(monkeypatch) -> None:
+    monkeypatch.setattr(manager, "SENSOR_ACQUISITION", SensorAcquisition.EMBEDDED)
+    monkeypatch.setattr(manager, "SENSOR_INGEST_TOKEN", "")
+    config = _sensor_config()
+    config["t10a"][0]["acquisition"] = "external"
+    monkeypatch.setattr(manager, "_load_config", lambda: config)
+
+    with pytest.raises(manager.SensorConfigurationError, match="SVC_SENSOR_INGEST_TOKEN"):
+        manager.validate_sensor_configuration()
+
+    config["t10a"][0]["enabled"] = False
+    manager.validate_sensor_configuration()
+
+
+def test_embedded_health_checks_staleness_only_for_external_devices(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(manager, "SENSOR_ACQUISITION", SensorAcquisition.EMBEDDED)
+    monkeypatch.setattr(
+        manager,
+        "fetch_sensor_ingest_status",
+        lambda: [
+            {"sensor_id": "T10A1-H1", "received_ts": None, "acquisition": "external"},
+            {"sensor_id": "EKO-00", "received_ts": None, "acquisition": "embedded"},
+        ],
+    )
+
+    assert manager.get_sensor_health() == (
+        "degraded",
+        ["T10A1-H1: no observation received from the external Sensor Agent"],
+    )
+
+
 def test_production_aligns_active_sensors_without_deleting_history(monkeypatch) -> None:
     monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
     monkeypatch.setattr(manager, "_load_config", lambda: {"eko_ms90_plus": _sensor_config()["eko_ms90_plus"]})

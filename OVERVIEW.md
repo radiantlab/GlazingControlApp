@@ -13,7 +13,11 @@ routines.
 - `svc/app/state.py` stores audits, mutable panel state, groups, sensor data,
   and routines in the environment database.
 - `svc/app/sensors/manager.py` validates environment-specific sensor config and
-  constructs simulated or physical clients.
+  constructs simulated or physical clients. In production the container polls
+  the EKO C-BOX and the mounted LiVal capture itself; devices marked
+  `"acquisition": "external"` (COM-port T-10A and JETI serial) are read by the
+  native Windows Sensor Agent (`svc/scripts/sensor_agent.py`), which posts to
+  `POST /sensors/ingest`.
 - `svc/app/routines/manager.py` stores generated scripts beneath the selected
   runtime directory.
 - `svc/app/routes.py` exposes control, health, logs, sensors, metrics, and
@@ -37,7 +41,9 @@ existing `/app/svc/data/audit.db` path.
 - `docker-compose.development.yml` uses simulated defaults and a named data
   volume.
 - `docker-compose.yml` is production-only and requires explicit absolute data,
-  config, and backup host paths plus Halio credentials.
+  config, and backup host paths (`SVC_PRODUCTION_DATA_DIR`,
+  `SVC_PRODUCTION_CONFIG_DIR`, `SVC_DB_BACKUP_DIR`), the LiVal capture file
+  (`SVC_JETI_CAPTURE_PATH`), plus Halio credentials.
 - `scripts/production_preflight.py` verifies and backs up the existing
   production database before upgrade.
 

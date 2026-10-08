@@ -1,5 +1,130 @@
 {
-  "t10a": [],
+  "t10a": [
+    {
+      "enabled": false,
+      "device_id": "KM1",
+      "acquisition": "external",
+      "port": "auto",
+      "port_identity": {
+        "serial_number": "replace-with-usb-serial"
+      },
+      "interval_s": 60,
+      "timeout_s": 1.0,
+      "protocol": {
+        "head_index_base": 0,
+        "body_template": "{head:02d}{cmd}{params}",
+        "send_pc_mode": true,
+        "pc_mode_command": "54",
+        "pc_mode_params": "1 ",
+        "measure_command": "10",
+        "measure_params": "0200"
+      },
+      "heads": [
+        {
+          "head_no": 0,
+          "sensor_id": "T10A1-H1",
+          "label": "T-10A #1 Head 1"
+        },
+        {
+          "head_no": 1,
+          "sensor_id": "T10A1-H2",
+          "label": "T-10A #1 Head 2"
+        },
+        {
+          "head_no": 2,
+          "sensor_id": "T10A1-H3",
+          "label": "T-10A #1 Head 3"
+        },
+        {
+          "head_no": 3,
+          "sensor_id": "T10A1-H4",
+          "label": "T-10A #1 Head 4"
+        },
+        {
+          "head_no": 4,
+          "sensor_id": "T10A1-H5",
+          "label": "T-10A #1 Head 5"
+        },
+        {
+          "head_no": 5,
+          "sensor_id": "T10A1-H6",
+          "label": "T-10A #1 Head 6"
+        },
+        {
+          "head_no": 6,
+          "sensor_id": "T10A1-H7",
+          "label": "T-10A #1 Head 7"
+        },
+        {
+          "head_no": 7,
+          "sensor_id": "T10A1-H8",
+          "label": "T-10A #1 Head 8"
+        }
+      ]
+    },
+    {
+      "enabled": false,
+      "device_id": "KM2",
+      "acquisition": "external",
+      "port": "auto",
+      "port_identity": {
+        "serial_number": "replace-with-usb-serial"
+      },
+      "interval_s": 60,
+      "timeout_s": 1.0,
+      "protocol": {
+        "head_index_base": 0,
+        "body_template": "{head:02d}{cmd}{params}",
+        "send_pc_mode": true,
+        "pc_mode_command": "54",
+        "pc_mode_params": "1 ",
+        "measure_command": "10",
+        "measure_params": "0200"
+      },
+      "heads": [
+        {
+          "head_no": 0,
+          "sensor_id": "T10A2-H1",
+          "label": "T-10A #2 Head 1"
+        },
+        {
+          "head_no": 1,
+          "sensor_id": "T10A2-H2",
+          "label": "T-10A #2 Head 2"
+        },
+        {
+          "head_no": 2,
+          "sensor_id": "T10A2-H3",
+          "label": "T-10A #2 Head 3"
+        },
+        {
+          "head_no": 3,
+          "sensor_id": "T10A2-H4",
+          "label": "T-10A #2 Head 4"
+        },
+        {
+          "head_no": 4,
+          "sensor_id": "T10A2-H5",
+          "label": "T-10A #2 Head 5"
+        },
+        {
+          "head_no": 5,
+          "sensor_id": "T10A2-H6",
+          "label": "T-10A #2 Head 6"
+        },
+        {
+          "head_no": 6,
+          "sensor_id": "T10A2-H7",
+          "label": "T-10A #2 Head 7"
+        },
+        {
+          "head_no": 7,
+          "sensor_id": "T10A2-H8",
+          "label": "T-10A #2 Head 8"
+        }
+      ]
+    }
+  ],
   "jeti_spectraval": [
     {
       "enabled": true,

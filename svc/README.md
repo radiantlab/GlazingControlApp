@@ -33,6 +33,9 @@ Development reads `config/development` and writes only to
 | `SVC_MIN_DWELL_SECONDS` | `20` | `20` unless overridden |
 | `SVC_DB_BACKUP_INTERVAL_HOURS` | `0` | Compose default `24` |
 | `SVC_DB_BACKUP_DIR` | Disabled | Required by production Compose |
+| `SVC_SENSOR_INPUT_DIR` | `SVC_DATA_DIR` | Compose sets `/app/svc/sensor-input` |
+| `SVC_SENSOR_ACQUISITION` | `embedded` | Compose sets `embedded` |
+| `SVC_SENSOR_INGEST_TOKEN` | Empty (ingestion disabled) | Required when any device is `"acquisition": "external"` |
 | `HALIO_API_URL` | Unused | Required, Halio v3 base URL (`http://<controller>:8083/api/v3`) |
 | `HALIO_SITE_ID` | Unused | Required |
 | `HALIO_API_KEY` | Unused | Required |
@@ -63,9 +66,27 @@ Environment-specific `sensors_config.json` supports:
 - `jeti_spectraval`: `.cap` watcher or direct SPECFIRM serial; development file transport includes a simulator writer.
 - `eko_ms90_plus`: EKO C-BOX over Modbus TCP, simulated in development.
 
-Relative JETI output paths resolve beneath `SVC_DATA_DIR`; paths that escape the
-runtime directory are rejected. Production validates all configured physical
-ports, hosts, transports, and output paths before database initialization.
+A JETI file entry names its capture with `input_path`. Relative values resolve
+beneath `SVC_SENSOR_INPUT_DIR`; the legacy `output_path` key resolves beneath
+`SVC_DATA_DIR`. Paths that escape their root are rejected. Production validates
+all configured physical ports, hosts, transports, and input paths before
+database initialization.
+
+Each device entry accepts `"acquisition": "embedded"` (default) or
+`"external"`. Under `SVC_SENSOR_ACQUISITION=embedded` the service polls
+embedded devices itself and only registers external ones; the native Windows
+Sensor Agent (`scripts/sensor_agent.py`) reads those from the same
+`sensors_config.json` and posts them to `POST /sensors/ingest`. `/health`
+reports an external sensor as degraded when no agent observation has arrived
+or the latest is older than `stale_after_s` (default
+`max(3 x interval_s, 60)` seconds). `SVC_SENSOR_ACQUISITION=external` hands
+every device to the agent.
+
+`SVC_SENSOR_INGEST_TOKEN` is required at startup under
+`SVC_SENSOR_ACQUISITION=external`, and under `embedded` whenever an enabled
+device is marked external. Otherwise it can stay empty, and
+`POST /sensors/ingest` answers 404. The agent sends it in the
+`X-Sensor-Ingest-Token` header.
 
 Use `config/production.example/sensors_config.json` as the production template.
 See [production_sensor_setup.md](../docs/production_sensor_setup.md) for site
