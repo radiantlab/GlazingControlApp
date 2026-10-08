@@ -53,10 +53,23 @@ def test_parse_measurement_reply_t10a_fixed_field() -> None:
     assert client._parse_measurement_reply(head, reply) == 123.0
 
 
+def test_parse_measurement_reply_t10a_unsigned_zero_field() -> None:
+    client = _make_client_stub()
+    head = T10AHeadConfig(head_no=0, sensor_id="KMX-00", label="x")
+    reply = "\x02" + "00" + "10" + "0000" + "000004" + "      " + "      " + "\x03AA"
+    assert client._parse_measurement_reply(head, reply) == 0.0
+
+
 def test_parse_measurement_reply_decimal_fallback() -> None:
     client = _make_client_stub()
     head = T10AHeadConfig(head_no=0, sensor_id="KMX-00", label="x")
     assert client._parse_measurement_reply(head, "EV=67.9lx") == 67.9
+
+
+def test_parse_measurement_reply_plain_zero_with_unit() -> None:
+    client = _make_client_stub()
+    head = T10AHeadConfig(head_no=0, sensor_id="KMX-00", label="x")
+    assert client._parse_measurement_reply(head, "EV=0 lx") == 0.0
 
 
 def test_parse_measurement_reply_does_not_parse_header_integers() -> None:
@@ -71,3 +84,20 @@ def test_build_frame_contains_stx_etx_bcc() -> None:
     assert frame.startswith(b"\x02")
     assert b"\x03" in frame
     assert frame.endswith(b"\r\n")
+
+
+def test_poll_emits_zero_lux_reading(monkeypatch) -> None:
+    client = _make_client_stub()
+    head = T10AHeadConfig(head_no=0, sensor_id="KMX-00", label="x")
+    client.heads = [head]
+    client._measure_params = "0200"
+
+    reply = "\x02" + "00" + "10" + "0000" + "000004" + "      " + "      " + "\x03AA"
+    monkeypatch.setattr(client, "_send_command", lambda head_no, cmd, params: reply)
+
+    readings = list(client.poll())
+
+    assert len(readings) == 1
+    assert readings[0].sensor_id == "KMX-00"
+    assert readings[0].metric == "lux"
+    assert readings[0].value == 0.0
