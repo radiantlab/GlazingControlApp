@@ -36,18 +36,18 @@ class HalioAdapter:
                 "Install with: pip install requests"
             )
 
-        if not HALIO_API_KEY or not HALIO_SITE_ID:
+        if not HALIO_SITE_ID:
             raise ValueError(
-                "HALIO_API_KEY and HALIO_SITE_ID must be set in environment "
-                "for production operation"
+                "HALIO_SITE_ID must be set in environment for production operation"
             )
 
         self.base_url = HALIO_API_URL.rstrip("/")
         self.site_id = HALIO_SITE_ID
-        self.headers = {
-            "X-API-Key": HALIO_API_KEY,
-            "Content-Type": "application/json"
-        }
+        # The v3 API on the controller's admin port is unauthenticated and
+        # LAN-only; the key is sent only for controllers that still want one.
+        self.headers = {"Content-Type": "application/json"}
+        if HALIO_API_KEY:
+            self.headers["X-API-Key"] = HALIO_API_KEY
 
         self.window_cache: Dict[str, Dict[str, Any]] = {}
         self._ensured_single_window_groups = False

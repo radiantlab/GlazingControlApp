@@ -133,7 +133,16 @@ def create_app() -> FastAPI:
     if IS_DEVELOPMENT:
         bootstrap_default_if_empty()
 
-    app = FastAPI(title="ECG Control Service", version="0.1.0", lifespan=lifespan)
+    # The API reference lives under /api so the HMI's own /docs pages are not
+    # shadowed when this process also serves the built frontend.
+    app = FastAPI(
+        title="DIAL Control Center",
+        version="0.1.0",
+        lifespan=lifespan,
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+        openapi_url="/api/openapi.json",
+    )
 
     # Request logging middleware (add first so it wraps everything)
     app.add_middleware(LoggingMiddleware)
@@ -142,8 +151,6 @@ def create_app() -> FastAPI:
     allowed_origins = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
         "http://localhost",
         "http://127.0.0.1",
     ]

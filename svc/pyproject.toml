@@ -1,7 +1,7 @@
 [project]
 name = "glazing-control-service"
 version = "0.1.0"
-description = "Electrochromic glazing control service for Trailer Lab"
+description = "DIAL Control Center backend: electrochromic glazing control and sensor acquisition"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [

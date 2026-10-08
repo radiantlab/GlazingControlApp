@@ -25,7 +25,6 @@ jobs:
       SVC_JETI_CAPTURE_PATH: /tmp/glazing-ci/specbos-lival.capture
       HALIO_API_URL: http://halio.invalid:8083/api/v3
       HALIO_SITE_ID: ci-placeholder
-      HALIO_API_KEY: ci-placeholder
     steps:
       - name: Checkout
         uses: actions/checkout@v4

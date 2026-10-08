@@ -55,5 +55,6 @@ services:
       SVC_SENSOR_ACQUISITION: embedded
       HALIO_API_URL: ${HALIO_API_URL:?Set HALIO_API_URL}
       HALIO_SITE_ID: ${HALIO_SITE_ID:?Set HALIO_SITE_ID}
-      HALIO_API_KEY: ${HALIO_API_KEY:?Set HALIO_API_KEY}
+      # Optional: the v3 API on :8083 is unauthenticated.
+      HALIO_API_KEY: ${HALIO_API_KEY:-}
     restart: unless-stopped
