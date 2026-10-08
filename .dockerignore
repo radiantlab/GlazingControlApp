@@ -13,6 +13,10 @@ svc/.env.production
 svc/.runtime
 svc/__pycache__
 svc/.pytest_cache
+svc/.test-tmp*
+svc/.uv-cache
+svc/sensor-agent-data
+svc/db-backups
 svc/data/*.db
 svc/data/*.sqlite
 svc/data/*.sqlite3

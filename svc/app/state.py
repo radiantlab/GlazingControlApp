@@ -56,6 +56,12 @@ def reset_default_panel_timestamps(preserve_levels: bool = False) -> None:
                 )
 
 
+# The periodic backup (app/db_backup.py) holds a read lock while it copies the
+# whole database, which takes ~10 s for a production audit.db. Writers wait for
+# it instead of failing with "database is locked" after sqlite's 5 s default.
+SQLITE_BUSY_TIMEOUT_S = 60.0
+
+
 @contextmanager
 def _db_connection(row_factory: Optional[Callable[[sqlite3.Cursor, tuple], Any]] = None) -> Iterator[sqlite3.Connection]:
     """
@@ -70,7 +76,7 @@ def _db_connection(row_factory: Optional[Callable[[sqlite3.Cursor, tuple], Any]]
         row_factory: Optional row factory (e.g., sqlite3.Row) to set on connection
     """
     _ensure_dirs()
-    conn = sqlite3.connect(AUDIT_DB_FILE)
+    conn = sqlite3.connect(AUDIT_DB_FILE, timeout=SQLITE_BUSY_TIMEOUT_S)
     if row_factory:
         conn.row_factory = row_factory
     try:
@@ -942,7 +948,7 @@ def _migrate_json_state_to_db() -> None:
         return
     
     # Use manual transaction handling for this special case that needs explicit rollback
-    conn = sqlite3.connect(AUDIT_DB_FILE)
+    conn = sqlite3.connect(AUDIT_DB_FILE, timeout=SQLITE_BUSY_TIMEOUT_S)
     try:
         conn.execute("BEGIN IMMEDIATE")
         # Check if DB already has panel states
@@ -1003,7 +1009,7 @@ def _migrate_groups_json_to_db() -> None:
         return
     
     # Use manual transaction handling for this special case that needs explicit rollback
-    conn = sqlite3.connect(AUDIT_DB_FILE)
+    conn = sqlite3.connect(AUDIT_DB_FILE, timeout=SQLITE_BUSY_TIMEOUT_S)
     try:
         conn.execute("BEGIN IMMEDIATE")
         # Check if DB already has groups

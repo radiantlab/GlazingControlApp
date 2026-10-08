@@ -100,6 +100,12 @@ class TestDatabaseContextManager:
         # Connection should be closed after context exits
         # (We can't directly test this, but if it wasn't closed, we'd get errors)
     
+    def test_context_manager_waits_out_backup_lock(self, temp_db):
+        """Writers should outlast a full-database backup instead of failing."""
+        with _db_connection() as conn:
+            busy_timeout_ms = conn.execute("PRAGMA busy_timeout").fetchone()[0]
+        assert busy_timeout_ms >= 30_000
+    
     def test_context_manager_commits_on_success(self, temp_db):
         """Context manager should commit transactions on success."""
         _ensure_audit_db()
