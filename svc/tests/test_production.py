@@ -251,3 +251,16 @@ def test_create_group_uses_halio_post_shape(monkeypatch):
     ]
     assert group.id == "group-9"
     assert group.member_ids == ["window-1", "window-2"]
+
+
+def test_adapter_omits_api_key_header_when_unset(monkeypatch):
+    # The v3 API on :8083 is unauthenticated; an empty key must not be sent.
+    monkeypatch.setattr("app.adapter.HAS_REQUESTS", True)
+    monkeypatch.setattr("app.adapter.HALIO_API_KEY", "")
+    monkeypatch.setattr("app.adapter.HALIO_SITE_ID", "test-site")
+    monkeypatch.setattr("app.adapter.HALIO_API_URL", "http://halio/api/v3")
+
+    assert "X-API-Key" not in HalioAdapter().headers
+
+    monkeypatch.setattr("app.adapter.HALIO_API_KEY", "legacy-key")
+    assert HalioAdapter().headers["X-API-Key"] == "legacy-key"

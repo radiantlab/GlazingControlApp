@@ -36,3 +36,13 @@ def test_create_app_serves_built_frontend(monkeypatch, tmp_path):
         health_response = client.get("/health")
         assert health_response.status_code == 200
         assert health_response.json()["status"] == "ok"
+
+        # The HMI owns /docs; the API reference lives under /api.
+        docs_response = client.get("/docs")
+        assert docs_response.status_code == 200
+        assert "Glazing UI" in docs_response.text
+
+        swagger_response = client.get("/api/docs")
+        assert swagger_response.status_code == 200
+        assert "swagger" in swagger_response.text.lower()
+        assert client.get("/api/openapi.json").json()["info"]["title"] == "DIAL Control Center"

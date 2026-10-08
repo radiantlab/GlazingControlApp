@@ -135,7 +135,6 @@ class Settings:
                 for name, value in (
                     ("HALIO_API_URL", halio_api_url),
                     ("HALIO_SITE_ID", halio_site_id),
-                    ("HALIO_API_KEY", halio_api_key),
                 )
                 if not value
             ]

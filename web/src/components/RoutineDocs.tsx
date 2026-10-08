@@ -41,6 +41,9 @@ export default function RoutineDocs() {
                     <p style={{ lineHeight: "1.6", margin: 0 }}>
                         The Routine Builder allows you to write custom <strong>Python</strong> scripts that interact with the sensors, panels, and groups within the DIAL Control Center. These routines are executed asynchronously on the backend server, allowing them to run independently of the browser dashboard.
                     </p>
+                    <p style={{ lineHeight: "1.6", margin: "12px 0 0 0" }}>
+                        Each routine runs as a separate <code>python3</code> subprocess on the backend host. That interpreter must have the <code>requests</code> package installed (the container image includes it). The wrappers below call the API at <code>http://127.0.0.1:8000</code>, so the backend must listen on port 8000 on the same machine.
+                    </p>
                 </div>
 
                 {/* Execution Modes Card */}
@@ -90,7 +93,7 @@ export default function RoutineDocs() {
                         <h3 style={{ marginTop: 0, color: "var(--btn-blue)" }}>groups</h3>
                         <ul style={{ lineHeight: "1.6", margin: 0, paddingLeft: "20px" }}>
                             <li><code>groups.list()</code>: Returns a list of all configured groups.</li>
-                            <li><code>groups.set_level(group_id, level)</code>: Command a group (e.g., <code>"G-facade"</code>) to tint to a specific level (0-100).</li>
+                            <li><code>groups.set_level(group_id, level)</code>: Command a group (e.g., <code>"G-facade"</code>) to tint to a specific level (0-100). Development creates <code>G-facade</code> and <code>G-skylights</code> by default. In production, group IDs come from the Halio controller, so look them up with <code>groups.list()</code>.</li>
                         </ul>
                     </div>
                 </div>
@@ -128,7 +131,7 @@ export default function RoutineDocs() {
                     <h2 className="room-header">Example Scripts</h2>
 
                     <div style={{ marginBottom: "24px" }}>
-                        <h3 style={{ color: "var(--hmi-text-bright)", marginBottom: "8px" }}>1. If lux {'>'} 80, tint Right Group to 50%</h3>
+                        <h3 style={{ color: "var(--hmi-text-bright)", marginBottom: "8px" }}>1. If lux {'>'} 80, tint the facade group to 50%</h3>
                         <p style={{ lineHeight: "1.6", marginBottom: "12px", color: "var(--hmi-text-muted)" }}>A simple threshold check. Best run on an <strong>Interval</strong>.</p>
                         <div style={{ backgroundColor: "#1e1e1e", padding: "16px", borderRadius: "8px", fontFamily: "monospace", color: "#d4d4d4", overflowX: "auto" }}>
                             <pre style={{ margin: 0 }}>
@@ -136,8 +139,8 @@ export default function RoutineDocs() {
 log(f"Current lux: {lux}")
 
 if lux is not None and lux > 80:
-    groups.set_level("G-right", 50)
-    log("High lux — tinted Right Group to 50%")
+    groups.set_level("G-facade", 50)
+    log("High lux: tinted the facade group to 50%")
 else:
     log("Lux is fine, no action needed")`}
                             </pre>
@@ -214,6 +217,7 @@ for s in sensor_list:
                                 <li><code>cfi_rf</code>: Colour Fidelity Index [Rf]</li>
                                 <li><code>cie1931_x</code>: CIE 1931 xy chromaticity [x]</li>
                                 <li><code>cie1931_y</code>: CIE 1931 xy chromaticity [y]</li>
+                                <li><code>lux_calc</code>: Illuminance calculated from the spectrum (lx)</li>
                                 <li><code>s_cone_irradiance_mw_m2</code>: S-cone-opic irradiance (mW/m2)</li>
                                 <li><code>m_cone_irradiance_mw_m2</code>: M-cone-opic irradiance (mW/m2)</li>
                                 <li><code>l_cone_irradiance_mw_m2</code>: L-cone-opic irradiance (mW/m2)</li>

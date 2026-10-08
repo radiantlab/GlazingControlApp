@@ -139,6 +139,32 @@ configured selector and resolved COM port. Dry-run validates the selector but
 does not assert that the hardware is currently connected; actual capture
 performs resolution before opening anything.
 
+## EKO C-BOX log mirror
+
+`Get-ModbusLogs.ps1` downloads the EKO C-BOX's own log files from
+`/var/log/modbus` over FTP. It is independent of the service, which reads the
+C-BOX live over Modbus TCP.
+
+```powershell
+.\scripts\sensors\Get-ModbusLogs.ps1 -LocalPath D:\GlazingBackups\eko
+```
+
+- Source: `ftp://192.168.40.50/var/log/modbus/` by default. Override with
+  `-FtpHost` and `-RemotePath`.
+- Output: `-LocalPath`, default `.\modbus_logs` relative to the current
+  directory, created if missing. Subdirectories and symlinks on the C-BOX are
+  skipped.
+- Credentials: `-Username` and `-Password` both default to `admin`, the
+  C-BOX factory default, so a plain run needs no arguments. Pass them only if
+  the C-BOX login was changed.
+- Skip-unchanged: a file whose local copy has the same byte count as the remote
+  file is skipped. A file whose size differs is downloaded again and overwrites
+  the local copy.
+- Requires `curl.exe`, which ships with Windows 11.
+
+This script has no named mutex and does not use the exit codes below; a failed
+directory listing throws, and failed file downloads are reported as warnings.
+
 ## Task Scheduler
 
 In Task Scheduler:

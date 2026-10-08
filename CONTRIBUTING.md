@@ -19,9 +19,7 @@ Backend setup
 - uv sync  (creates venv and installs dependencies)
 - copy .env.example to .env  
 - run: uv run python main.py
-- open http://127.0.0.1:8000/docs and test GET health
-
-(Alternative: use pip/venv - see DEV-SETUP.md for legacy instructions)
+- open http://127.0.0.1:8000/api/docs and test GET health
 
 Frontend setup  
 - open a new terminal  
@@ -117,7 +115,6 @@ Prohibited
 ## Documentation Expectations
 Update docs when something changes  
 - update README for setup or usage changes  
-- update quick start guide for researchers  
 - add short docstrings for important functions  
 - note visible changes in the PR description  
 

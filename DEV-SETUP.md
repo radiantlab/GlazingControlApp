@@ -79,10 +79,10 @@ Production continues to open:
 The upgraded deployment requires the absolute existing host directory through
 `SVC_PRODUCTION_DATA_DIR`; it will not silently use a development directory.
 
-### 1. Rotate credentials
+### 1. Retire the old environment file
 
-Rotate any Halio API key stored in an older `svc/.env`. Do not reuse that file
-as the new production environment file.
+The Halio v3 API needs no API key; production needs only the Halio URL and site
+ID. Do not reuse an older `svc/.env` as the new production environment file.
 
 ### 2. Create external production configuration
 
@@ -124,9 +124,10 @@ Copy `svc/.env.production.example` to the ignored
   `sensors_config.json` is marked `"acquisition": "external"`. The Sensor Agent
   uses the same value. The API refuses to start without it while an enabled
   device is marked external.
-- The rotated Halio URL, site ID, and API key. `HALIO_API_URL` is the v3 API
-  served by the controller's admin console port, including the `/api/v3`
-  prefix, for example `http://192.168.2.200:8083/api/v3`. The legacy
+- `HALIO_API_URL` and `HALIO_SITE_ID`. `HALIO_API_URL` is the v3 API served
+  by the controller's admin console port, including the `/api/v3` prefix, for
+  example `http://192.168.2.200:8083/api/v3`. The v3 API is unauthenticated and
+  reachable only on the trailer LAN, so no API key is needed. The legacy
   `:8084/api` endpoint no longer accepts connections.
 
 Every Compose bind mount uses `create_host_path: false`. The data directory,

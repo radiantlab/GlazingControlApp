@@ -33,36 +33,47 @@ This app provides researchers and facility managers with a local-first system to
 
 For a clean machine setup, use [`DEV-SETUP.md`](./DEV-SETUP.md). The backend expects Python `>=3.11,<3.14`; the frontend uses Node.js/NPM. EKO site deployments now use the C-BOX Ethernet Modbus TCP interface (`host` plus TCP `port` 502) and no longer use USB-to-RS485 or a COM port for EKO.
 
-## Watch for errors
-Run the watcher from `root`, `svc`, or `web`:
-
 ## How to Try It
 
-To run the local control service and researcher UI on your machine:
-
 **Prerequisites:**
-- [Node.js](https://nodejs.org/) (v18+)
-- [Docker](https://www.docker.com/) or [Podman Desktop](https://podman-desktop.io/) (for running the full stack container environment)
+- [Node.js](https://nodejs.org/) 20 or newer (CI and the Dockerfile use 20; `react-router` requires `>=20`)
+- Python 3.11 to 3.13 (`svc/pyproject.toml` pins `>=3.11,<3.14`)
+- [uv](https://docs.astral.sh/uv/)
+- [Docker](https://www.docker.com/) or [Podman Desktop](https://podman-desktop.io/), only for the container path
 
 **Getting Started:**
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/OSU-Radiant-Lab/GlazingControlApp.git
+   git clone https://github.com/radiantlab/GlazingControlApp
    cd GlazingControlApp
    ```
 
-2. **Start the development servers:**
-   Run the watcher from the root directory to spin up both the frontend UI and the backend control service:
-   ```bash
-   npm run watch -- both
-   ```
-   *(To run separately, use `npm run watch -- frontend` or `npm run watch -- backend` on each).*
+2. **Run the app.** [`DEV-SETUP.md`](./DEV-SETUP.md) has the full procedure. In short:
+   - Development: copy `svc/.env.example` to `svc/.env`, start the backend with `cd svc && uv sync && uv run python main.py` (API on `http://127.0.0.1:8000`), then the frontend with `cd web && npm ci && npm run dev` (HMI on `http://localhost:5173`).
+   - Container: `podman compose -f docker-compose.development.yml up --build` serves the API and the built HMI together on `http://localhost:8000`.
 
-3. **Access the Application:**
-   Open your browser and navigate to `http://localhost:3000` (or the port specified in your console output) to view the researcher UI.
+3. **Watch for errors (optional):** `npm run watch` from the repository root runs `tsc --noEmit --watch` for the frontend and re-runs `uv run pytest -q` in `svc` whenever a backend Python or TOML file changes. It starts no servers. Pass `backend`, `frontend`, or `both` to pick a side (`npm run watch -- backend`); from inside `svc` or `web` it defaults to that side.
+
+The API reference (Swagger UI) is at `/api/docs` on a running backend, for example `http://127.0.0.1:8000/api/docs`.
 
 *Note: For production sensor deployment and site-specific facility notes, see the [production setup documentation](docs/production_sensor_setup.md).*
+
+## Documentation
+
+- [`OVERVIEW.md`](./OVERVIEW.md): architecture and file map.
+- [`DEV-SETUP.md`](./DEV-SETUP.md): local development, containers, and production deployment.
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md): workflow, tests, and review rules.
+- [`svc/README.md`](./svc/README.md): control service, environment variables, sensors, and operator notes.
+- [`web/README.md`](./web/README.md): researcher HMI.
+- [`docs/production_sensor_setup.md`](./docs/production_sensor_setup.md): production sensor setup.
+- [`docs/on_site_sensor_checklist.md`](./docs/on_site_sensor_checklist.md): on-site sensor checklist.
+- [`docs/glazing_configuration.md`](./docs/glazing_configuration.md): glazing configuration.
+- [`docs/architectureDiagram.md`](./docs/architectureDiagram.md): architecture diagram.
+- [`docs/simulator_implementation.md`](./docs/simulator_implementation.md): panel simulator.
+- [`docs/jeti_lival_integration.md`](./docs/jeti_lival_integration.md): JETI LiVal integration.
+- [`scripts/sensors/README.md`](./scripts/sensors/README.md): Windows Sensor Agent and sensor capture scripts.
+- API reference: `/api/docs` (Swagger UI) and `/api/openapi.json` on a running backend.
 
 ## The Team
 

@@ -109,6 +109,19 @@ def test_production_requires_explicit_paths_and_halio(monkeypatch, tmp_path) -> 
         Settings.from_env()
 
 
+def test_production_starts_without_halio_api_key(monkeypatch, tmp_path) -> None:
+    _clear_environment(monkeypatch)
+    monkeypatch.setenv("SVC_ENVIRONMENT", "production")
+    monkeypatch.setenv("SVC_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("SVC_CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.setenv("HALIO_API_URL", "http://halio.example:8083/api/v3")
+    monkeypatch.setenv("HALIO_SITE_ID", "site-id")
+
+    settings = Settings.from_env()
+
+    assert settings.halio_api_key == ""
+
+
 def test_config_and_data_directories_cannot_overlap(monkeypatch, tmp_path) -> None:
     _clear_environment(monkeypatch)
     monkeypatch.setenv("SVC_ENVIRONMENT", "development")
