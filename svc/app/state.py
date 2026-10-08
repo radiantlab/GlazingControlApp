@@ -5,7 +5,7 @@ import time
 import sqlite3
 from contextlib import contextmanager
 from typing import Dict, List, Tuple, Any, Iterator, Optional, Callable
-from .models import Panel, Group, Snapshot, AuditEntry
+from .models import Panel, Group, Snapshot, AuditEntry, SensorIngestEvent
 from .config import PANELS_FILE, PANELS_CONFIG_FILE, PANELS_STATE_FILE, AUDIT_DB_FILE
 
 
@@ -432,10 +432,18 @@ def _ensure_sensor_db() -> None:
                 kind TEXT NOT NULL,           -- e.g. 't10a', 'jeti', 'eko'
                 label TEXT NOT NULL,          -- human-readable name
                 location TEXT,                -- optional (e.g. 'Desk', 'Window center')
-                config_json TEXT NOT NULL     -- raw config for this sensor
+                config_json TEXT NOT NULL,    -- raw config for this sensor
+                active INTEGER NOT NULL DEFAULT 1
             )
             """
         )
+        sensor_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(sensors)").fetchall()
+        }
+        if "active" not in sensor_columns:
+            conn.execute(
+                "ALTER TABLE sensors ADD COLUMN active INTEGER NOT NULL DEFAULT 1"
+            )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS sensor_readings (
@@ -464,6 +472,18 @@ def _ensure_sensor_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS sensor_ingest_events (
+                event_id TEXT PRIMARY KEY,
+                sensor_id TEXT NOT NULL,
+                observed_ts REAL NOT NULL,
+                source TEXT,
+                received_ts REAL NOT NULL,
+                FOREIGN KEY(sensor_id) REFERENCES sensors(id)
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_sensor_readings_sensor_metric_ts
             ON sensor_readings (sensor_id, metric, ts)
             """
@@ -474,6 +494,154 @@ def _ensure_sensor_db() -> None:
             ON sensor_readings (ts)
             """
         )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_sensor_ingest_events_sensor_ts
+            ON sensor_ingest_events (sensor_id, observed_ts)
+            """
+        )
+
+
+class UnknownSensorError(ValueError):
+    """Raised when ingestion references sensors that are unknown or inactive."""
+
+    def __init__(self, sensor_ids: list[str]) -> None:
+        self.sensor_ids = sensor_ids
+        super().__init__("Unknown or inactive sensor(s): " + ", ".join(sensor_ids))
+
+
+def ingest_sensor_events(events: list[SensorIngestEvent]) -> tuple[int, int]:
+    """
+    Atomically persist a batch of host-collected physical observations.
+
+    Event IDs provide retry-safe idempotency. Duplicate events are skipped in
+    full, so their readings and spectra cannot be inserted twice.
+    """
+    _ensure_sensor_db()
+    if not events:
+        return 0, 0
+
+    sensor_ids = sorted({event.sensor_id for event in events})
+    placeholders = ",".join("?" for _ in sensor_ids)
+
+    accepted = 0
+    duplicates = 0
+    with _db_connection() as conn:
+        # Serialize the idempotency check and all writes for this batch.
+        conn.execute("BEGIN IMMEDIATE")
+        known_sensor_ids = {
+            row[0]
+            for row in conn.execute(
+                f"SELECT id FROM sensors WHERE active = 1 AND id IN ({placeholders})",
+                tuple(sensor_ids),
+            ).fetchall()
+        }
+        unknown_sensor_ids = sorted(set(sensor_ids) - known_sensor_ids)
+        if unknown_sensor_ids:
+            raise UnknownSensorError(unknown_sensor_ids)
+
+        received_ts = time.time()
+        for event in events:
+            cursor = conn.execute(
+                """
+                INSERT INTO sensor_ingest_events (
+                    event_id, sensor_id, observed_ts, source, received_ts
+                ) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(event_id) DO NOTHING
+                """,
+                (
+                    event.event_id,
+                    event.sensor_id,
+                    float(event.observed_ts),
+                    event.source,
+                    received_ts,
+                ),
+            )
+            if cursor.rowcount == 0:
+                duplicates += 1
+                continue
+
+            accepted += 1
+            conn.executemany(
+                """
+                INSERT INTO sensor_readings (sensor_id, ts, metric, value)
+                VALUES (?, ?, ?, ?)
+                """,
+                [
+                    (
+                        event.sensor_id,
+                        float(event.observed_ts),
+                        metric,
+                        float(value),
+                    )
+                    for metric, value in event.metrics.items()
+                ],
+            )
+            if event.spectrum is not None:
+                spectrum = [float(value) for value in event.spectrum]
+                wavelength_end = (
+                    event.spectrum_wavelength_start
+                    + (len(spectrum) - 1) * event.spectrum_wavelength_step
+                )
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO sensor_spectra (
+                        sensor_id, ts, wavelength_start, wavelength_end,
+                        wavelength_step, values_json
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        event.sensor_id,
+                        float(event.observed_ts),
+                        event.spectrum_wavelength_start,
+                        wavelength_end,
+                        event.spectrum_wavelength_step,
+                        json.dumps(spectrum),
+                    ),
+                )
+
+    return accepted, duplicates
+
+
+def fetch_sensor_ingest_status() -> list[dict]:
+    """Return the most recently accepted host event for every active sensor."""
+    _ensure_sensor_db()
+    with _db_connection(row_factory=sqlite3.Row) as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                s.id AS sensor_id,
+                e.event_id,
+                e.observed_ts,
+                e.received_ts,
+                e.source,
+                s.config_json
+            FROM sensors s
+            LEFT JOIN sensor_ingest_events e
+              ON e.rowid = (
+                  SELECT candidate.rowid
+                  FROM sensor_ingest_events candidate
+                  WHERE candidate.sensor_id = s.id
+                  ORDER BY candidate.received_ts DESC, candidate.rowid DESC
+                  LIMIT 1
+              )
+            WHERE s.active = 1
+            ORDER BY s.id
+            """
+        ).fetchall()
+        result: list[dict] = []
+        for row in rows:
+            item = dict(row)
+            try:
+                sensor_config = json.loads(item.pop("config_json") or "{}")
+            except (TypeError, json.JSONDecodeError):
+                sensor_config = {}
+            interval_s = float(sensor_config.get("interval_s", 60.0))
+            item["stale_after_s"] = float(
+                sensor_config.get("stale_after_s", max(interval_s * 3.0, 60.0))
+            )
+            result.append(item)
+        return result
 
 
 def register_sensor(
@@ -497,7 +665,8 @@ def register_sensor(
                 kind=excluded.kind,
                 label=excluded.label,
                 location=excluded.location,
-                config_json=excluded.config_json
+                config_json=excluded.config_json,
+                active=1
             """,
             (sensor_id, kind, label, location, cfg_json),
         )
@@ -595,6 +764,7 @@ def fetch_latest_readings() -> list[dict]:
             """
             SELECT r.sensor_id, r.metric, r.value, r.ts
             FROM sensor_readings r
+            JOIN sensors s ON s.id = r.sensor_id AND s.active = 1
             JOIN (
                 SELECT sensor_id, metric, MAX(ts) AS max_ts
                 FROM sensor_readings
@@ -727,7 +897,8 @@ def list_sensors() -> list[dict]:
     _ensure_sensor_db()
     with _db_connection(row_factory=sqlite3.Row) as conn:
         rows = conn.execute(
-            "SELECT id, kind, label, location, config_json FROM sensors"
+            "SELECT id, kind, label, location, config_json "
+            "FROM sensors WHERE active = 1"
         ).fetchall()
         result: list[dict] = []
         for r in rows:
@@ -742,31 +913,21 @@ def list_sensors() -> list[dict]:
 
 def prune_sensors_to_ids(sensor_ids: list[str]) -> None:
     """
-    Remove sensors and readings not present in `sensor_ids`.
+    Mark sensors not present in `sensor_ids` inactive without deleting history.
 
-    This keeps the UI/logs aligned with the active `sensors_config.json`
-    and removes stale entries (for example old test sensors).
+    This keeps current sensor lists aligned with `sensors_config.json` while
+    preserving all readings and spectra for audit, export, and recovery.
     """
     _ensure_sensor_db()
     unique_ids = sorted(set(sensor_ids))
     with _db_connection() as conn:
         if not unique_ids:
-            conn.execute("DELETE FROM sensor_spectra")
-            conn.execute("DELETE FROM sensor_readings")
-            conn.execute("DELETE FROM sensors")
+            conn.execute("UPDATE sensors SET active = 0")
             return
 
         placeholders = ",".join(["?"] * len(unique_ids))
         conn.execute(
-            f"DELETE FROM sensor_spectra WHERE sensor_id NOT IN ({placeholders})",
-            tuple(unique_ids),
-        )
-        conn.execute(
-            f"DELETE FROM sensor_readings WHERE sensor_id NOT IN ({placeholders})",
-            tuple(unique_ids),
-        )
-        conn.execute(
-            f"DELETE FROM sensors WHERE id NOT IN ({placeholders})",
+            f"UPDATE sensors SET active = 0 WHERE id NOT IN ({placeholders})",
             tuple(unique_ids),
         )
 

@@ -13,7 +13,6 @@ import { Link } from "react-router-dom";
 import LiveGraph from "./components/LiveGraph";
 import { type SensorInfo, type SensorReadingResponse } from "./api";
 import {
-    connectedSensors as getConnectedSensors,
     getFreshMetricsForSensor,
     pruneVisibleSensorIds,
     sortSensorsForDisplay,
@@ -254,11 +253,11 @@ export default function AppHMI() {
 
     const [spectralModal, setSpectralModal] = useState<{ sensorId: string; fixedTs?: number } | null>(null);
 
-    const connectedSensorList = sortSensorsForDisplay(getConnectedSensors(sensors, latestMetrics));
-    const sensorListForControls = connectedSensorList.length > 0 ? connectedSensorList : sortSensorsForDisplay(sensors);
+    // A configured sensor remains visible when it is stale so operators can
+    // distinguish "not reporting" from "not configured".
+    const sensorListForControls = sortSensorsForDisplay(sensors);
     const sensorIdsForControls = sensorListForControls.map(sensor => sensor.id);
     const sensorControlKey = sensorIdsForControls.join("|");
-    const showingConfiguredSensorsFallback = sensors.length > 0 && connectedSensorList.length === 0;
     const selectedGroup = groups.find(g => g.id === groupId);
     const highlightedPanelIds = new Set(selectedGroup?.member_ids || []);
 
@@ -828,7 +827,6 @@ export default function AppHMI() {
                             <h2 className="room-title">Visible sensors</h2>
                             <div className="room-stats">
                                 <span>{visibleSensors.length} of {sensorListForControls.length} shown</span>
-                                {showingConfiguredSensorsFallback && <span style={{ marginLeft: 8 }}>configured</span>}
                             </div>
                         </div>
                         <div className="sensor-visibility-body">

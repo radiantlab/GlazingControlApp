@@ -17,6 +17,7 @@ dependencies = [
     "scipy==1.17.0",
     "colour-science==0.4.7",
     "pymodbus==3.13.0",
+    "tzdata>=2025.2",
 ]
 
 [project.optional-dependencies]

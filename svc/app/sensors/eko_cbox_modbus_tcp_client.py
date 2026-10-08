@@ -47,6 +47,7 @@ class EkoCBoxModbusTcpClient(SensorClient):
         self._slave = int(slave_address)
         self._timeout_s = float(timeout_s)
         self._float_byte_order = float_byte_order.upper()
+        self.last_error: str | None = None
 
         if not self._host:
             raise ValueError(f"EKO[{self.id}] missing Modbus TCP host/IP")
@@ -190,6 +191,7 @@ class EkoCBoxModbusTcpClient(SensorClient):
             geo_block = self._read_holding_registers(start_addr=34, count=10)
         except Exception as e:
             logger.error("EKO[%s] Modbus TCP read failed: %s", self.id, e)
+            self.last_error = str(e)
             return []
 
         reg_map: dict[int, int] = {}
@@ -231,6 +233,7 @@ class EkoCBoxModbusTcpClient(SensorClient):
             metrics["gps_satellites"] = float(r(18))
         except Exception as e:
             logger.error("EKO[%s] register decoding failed: %s", self.id, e)
+            self.last_error = str(e)
             return []
 
         out: list[SensorReading] = []
@@ -243,6 +246,7 @@ class EkoCBoxModbusTcpClient(SensorClient):
                     ts=now,
                 )
             )
+        self.last_error = None
         return out
 
     def close(self) -> None:

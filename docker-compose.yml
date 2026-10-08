@@ -2,6 +2,10 @@
 #
 # SVC_PRODUCTION_DATA_DIR must be the absolute host directory that currently
 # contains audit.db. This intentionally preserves /app/svc/data/audit.db.
+#
+# LiVal writes its capture on Windows. Compose mounts that one file read-only
+# at a stable container path; the app stores its cursor and observations in the
+# persistent production data directory.
 services:
   app:
     build:
@@ -28,6 +32,12 @@ services:
         target: /app/db-backups
         bind:
           create_host_path: false
+      - type: bind
+        source: ${SVC_JETI_CAPTURE_PATH:?Set SVC_JETI_CAPTURE_PATH to the active LiVal capture file}
+        target: /app/svc/sensor-input/specbos-lival.capture
+        read_only: true
+        bind:
+          create_host_path: false
     environment:
       SVC_ENVIRONMENT: production
       SVC_HOST: 0.0.0.0
@@ -35,8 +45,13 @@ services:
       UVICORN_RELOAD: "false"
       SVC_DATA_DIR: /app/svc/data
       SVC_CONFIG_DIR: /app/svc/config
+      SVC_SENSOR_INPUT_DIR: /app/svc/sensor-input
       SVC_DB_BACKUP_INTERVAL_HOURS: ${SVC_DB_BACKUP_INTERVAL_HOURS:-24}
       SVC_DB_BACKUP_DIR: /app/db-backups
+      # Optional compatibility endpoint for other collectors. EKO and LiVal
+      # acquisition are owned by this container.
+      SVC_SENSOR_INGEST_TOKEN: ${SVC_SENSOR_INGEST_TOKEN:-}
+      SVC_SENSOR_ACQUISITION: embedded
       HALIO_API_URL: ${HALIO_API_URL:?Set HALIO_API_URL}
       HALIO_SITE_ID: ${HALIO_SITE_ID:?Set HALIO_SITE_ID}
       HALIO_API_KEY: ${HALIO_API_KEY:?Set HALIO_API_KEY}

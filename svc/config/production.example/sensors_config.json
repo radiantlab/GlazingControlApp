@@ -1,31 +1,27 @@
 {
-  "t10a": [
-    {
-      "device_id": "KM1",
-      "port": "COM5",
-      "interval_s": 60,
-      "heads": [
-        {
-          "head_no": 0,
-          "sensor_id": "T10A1-H1",
-          "label": "T-10A #1 Head 1"
-        }
-      ]
-    }
-  ],
+  "t10a": [],
   "jeti_spectraval": [
     {
-      "sensor_id": "SPECTRAVAL-1",
-      "device_id": "JETI-SV-1",
+      "enabled": true,
+      "sensor_id": "SPECBOS-1",
+      "device_id": "JETI-SB-1",
       "transport": "file",
-      "output_path": "sensors/spectraval_1.cap",
-      "watch_interval_s": 1,
-      "interval_s": 5,
-      "label": "Spectraval #1"
+      "input_path": "specbos-lival.capture",
+      "input_kind": "file",
+      "initial_position": "beginning",
+      "max_records_per_poll": 100,
+      "max_read_bytes": 4194304,
+      "watch_interval_s": 0.5,
+      "interval_s": 60,
+      "stale_after_s": 180,
+      "source_timezone": "America/Los_Angeles",
+      "label": "Specbos 1211",
+      "location": "Reference"
     }
   ],
   "eko_ms90_plus": [
     {
+      "enabled": true,
       "sensor_id": "EKO-00",
       "device_id": "EKO-CBOX-01",
       "host": "192.0.2.10",
@@ -34,6 +30,7 @@
       "timeout_s": 3.0,
       "float_byte_order": "CDAB",
       "interval_s": 5,
+      "stale_after_s": 30,
       "label": "EKO MS-90+"
     }
   ]

@@ -1,18 +1,23 @@
 from __future__ import annotations
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, Header, status, Query
 from fastapi.responses import Response
 from .models import (
     Panel, Group, CommandRequest, CommandResult, GroupCreate, GroupUpdate, 
     AuditEntry, HealthResponse, DeleteGroupResponse, ErrorResponse, SensorInfo,
     SensorReadingResponse, SensorLogEntry, RoutineRequest, RoutineStatusResponse, SavedRoutine,
-    SensorSpectrumResponse
+    SensorSpectrumResponse, SensorIngestBatch, SensorIngestResult
 )
 from typing import List, Optional
 import csv
 import io
 from datetime import datetime, timezone
 from .service import ControlService
-from .config import ENVIRONMENT, Environment
+from .config import (
+    ENVIRONMENT,
+    SENSOR_ACQUISITION,
+    Environment,
+    SENSOR_INGEST_TOKEN,
+)
 from .sensors.manager import get_sensor_health, get_sensor_source
 from .state import (
     fetch_audit_entries,
@@ -26,10 +31,13 @@ from .state import (
     save_saved_routine,
     delete_saved_routine,
     fetch_latest_spectrum,
-    fetch_historical_spectrum
+    fetch_historical_spectrum,
+    ingest_sensor_events,
+    UnknownSensorError,
 )
 from .routines.manager import start_routine, stop_routine, remove_routine, active_routines
 import uuid
+import secrets
 
 
 router = APIRouter()
@@ -62,6 +70,7 @@ def health() -> HealthResponse:
             else "simulated"
         ),
         sensor_source=get_sensor_source(),
+        sensor_acquisition=SENSOR_ACQUISITION.value,
         sensor_status=sensor_status,
         sensor_errors=sensor_errors,
     )
@@ -454,6 +463,42 @@ def list_sensors() -> List[SensorInfo]:
         )
         for r in rows
     ]
+
+
+@router.post(
+    "/sensors/ingest",
+    response_model=SensorIngestResult,
+    summary="Ingest host-collected physical sensor observations",
+    responses={
+        401: {"model": ErrorResponse, "description": "Invalid ingestion token"},
+        404: {"model": ErrorResponse, "description": "Ingestion endpoint disabled"},
+        422: {
+            "model": ErrorResponse,
+            "description": "Invalid event or unknown/inactive sensor",
+        },
+    },
+    tags=["Sensors"],
+)
+def ingest_sensors(
+    body: SensorIngestBatch,
+    ingest_token: Optional[str] = Header(
+        default=None,
+        alias="X-Sensor-Ingest-Token",
+    ),
+) -> SensorIngestResult:
+    if not SENSOR_INGEST_TOKEN:
+        raise HTTPException(status_code=404, detail="Sensor ingestion is disabled")
+    if not secrets.compare_digest(ingest_token or "", SENSOR_INGEST_TOKEN):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid sensor ingestion token",
+        )
+
+    try:
+        accepted, duplicates = ingest_sensor_events(body.events)
+    except UnknownSensorError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return SensorIngestResult(accepted=accepted, duplicates=duplicates)
 
 
 @router.get(

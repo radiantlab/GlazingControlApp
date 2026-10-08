@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
@@ -14,6 +14,11 @@ class ConfigurationError(RuntimeError):
 class Environment(str, Enum):
     DEVELOPMENT = "development"
     PRODUCTION = "production"
+
+
+class SensorAcquisition(str, Enum):
+    EMBEDDED = "embedded"
+    EXTERNAL = "external"
 
 
 def _resolve_path(raw_value: str, *, base: Path) -> Path:
@@ -33,6 +38,7 @@ class Settings:
     svc_dir: Path
     data_dir: Path
     config_dir: Path
+    sensor_input_dir: Path
     database_file: Path
     panels_file: Path
     panels_config_file: Path
@@ -43,6 +49,8 @@ class Settings:
     halio_api_url: str
     halio_site_id: str
     halio_api_key: str
+    sensor_ingest_token: str = field(repr=False)
+    sensor_acquisition: SensorAcquisition
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -94,6 +102,13 @@ class Settings:
                 f"(got {data_dir} and {config_dir})"
             )
 
+        raw_sensor_input_dir = os.getenv("SVC_SENSOR_INPUT_DIR", "").strip()
+        sensor_input_dir = (
+            _resolve_path(raw_sensor_input_dir, base=svc_dir)
+            if raw_sensor_input_dir
+            else data_dir
+        )
+
         try:
             min_dwell_seconds = int(os.getenv("SVC_MIN_DWELL_SECONDS", "20"))
         except ValueError as exc:
@@ -104,6 +119,16 @@ class Settings:
         halio_api_url = os.getenv("HALIO_API_URL", "").strip()
         halio_site_id = os.getenv("HALIO_SITE_ID", "").strip()
         halio_api_key = os.getenv("HALIO_API_KEY", "").strip()
+        sensor_ingest_token = os.getenv("SVC_SENSOR_INGEST_TOKEN", "").strip()
+        raw_sensor_acquisition = os.getenv(
+            "SVC_SENSOR_ACQUISITION", SensorAcquisition.EMBEDDED.value
+        ).strip().lower()
+        try:
+            sensor_acquisition = SensorAcquisition(raw_sensor_acquisition)
+        except ValueError as exc:
+            raise ConfigurationError(
+                "SVC_SENSOR_ACQUISITION must be embedded or external"
+            ) from exc
         if environment is Environment.PRODUCTION:
             missing = [
                 name
@@ -118,12 +143,21 @@ class Settings:
                 raise ConfigurationError(
                     "Missing required production setting(s): " + ", ".join(missing)
                 )
+            if (
+                sensor_acquisition is SensorAcquisition.EXTERNAL
+                and not sensor_ingest_token
+            ):
+                raise ConfigurationError(
+                    "SVC_SENSOR_INGEST_TOKEN is required when "
+                    "SVC_SENSOR_ACQUISITION=external"
+                )
 
         return cls(
             environment=environment,
             svc_dir=svc_dir,
             data_dir=data_dir,
             config_dir=config_dir,
+            sensor_input_dir=sensor_input_dir,
             database_file=data_dir / "audit.db",
             panels_file=data_dir / "panels.json",
             panels_config_file=config_dir / "panels_config.json",
@@ -134,6 +168,8 @@ class Settings:
             halio_api_url=halio_api_url,
             halio_site_id=halio_site_id,
             halio_api_key=halio_api_key,
+            sensor_ingest_token=sensor_ingest_token,
+            sensor_acquisition=sensor_acquisition,
         )
 
 
@@ -147,6 +183,7 @@ IS_PRODUCTION = ENVIRONMENT is Environment.PRODUCTION
 MIN_DWELL_SECONDS = SETTINGS.min_dwell_seconds
 DATA_DIR = str(SETTINGS.data_dir)
 CONFIG_DIR = str(SETTINGS.config_dir)
+SENSOR_INPUT_DIR = str(SETTINGS.sensor_input_dir)
 PANELS_FILE = str(SETTINGS.panels_file)
 PANELS_CONFIG_FILE = str(SETTINGS.panels_config_file)
 PANELS_STATE_FILE = str(SETTINGS.panels_state_file)
@@ -156,6 +193,8 @@ ROUTINES_DIR = str(SETTINGS.routines_dir)
 HALIO_API_URL = SETTINGS.halio_api_url
 HALIO_SITE_ID = SETTINGS.halio_site_id
 HALIO_API_KEY = SETTINGS.halio_api_key
+SENSOR_INGEST_TOKEN = SETTINGS.sensor_ingest_token
+SENSOR_ACQUISITION = SETTINGS.sensor_acquisition
 
 
 def validate_runtime_configuration() -> None:

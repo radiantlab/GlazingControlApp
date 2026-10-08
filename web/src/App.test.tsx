@@ -30,6 +30,7 @@ describe("App", () => {
             environment: "development",
             control_source: "simulated",
             sensor_source: "simulated",
+            sensor_acquisition: "embedded",
             sensor_status: "healthy",
             sensor_errors: [],
         });

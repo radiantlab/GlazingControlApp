@@ -28,6 +28,7 @@ export const api = {
         environment: "development" | "production";
         control_source: "simulated" | "physical";
         sensor_source: "simulated" | "physical" | "mixed";
+        sensor_acquisition: "embedded" | "external";
         sensor_status: "healthy" | "degraded";
         sensor_errors: string[];
     }>("/health"),

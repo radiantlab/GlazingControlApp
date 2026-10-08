@@ -13,13 +13,15 @@ from app.config import (
     CONFIG_DIR,
     DATA_DIR,
     ENVIRONMENT,
+    SENSOR_INPUT_DIR,
+    SENSOR_ACQUISITION,
     SENSORS_CONFIG_FILE,
     Environment,
+    SensorAcquisition,
 )
 from app.state import (
-    delete_sensor_readings_for_ids,
-    insert_sensor_reading,
-    insert_sensor_spectrum,
+    fetch_sensor_ingest_status,
+    ingest_sensor_events,
     prune_sensors_to_ids,
     register_sensor,
 )
@@ -27,9 +29,16 @@ from app.state import (
 from .eko_cbox_modbus_tcp_client import EkoCBoxModbusTcpClient
 from .eko_ms90_plus_sim_client import EkoMs90PlusSimClient
 from .interface import SensorClient, SensorReading
+from .ingestion import readings_to_ingest_events
 from .jeti_specfirm_client import JetiSpecfirmClient
 from .jeti_spectraval_sim import JetiSpectravalSimClient
 from .jeti_spectraval_watcher import JetiSpectravalFileWatcher
+from .serial_discovery import (
+    InvalidSerialPortSelector,
+    SerialDiscoveryError,
+    SerialPortSelector,
+    resolve_serial_port,
+)
 from .t10a_client import T10AClient, T10AHeadConfig
 from .t10a_sim_client import T10ASimClient
 
@@ -93,6 +102,25 @@ def get_sensor_health() -> tuple[str, list[str]]:
             f"{sensor_id}: {message}"
             for sensor_id, message in sorted(_sensor_errors.items())
         ]
+
+    if SENSOR_ACQUISITION is SensorAcquisition.EXTERNAL:
+        now = time.time()
+        for item in fetch_sensor_ingest_status():
+            sensor_id = item["sensor_id"]
+            received_ts = item.get("received_ts")
+            if received_ts is None:
+                errors.append(
+                    f"{sensor_id}: no observation received from the external Sensor Agent"
+                )
+                continue
+            # The status helper supplies the configured threshold when present.
+            stale_after_s = float(item.get("stale_after_s") or 180.0)
+            age_s = max(0.0, now - float(received_ts))
+            if age_s >= stale_after_s:
+                errors.append(
+                    f"{sensor_id}: external observation is {age_s:.0f}s old "
+                    f"(stale threshold {stale_after_s:.0f}s)"
+                )
     return ("degraded" if errors else "healthy", errors)
 
 
@@ -135,17 +163,28 @@ def _require_list(config: dict, key: str) -> list[dict]:
     return value
 
 
-def _path_is_within_data_dir(raw_path: str) -> bool:
+def _is_enabled(item: dict) -> bool:
+    enabled = item.get("enabled", True)
+    if not isinstance(enabled, bool):
+        raise SensorConfigurationError("Sensor enabled must be true or false")
+    return enabled
+
+
+def _path_is_within(raw_path: str, root: str) -> bool:
     path = Path(raw_path)
     if not path.is_absolute():
-        if path.parts and path.parts[0].lower() == "data":
+        if path.parts and path.parts[0].lower() in {"data", "sensor-input"}:
             path = Path(*path.parts[1:])
-        path = Path(DATA_DIR) / path
+        path = Path(root) / path
     try:
-        path.resolve(strict=False).relative_to(Path(DATA_DIR).resolve(strict=False))
+        path.resolve(strict=False).relative_to(Path(root).resolve(strict=False))
         return True
     except ValueError:
         return False
+
+
+def _path_is_within_data_dir(raw_path: str) -> bool:
+    return _path_is_within(raw_path, DATA_DIR)
 
 
 def _resolve_data_path(raw_path: str) -> str:
@@ -156,6 +195,15 @@ def _resolve_data_path(raw_path: str) -> str:
         if path.parts and path.parts[0].lower() == "data":
             path = Path(*path.parts[1:])
         path = Path(DATA_DIR) / path
+    return str(path.resolve(strict=False))
+
+
+def _resolve_sensor_input_path(raw_path: str) -> str:
+    path = Path(raw_path)
+    if not path.is_absolute():
+        if path.parts and path.parts[0].lower() == "sensor-input":
+            path = Path(*path.parts[1:])
+        path = Path(SENSOR_INPUT_DIR) / path
     return str(path.resolve(strict=False))
 
 
@@ -174,6 +222,8 @@ def validate_sensor_configuration() -> dict:
     eko_configs = _require_list(config, "eko_ms90_plus")
 
     for item in t10a_configs:
+        if not _is_enabled(item):
+            continue
         if not item.get("device_id"):
             raise SensorConfigurationError("Every T-10A entry requires device_id")
         heads = item.get("heads")
@@ -210,8 +260,18 @@ def validate_sensor_configuration() -> dict:
             raise SensorConfigurationError(
                 f"Production T-10A {item.get('device_id')} requires a physical port"
             )
+        if ENVIRONMENT is Environment.PRODUCTION:
+            try:
+                SerialPortSelector.from_config(item)
+            except InvalidSerialPortSelector as exc:
+                raise SensorConfigurationError(
+                    f"Production T-10A {item.get('device_id')} has an invalid "
+                    f"serial-port selector: {exc}"
+                ) from exc
 
     for item in jeti_configs:
+        if not _is_enabled(item):
+            continue
         sensor_id = item.get("sensor_id", "JETI-00")
         transport = str(item.get("transport", "file")).lower()
         try:
@@ -226,6 +286,14 @@ def validate_sensor_configuration() -> dict:
                 raise SensorConfigurationError(
                     f"JETI {sensor_id} serial transport requires a physical port"
                 )
+            if ENVIRONMENT is Environment.PRODUCTION:
+                try:
+                    SerialPortSelector.from_config(item)
+                except InvalidSerialPortSelector as exc:
+                    raise SensorConfigurationError(
+                        f"Production JETI {sensor_id} has an invalid serial-port "
+                        f"selector: {exc}"
+                    ) from exc
             try:
                 _default_jeti_baudrate(item)
                 float(item.get("timeout_s", 1.0))
@@ -236,18 +304,46 @@ def validate_sensor_configuration() -> dict:
                     f"JETI {sensor_id} has invalid serial settings"
                 ) from exc
         elif transport == "file":
-            output_path = str(item.get("output_path") or "")
-            if not output_path:
+            input_path = str(
+                item.get("input_path") or item.get("output_path") or ""
+            )
+            if not input_path:
                 raise SensorConfigurationError(
-                    f"JETI {sensor_id} file transport requires output_path"
+                    f"JETI {sensor_id} file transport requires input_path"
                 )
-            if not _path_is_within_data_dir(output_path):
+            uses_legacy_output_path = not item.get("input_path")
+            allowed_root = DATA_DIR if uses_legacy_output_path else SENSOR_INPUT_DIR
+            if not _path_is_within(input_path, allowed_root):
                 raise SensorConfigurationError(
-                    f"JETI {sensor_id} output_path must be inside SVC_DATA_DIR"
+                    f"JETI {sensor_id} input path must be inside "
+                    + (
+                        "SVC_DATA_DIR"
+                        if uses_legacy_output_path
+                        else "SVC_SENSOR_INPUT_DIR"
+                    )
                 )
             if ENVIRONMENT is Environment.DEVELOPMENT and not item.get("template_path"):
                 raise SensorConfigurationError(
                     f"Development JETI {sensor_id} requires template_path"
+                )
+            try:
+                max_records = int(item.get("max_records_per_poll", 250))
+                max_read_bytes = int(item.get("max_read_bytes", 4 * 1024 * 1024))
+                if max_records <= 0 or max_read_bytes <= 0:
+                    raise ValueError
+            except (TypeError, ValueError) as exc:
+                raise SensorConfigurationError(
+                    f"JETI {sensor_id} backfill limits must be positive integers"
+                ) from exc
+            initial_position = str(item.get("initial_position", "end")).lower()
+            if initial_position not in {"beginning", "end"}:
+                raise SensorConfigurationError(
+                    f"JETI {sensor_id} initial_position must be beginning or end"
+                )
+            input_kind = str(item.get("input_kind", "auto")).lower()
+            if input_kind not in {"auto", "file", "directory"}:
+                raise SensorConfigurationError(
+                    f"JETI {sensor_id} input_kind must be auto, file, or directory"
                 )
         else:
             raise SensorConfigurationError(
@@ -255,6 +351,8 @@ def validate_sensor_configuration() -> dict:
             )
 
     for item in eko_configs:
+        if not _is_enabled(item):
+            continue
         sensor_id = item.get("sensor_id", "EKO-00")
         if ENVIRONMENT is Environment.PRODUCTION and not item.get("host"):
             raise SensorConfigurationError(
@@ -281,6 +379,9 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
 
     is_development = ENVIRONMENT is Environment.DEVELOPMENT
     is_production = ENVIRONMENT is Environment.PRODUCTION
+    external_acquisition = (
+        SENSOR_ACQUISITION is SensorAcquisition.EXTERNAL
+    )
     development_uses_physical_t10a = _env_flag(
         "SVC_DEVELOPMENT_USE_PHYSICAL_T10A"
     )
@@ -314,8 +415,11 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
         )
 
     for dev_cfg in t10a_configs:
+        if not _is_enabled(dev_cfg):
+            continue
         device_id = dev_cfg["device_id"]
-        port = str(dev_cfg.get("port") or "")
+        requested_port = str(dev_cfg.get("port") or "")
+        port = requested_port
         interval_s = float(dev_cfg.get("interval_s", 60.0))
         timeout_s = float(dev_cfg.get("timeout_s", 1.0))
         protocol_cfg = dev_cfg.get("protocol", {})
@@ -356,8 +460,43 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
         if not heads_cfg:
             continue
 
+        if external_acquisition:
+            logger.info(
+                "External Sensor Agent owns T10A device %s; API registered %d head(s)",
+                device_id,
+                len(heads_cfg),
+            )
+            continue
+
         if use_physical_t10a:
             try:
+                port_info = resolve_serial_port(dev_cfg)
+                port = port_info.device
+                logger.info(
+                    "Resolved T10A device %s from %s to %s (%s)",
+                    device_id,
+                    requested_port or "auto",
+                    port,
+                    port_info.hwid or port_info.description or "no hardware metadata",
+                )
+                for hc in heads_cfg:
+                    register_sensor(
+                        sensor_id=hc.sensor_id,
+                        kind="t10a",
+                        label=hc.label,
+                        location=hc.location,
+                        config={
+                            "device_id": device_id,
+                            "configured_port": requested_port or "auto",
+                            "port": port,
+                            "port_identity": dev_cfg.get("port_identity", {}),
+                            "resolved_port_identity": port_info.as_dict(),
+                            "head_no": hc.head_no,
+                            "interval_s": interval_s,
+                            "timeout_s": timeout_s,
+                            "protocol": protocol_cfg,
+                        },
+                    )
                 client = T10AClient(
                     device_id=device_id,
                     port=port,
@@ -367,6 +506,9 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     baudrate=int(dev_cfg.get("baudrate", 9600)),
                 )
                 clients_with_interval.append((client, interval_s))
+            except (InvalidSerialPortSelector, SerialDiscoveryError, OSError) as e:
+                logger.warning("Skip T10A device %s (port %s): %s", device_id, port, e)
+                _set_sensor_error(device_id, e)
             except Exception as e:
                 logger.warning("Skip T10A device %s (port %s): %s", device_id, port, e)
                 _set_sensor_error(device_id, e)
@@ -389,9 +531,11 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
 
     # --- JETI spectraval ---------------------------------------------------
     # Supported transports:
-    #   - file (default): watcher of .cap output path, plus a writer in development
+    #   - file (default): watcher of LiVal capture text, plus a writer in development
     #   - serial_scpi: direct SPECFIRM serial polling
     for dev_cfg in cfg.get("jeti_spectraval", [])[:4]:
+        if not _is_enabled(dev_cfg):
+            continue
         sensor_id = dev_cfg.get("sensor_id", "JETI-00")
         device_id = dev_cfg.get("device_id", "JETI")
         interval_s = float(dev_cfg.get("interval_s", 60.0))
@@ -408,8 +552,8 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                 )
                 continue
 
-            port = dev_cfg.get("port")
-            if not port:
+            requested_port = str(dev_cfg.get("port") or "")
+            if not requested_port:
                 logger.warning("Skip JETI serial_scpi %s: missing 'port'", sensor_id)
                 continue
 
@@ -421,7 +565,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
             w_end = int(dev_cfg.get("wavelength_end_nm", 780))
             w_step = int(dev_cfg.get("wavelength_step_nm", 1))
 
-            try:
+            if external_acquisition:
                 register_sensor(
                     sensor_id=sensor_id,
                     kind="jeti_spectraval",
@@ -430,7 +574,47 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     config={
                         "device_id": device_id,
                         "transport": "serial_scpi",
+                        "configured_port": requested_port or "auto",
+                        "port_identity": dev_cfg.get("port_identity", {}),
+                        "baudrate": baudrate,
+                        "timeout_s": timeout_s,
+                        "tint_ms": tint_ms,
+                        "avg_count": avg_count,
+                        "wavelength_start_nm": w_start,
+                        "wavelength_end_nm": w_end,
+                        "wavelength_step_nm": w_step,
+                        "acquisition": "external",
+                    },
+                )
+                configured_sensor_ids.add(sensor_id)
+                logger.info(
+                    "External Sensor Agent owns JETI serial device %s",
+                    device_id,
+                )
+                continue
+
+            try:
+                port_info = resolve_serial_port(dev_cfg)
+                port = port_info.device
+                logger.info(
+                    "Resolved JETI device %s from %s to %s (%s)",
+                    device_id,
+                    requested_port or "auto",
+                    port,
+                    port_info.hwid or port_info.description or "no hardware metadata",
+                )
+                register_sensor(
+                    sensor_id=sensor_id,
+                    kind="jeti_spectraval",
+                    label=label,
+                    location=location,
+                    config={
+                        "device_id": device_id,
+                        "transport": "serial_scpi",
+                        "configured_port": requested_port or "auto",
                         "port": port,
+                        "port_identity": dev_cfg.get("port_identity", {}),
+                        "resolved_port_identity": port_info.as_dict(),
                         "baudrate": baudrate,
                         "timeout_s": timeout_s,
                         "tint_ms": tint_ms,
@@ -465,17 +649,30 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
 
         # Default/file watcher transport.
         raw_template_path = str(dev_cfg.get("template_path", ""))
-        raw_output_path = str(dev_cfg.get("output_path") or "")
-        if not raw_output_path:
-            logger.warning("Skip Jeti Spectraval %s: missing 'output_path'", sensor_id)
+        raw_input_path = str(
+            dev_cfg.get("input_path") or dev_cfg.get("output_path") or ""
+        )
+        if not raw_input_path:
+            logger.warning("Skip JETI %s: missing 'input_path'", sensor_id)
             continue
         template_path = (
             _resolve_config_path(raw_template_path) if raw_template_path else ""
         )
-        output_path = _resolve_data_path(raw_output_path)
+        uses_legacy_output_path = not dev_cfg.get("input_path")
+        input_path = (
+            _resolve_data_path(raw_input_path)
+            if uses_legacy_output_path
+            else _resolve_sensor_input_path(raw_input_path)
+        )
 
         loop = bool(dev_cfg.get("loop", True))
         watch_interval_s = float(dev_cfg.get("watch_interval_s", 1.0))
+        stale_after_s = float(
+            dev_cfg.get("stale_after_s", max(interval_s * 3.0, 60.0))
+        )
+        cursor_dir = _resolve_data_path(
+            str(dev_cfg.get("cursor_dir", ".sensor-cursors"))
+        )
 
         try:
             register_sensor(
@@ -487,25 +684,58 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     "device_id": device_id,
                     "transport": "file",
                     "template_path": template_path,
-                    "output_path": output_path,
+                    "input_path": input_path,
                     "interval_s": interval_s,
                     "watch_interval_s": watch_interval_s,
+                    "stale_after_s": stale_after_s,
+                    "initial_position": str(
+                        dev_cfg.get("initial_position", "end")
+                    ).lower(),
+                    "max_records_per_poll": int(
+                        dev_cfg.get("max_records_per_poll", 250)
+                    ),
+                    "max_read_bytes": int(
+                        dev_cfg.get("max_read_bytes", 4 * 1024 * 1024)
+                    ),
+                    "source_timezone": dev_cfg.get("source_timezone"),
+                    "acquisition": SENSOR_ACQUISITION.value,
                     "loop": loop,
                 },
             )
             configured_sensor_ids.add(sensor_id)
 
+            if external_acquisition:
+                logger.info(
+                    "External Sensor Agent owns JETI file source %s",
+                    device_id,
+                )
+                continue
+
             watcher = JetiSpectravalFileWatcher(
                 device_id=device_id,
                 sensor_id=sensor_id,
-                input_path=output_path,
+                input_path=input_path,
                 label=label,
                 location=location,
                 svc_root=_SVC_DIR,
+                input_kind=str(dev_cfg.get("input_kind", "auto")),
+                cursor_dir=cursor_dir,
+                initial_position=str(dev_cfg.get("initial_position", "end")),
+                max_records_per_poll=int(
+                    dev_cfg.get("max_records_per_poll", 250)
+                ),
+                max_read_bytes=int(
+                    dev_cfg.get("max_read_bytes", 4 * 1024 * 1024)
+                ),
+                source_timezone=dev_cfg.get("source_timezone"),
             )
+            watcher.stale_after_s = stale_after_s
             clients_with_interval.append((watcher, watch_interval_s))
 
             if is_development:
+                output_path = _resolve_data_path(
+                    str(dev_cfg.get("output_path") or raw_input_path)
+                )
                 sim = JetiSpectravalSimClient(
                     device_id=device_id,
                     sensor_id=sensor_id,
@@ -536,6 +766,8 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
         )
 
     for dev_cfg in eko_configs:
+        if not _is_enabled(dev_cfg):
+            continue
         sensor_id = dev_cfg.get("sensor_id", "EKO-00")
         device_id = dev_cfg.get("device_id", "EKO-CBOX")
         label = dev_cfg.get("label", sensor_id)
@@ -546,6 +778,9 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
         raw_slave_address = dev_cfg.get("slave_address", 1)
         raw_timeout_s = dev_cfg.get("timeout_s", 3.0)
         float_byte_order = str(dev_cfg.get("float_byte_order", "ABCD"))
+        stale_after_s = float(
+            dev_cfg.get("stale_after_s", max(interval_s * 3.0, 30.0))
+        )
 
         if use_physical_eko:
             if not host:
@@ -587,11 +822,22 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     "port": tcp_port,
                     "slave_address": slave_address,
                     "interval_s": interval_s,
+                    "stale_after_s": stale_after_s,
                     "timeout_s": timeout_s,
                     "float_byte_order": float_byte_order,
+                    "acquisition": SENSOR_ACQUISITION.value,
                 },
             )
             configured_sensor_ids.add(sensor_id)
+
+            if external_acquisition:
+                logger.info(
+                    "External Sensor Agent owns EKO device %s at %s:%s",
+                    device_id,
+                    host,
+                    tcp_port,
+                )
+                continue
 
             if use_physical_eko:
                 eko_client = EkoCBoxModbusTcpClient(
@@ -605,6 +851,7 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
                     location=location,
                     float_byte_order=float_byte_order,
                 )
+                eko_client.stale_after_s = stale_after_s
                 clients_with_interval.append((eko_client, interval_s))
             elif is_development:
                 sim_lat = float(dev_cfg.get("latitude_deg", 44.5646))
@@ -630,31 +877,79 @@ def _make_clients_from_config() -> list[tuple[SensorClient, float]]:
             logger.warning("Skip EKO MS-90+ %s: %s", sensor_id, e)
             _set_sensor_error(sensor_id, e)
 
-    if is_production and configured_sensor_ids:
-        delete_sensor_readings_for_ids(list(configured_sensor_ids))
+    # This only marks removed sensors inactive; it never deletes readings or
+    # spectra. Production history remains durable across config changes.
     prune_sensors_to_ids(list(configured_sensor_ids))
     return clients_with_interval
+
+
+def _poll_and_persist(client: SensorClient) -> List[SensorReading]:
+    """Persist one client poll atomically, then acknowledge its source cursor."""
+    client_id = str(getattr(client, "id", client))
+    try:
+        readings: List[SensorReading] = list(client.poll())
+        events = readings_to_ingest_events(
+            readings,
+            event_namespace="container",
+            source=f"container:{client_id}",
+            spectrum_wavelength_start=int(
+                getattr(client, "spectrum_wavelength_start", 380)
+            ),
+            spectrum_wavelength_step=int(
+                getattr(client, "spectrum_wavelength_step", 1)
+            ),
+        )
+        if events:
+            ingest_sensor_events(events)
+        acknowledge = getattr(client, "acknowledge", None)
+        if callable(acknowledge):
+            acknowledge()
+        return readings
+    except Exception:
+        reject = getattr(client, "reject", None)
+        if callable(reject):
+            reject()
+        raise
 
 
 def _worker_loop(client: SensorClient, interval_s: float) -> None:
     global _stop_flag
     logger.info(f"Sensor worker started for {client} with interval {interval_s}s")
+    client_id = str(getattr(client, "id", client))
+    stale_after_s = float(
+        getattr(client, "stale_after_s", max(float(interval_s) * 3.0, 30.0))
+    )
+    started_at = time.monotonic()
+    last_success_at: float | None = None
+
     while not _stop_flag:
         try:
-            readings: List[SensorReading] = list(client.poll())
+            readings = _poll_and_persist(client)
         except Exception as e:
             logger.exception("Sensor worker poll failed for %s: %s", client, e)
-            _set_sensor_error(str(getattr(client, "id", client)), e)
+            _set_sensor_error(client_id, e)
             readings = []
         else:
-            _clear_sensor_error(str(getattr(client, "id", client)))
-        if readings:
-            logger.debug(f"Manager: received {len(readings)} readings from {client}")
-        for r in readings:
-            if r.metric == "spectrum" and r.spectrum is not None:
-                insert_sensor_spectrum(r.sensor_id, r.ts, r.spectrum)
+            now = time.monotonic()
+            reported_error = getattr(client, "last_error", None)
+            if readings:
+                last_success_at = now
+                logger.debug(
+                    "Manager: received %d readings from %s", len(readings), client
+                )
+            if reported_error:
+                _set_sensor_error(client_id, reported_error)
+            elif readings:
+                _clear_sensor_error(client_id)
             else:
-                insert_sensor_reading(r.sensor_id, r.ts, r.metric, r.value)
+                freshness_origin = last_success_at or started_at
+                stale_for_s = now - freshness_origin
+                if stale_for_s >= stale_after_s:
+                    _set_sensor_error(
+                        client_id,
+                        f"no readings received for {stale_for_s:.0f}s "
+                        f"(stale threshold {stale_after_s:.0f}s)",
+                    )
         if _stop_flag:
             break
         time.sleep(interval_s)
