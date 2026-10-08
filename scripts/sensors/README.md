@@ -154,31 +154,13 @@ C-BOX live over Modbus TCP.
 - Output: `-LocalPath`, default `.\modbus_logs` relative to the current
   directory, created if missing. Subdirectories and symlinks on the C-BOX are
   skipped.
-- Credentials: `-Username` defaults to `admin`. The script prompts for the
-  password without echoing it unless you pass `-Password` as a SecureString.
+- Credentials: `-Username` and `-Password` both default to `admin`, the
+  C-BOX factory default, so a plain run needs no arguments. Pass them only if
+  the C-BOX login was changed.
 - Skip-unchanged: a file whose local copy has the same byte count as the remote
   file is skipped. A file whose size differs is downloaded again and overwrites
   the local copy.
 - Requires `curl.exe`, which ships with Windows 11.
-
-The password prompt cannot run under `-NonInteractive`. For a scheduled run,
-save the credential once, signed in as the Windows account that will run the
-task:
-
-```powershell
-Get-Credential admin | Export-Clixml C:\GlazingSecrets\eko-ftp.cred.xml
-```
-
-Then have the scheduled wrapper load it and pass the password:
-
-```powershell
-$cred = Import-Clixml C:\GlazingSecrets\eko-ftp.cred.xml
-.\scripts\sensors\Get-ModbusLogs.ps1 -Username $cred.UserName -Password $cred.Password -LocalPath D:\GlazingBackups\eko
-```
-
-The saved password is encrypted with Windows DPAPI and can be read only by the
-same user on the same machine. Keep the file out of the repository and out of
-the production config directory, which is mounted into the container.
 
 This script has no named mutex and does not use the exit codes below; a failed
 directory listing throws, and failed file downloads are reported as warnings.

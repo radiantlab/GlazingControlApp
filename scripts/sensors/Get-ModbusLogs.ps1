@@ -14,7 +14,7 @@
     FTP username. Defaults to admin.
 
 .PARAMETER Password
-    FTP password as a SecureString. If omitted, you will be prompted (not echoed to screen).
+    FTP password as a SecureString. Defaults to admin, the C-BOX factory default.
 
 .PARAMETER RemotePath
     Remote directory to mirror. Defaults to /var/log/modbus.
@@ -35,7 +35,7 @@
 param(
     [string]$FtpHost = "192.168.40.50",
     [string]$Username = "admin",
-    [securestring]$Password,
+    [securestring]$Password = (ConvertTo-SecureString "admin" -AsPlainText -Force),
     [string]$RemotePath = "/var/log/modbus",
     [string]$LocalPath = ".\modbus_logs"
 )
