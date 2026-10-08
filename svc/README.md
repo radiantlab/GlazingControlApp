@@ -33,7 +33,7 @@ Development reads `config/development` and writes only to
 | `SVC_MIN_DWELL_SECONDS` | `20` | `20` unless overridden |
 | `SVC_DB_BACKUP_INTERVAL_HOURS` | `0` | Compose default `24` |
 | `SVC_DB_BACKUP_DIR` | Disabled | Required by production Compose |
-| `HALIO_API_URL` | Unused | Required |
+| `HALIO_API_URL` | Unused | Required, Halio v3 base URL (`http://<controller>:8083/api/v3`) |
 | `HALIO_SITE_ID` | Unused | Required |
 | `HALIO_API_KEY` | Unused | Required |
 

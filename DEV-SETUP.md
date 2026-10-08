@@ -109,7 +109,10 @@ Copy `svc/.env.production.example` to the ignored
 - `SVC_PRODUCTION_DATA_DIR` to the absolute directory containing the existing `audit.db`.
 - `SVC_PRODUCTION_CONFIG_DIR` to the external production configuration directory.
 - `SVC_DB_BACKUP_DIR` to an absolute backup directory.
-- The rotated Halio URL, site ID, and API key.
+- The rotated Halio URL, site ID, and API key. `HALIO_API_URL` is the v3 API
+  served by the controller's admin console port, including the `/api/v3`
+  prefix, for example `http://192.168.2.200:8083/api/v3`. The legacy
+  `:8084/api` endpoint no longer accepts connections.
 
 ### 4. Verify and back up the existing database
 
@@ -163,5 +166,11 @@ The backend test setup uses a temporary database and cannot write to
 - Missing `SVC_ENVIRONMENT`: use the development example or production Compose definition.
 - `SVC_MODE is no longer supported`: remove the old variable rather than mapping it silently.
 - Production refuses startup: correct the reported Halio or sensor configuration error.
+- `/health` is `ok` but the HMI shows 0 panels and no groups: the app cannot
+  reach Halio (`/health` does not probe it). Check `podman logs
+  glazing-control-app` for `app.adapter` errors and confirm `HALIO_API_URL`
+  points at `http://<controller>:8083/api/v3`. A quick check from the host:
+  `curl http://<controller>:8083/api/v3/sites/<site-id>/groups` should return
+  `"success":true`.
 - Empty production database: stop immediately and verify `SVC_PRODUCTION_DATA_DIR`; do not continue with a newly created directory.
 - Physical sensor unavailable after valid startup: check the cable, COM port, export path, C-BOX IP, and Modbus TCP port 502. Production does not substitute simulated readings.
