@@ -204,6 +204,29 @@ def _serial_factory(
     return create
 
 
+def select_agent_devices(config: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the part of a sensor configuration this agent should read.
+
+    When any device declares "acquisition": "external", the API container
+    runs in embedded mode and reads everything else itself, so the agent takes
+    only the marked devices. Without any marker the API is in external mode
+    and the agent reads every device.
+    """
+    families = ("t10a", "jeti_spectraval", "eko_ms90_plus")
+
+    def marked_external(item: Mapping[str, Any]) -> bool:
+        return str(item.get("acquisition") or "").strip().lower() == "external"
+
+    if not any(
+        marked_external(item) for key in families for item in config.get(key, [])
+    ):
+        return dict(config)
+    selected = dict(config)
+    for key in families:
+        selected[key] = [item for item in config.get(key, []) if marked_external(item)]
+    return selected
+
+
 def build_client_specs(
     config: Mapping[str, Any],
     *,
@@ -219,6 +242,7 @@ def build_client_specs(
     COM name.
     """
     constructors = constructors or ClientConstructors()
+    config = select_agent_devices(config)
     selected_environment = os.environ if environment is None else environment
     selected_data_dir = Path(data_dir).expanduser().resolve(strict=False)
     specs: list[ClientSpec] = []

@@ -130,6 +130,43 @@ def test_build_specs_covers_jeti_serial_file_and_eko(tmp_path):
     assert all(client.host_agent_source for client in clients)
 
 
+def test_build_specs_takes_only_devices_marked_external(tmp_path):
+    # Mirrors the production template: the API container reads the LiVal
+    # capture (input_path, which the agent cannot read) and the C-BOX itself,
+    # and hands only the COM-port T-10A to the agent.
+    config = {
+        "t10a": [
+            {
+                "device_id": "KM1",
+                "port": "AUTO",
+                "port_identity": {"serial_number": "stable-device"},
+                "acquisition": "external",
+                "heads": [{"head_no": 0, "sensor_id": "T10A1-H1"}],
+            }
+        ],
+        "jeti_spectraval": [
+            {
+                "sensor_id": "SPECBOS-1",
+                "device_id": "JETI-SB-1",
+                "transport": "file",
+                "input_path": "specbos-lival.capture",
+            }
+        ],
+        "eko_ms90_plus": [
+            {"sensor_id": "EKO-00", "device_id": "CBOX-1", "host": "192.0.2.10"}
+        ],
+    }
+
+    specs = build_client_specs(
+        config,
+        data_dir=tmp_path,
+        resolver=lambda _selector: SerialPortInfo(device="COM4"),
+        constructors=ClientConstructors(t10a=lambda **kwargs: FakeClient(**kwargs)),
+    )
+
+    assert [spec.name for spec in specs] == ["t10a:KM1"]
+
+
 def test_build_specs_reads_explicit_lival_capture_path_from_environment(tmp_path):
     calls = []
     capture_file = tmp_path / "Desktop" / "JETI_capture.xlsx"

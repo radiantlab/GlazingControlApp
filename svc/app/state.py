@@ -658,6 +658,7 @@ def fetch_sensor_ingest_status() -> list[dict]:
             except (TypeError, json.JSONDecodeError):
                 sensor_config = {}
             interval_s = float(sensor_config.get("interval_s", 60.0))
+            item["acquisition"] = sensor_config.get("acquisition")
             item["stale_after_s"] = float(
                 sensor_config.get("stale_after_s", max(interval_s * 3.0, 60.0))
             )
