@@ -13,8 +13,7 @@ import { Link } from "react-router-dom";
 import LiveGraph from "./components/LiveGraph";
 import { type SensorInfo, type SensorReadingResponse } from "./api";
 import {
-    connectedSensors as getConnectedSensors,
-    getFreshMetricsForSensor,
+    getDisplayMetricsForSensor,
     pruneVisibleSensorIds,
     sortSensorsForDisplay,
 } from "./utils/sensorDisplay";
@@ -254,18 +253,18 @@ export default function AppHMI() {
 
     const [spectralModal, setSpectralModal] = useState<{ sensorId: string; fixedTs?: number } | null>(null);
 
-    const connectedSensorList = sortSensorsForDisplay(getConnectedSensors(sensors, latestMetrics));
-    const sensorListForControls = connectedSensorList.length > 0 ? connectedSensorList : sortSensorsForDisplay(sensors);
+    // A configured sensor remains visible when it is stale so operators can
+    // distinguish "not reporting" from "not configured".
+    const sensorListForControls = sortSensorsForDisplay(sensors);
     const sensorIdsForControls = sensorListForControls.map(sensor => sensor.id);
     const sensorControlKey = sensorIdsForControls.join("|");
-    const showingConfiguredSensorsFallback = sensors.length > 0 && connectedSensorList.length === 0;
     const selectedGroup = groups.find(g => g.id === groupId);
     const highlightedPanelIds = new Set(selectedGroup?.member_ids || []);
 
 
     async function refresh() {
         try {
-            // Try real API first
+            // Try the backend API first
             const [p, g, h, s, m] = await Promise.all([
                 api.panels(),
                 api.groups(),
@@ -283,7 +282,7 @@ export default function AppHMI() {
                 setGroupId(prev => prev || g[0].id);
             }
 
-            setHealth(`${h.status} • ${h.mode}`);
+            setHealth(`${h.status} • ${h.environment}`);
             setUsingMock(false);
         } catch (err) {
             // Fall back to mock data if API is unavailable
@@ -298,7 +297,7 @@ export default function AppHMI() {
                     setGroupId(prev => prev || g[0].id);
                 }
 
-                setHealth(`${h.status} • ${h.mode} (mock)`);
+                setHealth(`${h.status} • ${h.environment} (mock)`);
                 setUsingMock(true);
             } catch (mockErr) {
                 setSensors([]);
@@ -598,7 +597,7 @@ export default function AppHMI() {
                     <div className="hmi-brand">
                         <div className="hmi-logo"></div>
                         <div className="hmi-brand-text">
-                            <h1>Glazing Control System</h1>
+                            <h1>DIAL Control Center</h1>
                             <p>Electrochromic Panel Management</p>
                         </div>
                     </div>
@@ -828,7 +827,6 @@ export default function AppHMI() {
                             <h2 className="room-title">Visible sensors</h2>
                             <div className="room-stats">
                                 <span>{visibleSensors.length} of {sensorListForControls.length} shown</span>
-                                {showingConfiguredSensorsFallback && <span style={{ marginLeft: 8 }}>configured</span>}
                             </div>
                         </div>
                         <div className="sensor-visibility-body">
@@ -885,7 +883,7 @@ export default function AppHMI() {
                 )}
 
                 {mainTab === "sensors" && !usingMock && visibleSensors.map(sensor => {
-                    const sensorMetrics = getFreshMetricsForSensor(sensor, latestMetrics);
+                    const { metrics: sensorMetrics, stale } = getDisplayMetricsForSensor(sensor, latestMetrics);
                     const metricMap = new Map<string, SensorReadingResponse>();
                     sensorMetrics.forEach(m => metricMap.set(m.metric, m));
                     const metricNames = Array.from(metricMap.keys());
@@ -951,6 +949,7 @@ export default function AppHMI() {
                                     <span>{sensorKindLabel}</span>
                                     {sensor.location && <span style={{ marginLeft: 8 }}>{sensor.location}</span>}
                                     <span style={{ marginLeft: 8 }}>{orderedMetricNames.length} metrics</span>
+                                    {stale && <span style={{ marginLeft: 8 }}>not reporting</span>}
                                     {sensor.kind === "jeti_spectraval" && (
                                         <button
                                             className="hmi-manage-btn"
@@ -974,7 +973,7 @@ export default function AppHMI() {
 
                             <div className="sensor-card-layout">
                                 <div className="sensor-metrics-panel">
-                                    <div className="sensor-metrics-heading">Live metrics</div>
+                                    <div className="sensor-metrics-heading">{stale ? "Last readings" : "Live metrics"}</div>
                                     <div className="sensor-metrics-grid">
                                         {orderedMetricNames.map(metric => {
                                             const reading = metricMap.get(metric);
@@ -1004,7 +1003,9 @@ export default function AppHMI() {
                                         })}
                                     </div>
                                     <div className="sensor-metrics-meta">
-                                        Graphing {METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric} - updated {formatMetricTimestamp(selectedReading.ts)}
+                                        Graphing {METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric} - {stale
+                                            ? `last reading ${new Date(selectedReading.ts * 1000).toLocaleString()}`
+                                            : `updated ${formatMetricTimestamp(selectedReading.ts)}`}
                                     </div>
                                 </div>
 
@@ -1037,6 +1038,7 @@ export default function AppHMI() {
                                         color={sensorGraphColor(sensor.kind)}
                                         height={graphHeight}
                                         variant="embedded"
+                                        endTs={stale ? selectedReading.ts : undefined}
                                     />
                                 </div>
                             </div>
@@ -1052,13 +1054,13 @@ export default function AppHMI() {
 
                 {mainTab === "sensors" && !usingMock && sensors.length === 0 && (
                     <div className="room-section" style={{ marginTop: 20, padding: "12px 16px", color: "#9ca3af" }}>
-                        No sensors are currently registered. Check `svc/data/sensors_config.json` and restart the service.
+                        No sensors are currently registered. Check the selected environment configuration and restart the service.
                     </div>
                 )}
 
                 {mainTab === "sensors" && usingMock && (
                     <div className="room-section" style={{ marginTop: 20, padding: "12px 16px", color: "#9ca3af" }}>
-                        Sensor metrics are unavailable in frontend mock mode. Start backend sim mode to see live sensor metrics.
+                        Sensor metrics are unavailable in frontend mock mode. Start the backend development environment to see simulated sensor metrics.
                     </div>
                 )}
 

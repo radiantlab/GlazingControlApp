@@ -1,0 +1,36 @@
+{
+  "t10a": [
+    {
+      "device_id": "T10A-DEVELOPMENT",
+      "interval_s": 5,
+      "heads": [
+        {
+          "head_no": 0,
+          "sensor_id": "T10A-DEV-01",
+          "label": "Development T-10A"
+        }
+      ]
+    }
+  ],
+  "jeti_spectraval": [
+    {
+      "sensor_id": "JETI-DEV-01",
+      "device_id": "JETI-DEVELOPMENT",
+      "transport": "file",
+      "template_path": "jeti_template.cap",
+      "output_path": "sensors/development_spectraval.cap",
+      "watch_interval_s": 1,
+      "interval_s": 5,
+      "loop": true,
+      "label": "Development Spectraval"
+    }
+  ],
+  "eko_ms90_plus": [
+    {
+      "sensor_id": "EKO-DEV-01",
+      "device_id": "EKO-DEVELOPMENT",
+      "interval_s": 5,
+      "label": "Development EKO MS-90+"
+    }
+  ]
+}

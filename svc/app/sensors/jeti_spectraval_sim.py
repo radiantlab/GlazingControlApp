@@ -3,7 +3,7 @@
 Jeti Spectraval sensor simulator
 
 Emulates the Jeti Spectraval by:
-1. Writing .cap files in the same format as the real sensor (production-like output).
+1. Writing .cap files in the same format as the physical sensor.
 2. Feeding the existing sensor API via SensorReading so /metrics/latest and /metrics/history
    show the data without a separate .cap reader.
 

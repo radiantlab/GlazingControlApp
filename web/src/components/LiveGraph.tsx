@@ -11,17 +11,19 @@ interface LiveGraphProps {
     variant?: "card" | "embedded";
     yAxisLabel?: string;
     valueFormatter?: (value: number | undefined) => string;
+    /** Show the hour ending here instead of the last hour (offline sensors). */
+    endTs?: number;
 }
 
-export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, variant = "card", yAxisLabel, valueFormatter }: LiveGraphProps) {
+export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, variant = "card", yAxisLabel, valueFormatter, endTs }: LiveGraphProps) {
     const [data, setData] = useState<SensorReadingResponse[]>([]);
     const [loading, setLoading] = useState(true);
 
     const loadData = async () => {
         try {
-            const now = Date.now() / 1000;
-            // Get last 1 hour of data
-            const history = await api.getMetricHistory(sensorId, metric, now - 3600, now);
+            const end = endTs ?? Date.now() / 1000;
+            // Get 1 hour of data ending now, or at the sensor's last reading
+            const history = await api.getMetricHistory(sensorId, metric, end - 3600, end);
             // Sort by timestamp
             history.sort((a, b) => a.ts - b.ts);
             setData(history);
@@ -34,9 +36,10 @@ export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, 
 
     useEffect(() => {
         loadData();
+        if (endTs != null) return; // A past window does not change
         const interval = setInterval(loadData, 2000); // Poll every 2s
         return () => clearInterval(interval);
-    }, [sensorId, metric]);
+    }, [sensorId, metric, endTs]);
 
     const formatTime = (ts: number) => {
         const d = new Date(ts * 1000);
@@ -83,7 +86,9 @@ export default function LiveGraph({ sensorId, metric, color = "#8884d8", label, 
                         tick={{ fill: '#888' }}
                         minTickGap={50}
                         label={{
-                            value: "Time",
+                            value: endTs != null
+                                ? `Time (${new Date(endTs * 1000).toLocaleDateString()})`
+                                : "Time",
                             position: "insideBottom",
                             offset: -18,
                             fill: "#888",

@@ -16,6 +16,16 @@ permissions:
 jobs:
   docker-builds:
     runs-on: ubuntu-latest
+    # Production Compose requires these; config/build only interpolate them and
+    # never open the bind-mount paths or contact Halio.
+    env:
+      SVC_PRODUCTION_DATA_DIR: /tmp/glazing-ci/data
+      SVC_PRODUCTION_CONFIG_DIR: /tmp/glazing-ci/config
+      SVC_DB_BACKUP_DIR: /tmp/glazing-ci/db-backups
+      SVC_JETI_CAPTURE_PATH: /tmp/glazing-ci/specbos-lival.capture
+      HALIO_API_URL: http://halio.invalid:8083/api/v3
+      HALIO_SITE_ID: ci-placeholder
+      HALIO_API_KEY: ci-placeholder
     steps:
       - name: Checkout
         uses: actions/checkout@v4

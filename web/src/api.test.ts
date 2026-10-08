@@ -21,9 +21,25 @@ describe("api", () => {
     });
 
     it("requests JSON health data", async () => {
-        fetchMock.mockResolvedValue(jsonResponse({ status: "ok", mode: "sim" }));
+        fetchMock.mockResolvedValue(jsonResponse({
+            status: "ok",
+            environment: "development",
+            control_source: "simulated",
+            sensor_source: "simulated",
+            sensor_acquisition: "embedded",
+            sensor_status: "healthy",
+            sensor_errors: [],
+        }));
 
-        await expect(api.health()).resolves.toEqual({ status: "ok", mode: "sim" });
+        await expect(api.health()).resolves.toEqual({
+            status: "ok",
+            environment: "development",
+            control_source: "simulated",
+            sensor_source: "simulated",
+            sensor_acquisition: "embedded",
+            sensor_status: "healthy",
+            sensor_errors: [],
+        });
         expect(fetchMock).toHaveBeenCalledWith(
             "/health",
             expect.objectContaining({

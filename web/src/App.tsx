@@ -16,7 +16,7 @@ export default function App() {
         const [p, g, h] = await Promise.all([api.panels(), api.groups(), api.health()]);
         setPanels(p);
         setGroups(g);
-        setHealth(`${h.status}  mode  ${h.mode}`);
+        setHealth(`${h.status}  environment  ${h.environment}`);
         if (!groupId && g.length) setGroupId(g[0].id);
     }
 

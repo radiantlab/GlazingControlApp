@@ -21,9 +21,9 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class RealAdapter:
+class HalioAdapter:
     """
-    Halio API integration for real panel control.
+    Halio API integration for production panel control.
 
     This adapter translates between our simple panel interface and the
     Halio API's UUID-based architecture with sites, windows, groups, and drivers.
@@ -32,14 +32,14 @@ class RealAdapter:
     def __init__(self) -> None:
         if not HAS_REQUESTS:
             raise ImportError(
-                "requests library required for real mode. "
+                "requests library required for the production environment. "
                 "Install with: pip install requests"
             )
 
         if not HALIO_API_KEY or not HALIO_SITE_ID:
             raise ValueError(
                 "HALIO_API_KEY and HALIO_SITE_ID must be set in environment "
-                "for real mode operation"
+                "for production operation"
             )
 
         self.base_url = HALIO_API_URL.rstrip("/")
@@ -55,7 +55,7 @@ class RealAdapter:
         # Cache for window states to enforce dwell time
         self._state_cache: Dict[str, Dict] = {}
 
-        logger.info(f"RealAdapter initialized for site {self.site_id}")
+        logger.info(f"HalioAdapter initialized for site {self.site_id}")
         logger.info(
             "Using Halio-discovered windows/groups without local window_mapping.json"
         )

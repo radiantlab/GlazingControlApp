@@ -1,0 +1,36 @@
+# Local development deployment. The named volume prevents development from
+# reading or writing the production-compatible svc/data host directory.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: glazing-control-app-development
+    container_name: glazing-control-app-development
+    ports:
+      - "8000:8000"
+    volumes:
+      - type: volume
+        source: glazing-development-data
+        target: /app/svc/data
+      - type: bind
+        source: ./svc/config/development
+        target: /app/svc/config
+        read_only: true
+        bind:
+          create_host_path: false
+    environment:
+      SVC_ENVIRONMENT: development
+      SVC_HOST: 0.0.0.0
+      SVC_PORT: "8000"
+      UVICORN_RELOAD: "false"
+      SVC_DATA_DIR: /app/svc/data
+      SVC_CONFIG_DIR: /app/svc/config
+      SVC_DB_BACKUP_INTERVAL_HOURS: "0"
+      SVC_DEVELOPMENT_USE_PHYSICAL_T10A: ${SVC_DEVELOPMENT_USE_PHYSICAL_T10A:-false}
+      SVC_DEVELOPMENT_USE_PHYSICAL_JETI: ${SVC_DEVELOPMENT_USE_PHYSICAL_JETI:-false}
+      SVC_DEVELOPMENT_USE_PHYSICAL_EKO: ${SVC_DEVELOPMENT_USE_PHYSICAL_EKO:-false}
+    restart: unless-stopped
+
+volumes:
+  glazing-development-data:

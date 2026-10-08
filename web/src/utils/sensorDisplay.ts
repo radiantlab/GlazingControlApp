@@ -20,6 +20,22 @@ export function getFreshMetricsForSensor(
     return latestMetrics.filter(metric => metric.sensor_id === sensor.id && metric.ts >= cutoff);
 }
 
+/**
+ * Fresh metrics when the sensor is reporting; otherwise its last stored
+ * readings, flagged stale, so an offline instrument still shows history.
+ */
+export function getDisplayMetricsForSensor(
+    sensor: SensorInfo,
+    latestMetrics: SensorReadingResponse[],
+    nowSeconds = Date.now() / 1000,
+): { metrics: SensorReadingResponse[]; stale: boolean } {
+    const fresh = getFreshMetricsForSensor(sensor, latestMetrics, nowSeconds);
+    const metrics = fresh.length > 0
+        ? fresh
+        : latestMetrics.filter(metric => metric.sensor_id === sensor.id);
+    return { metrics, stale: fresh.length === 0 };
+}
+
 export function isSensorConnected(
     sensor: SensorInfo,
     latestMetrics: SensorReadingResponse[],

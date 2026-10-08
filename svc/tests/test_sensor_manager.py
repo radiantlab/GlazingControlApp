@@ -3,11 +3,14 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
+import pytest
+from app.config import Environment, SensorAcquisition
 from app.sensors import manager
 from app.sensors.interface import SensorReading
+from app.sensors.serial_discovery import SerialPortInfo
 
 
-def test_load_config_resolves_repo_relative_env_path(tmp_path, monkeypatch) -> None:
+def test_load_config_uses_environment_config_path(tmp_path, monkeypatch) -> None:
     repo_dir = tmp_path / "repo"
     svc_dir = repo_dir / "svc"
     data_dir = svc_dir / "data"
@@ -17,10 +20,7 @@ def test_load_config_resolves_repo_relative_env_path(tmp_path, monkeypatch) -> N
     expected = {"t10a": [], "jeti_spectraval": [], "eko_ms90_plus": []}
     config_path.write_text(json.dumps(expected), encoding="utf-8")
 
-    monkeypatch.chdir(svc_dir)
-    monkeypatch.setattr(manager, "_SVC_DIR", str(svc_dir))
-    monkeypatch.setattr(manager, "_REPO_DIR", str(repo_dir))
-    monkeypatch.setenv("SENSORS_CONFIG_FILE", "svc/data/sensors_config.json")
+    monkeypatch.setattr(manager, "SENSORS_CONFIG_FILE", str(config_path))
 
     assert manager._load_config() == expected
 
@@ -31,13 +31,34 @@ def test_default_jeti_baudrate_uses_specbos_defaults() -> None:
     assert manager._default_jeti_baudrate({"device_id": "SPECBOS-1211-2", "baudrate": 230400}) == 230400
 
 
+def test_legacy_data_prefix_resolves_inside_selected_runtime(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(manager, "DATA_DIR", str(tmp_path))
+
+    assert manager._resolve_data_path("data/live.cap") == str(
+        (tmp_path / "live.cap").resolve()
+    )
+
+
+def test_sensor_health_reports_and_clears_polling_errors() -> None:
+    manager._set_sensor_error("EKO-00", "connection refused")
+    try:
+        assert manager.get_sensor_health() == (
+            "degraded",
+            ["EKO-00: connection refused"],
+        )
+    finally:
+        manager._clear_sensor_error("EKO-00")
+
+    assert manager.get_sensor_health() == ("healthy", [])
+
+
 @dataclass
 class FakeClient:
     id: str
     source: str
 
     def poll(self):
-        if self.source == "real":
+        if self.source == "physical":
             return []
         return [SensorReading(sensor_id=f"{self.id}-SIM", metric="simulated", value=1.0, ts=1.0)]
 
@@ -57,6 +78,7 @@ def _sensor_config() -> dict:
                 "sensor_id": "JETI-00",
                 "device_id": "JETI",
                 "transport": "file",
+                "template_path": "jeti_template.cap",
                 "output_path": "data/live.cap",
                 "interval_s": 5,
             }
@@ -77,19 +99,23 @@ def _sensor_config() -> dict:
 
 def _disable_sensor_db(monkeypatch) -> None:
     monkeypatch.setattr(manager, "register_sensor", lambda **kwargs: None)
-    monkeypatch.setattr(manager, "delete_sensor_readings_for_ids", lambda sensor_ids: None)
     monkeypatch.setattr(manager, "prune_sensors_to_ids", lambda sensor_ids: None)
+    monkeypatch.setattr(
+        manager,
+        "resolve_serial_port",
+        lambda config: SerialPortInfo(device=str(config["port"])),
+    )
 
 
-def test_manager_creates_eko_tcp_client_without_com_port(monkeypatch) -> None:
+def test_production_creates_eko_tcp_client_without_com_port(monkeypatch) -> None:
     _disable_sensor_db(monkeypatch)
     captured = {}
-    monkeypatch.setattr(manager, "MODE", "real")
+    monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
     monkeypatch.setattr(manager, "_load_config", lambda: {"eko_ms90_plus": _sensor_config()["eko_ms90_plus"]})
 
     def fake_eko_client(**kwargs):
         captured.update(kwargs)
-        return FakeClient(kwargs["device_id"], "real")
+        return FakeClient(kwargs["device_id"], "physical")
 
     monkeypatch.setattr(manager, "EkoCBoxModbusTcpClient", fake_eko_client)
 
@@ -101,9 +127,9 @@ def test_manager_creates_eko_tcp_client_without_com_port(monkeypatch) -> None:
     assert "baudrate" not in captured
 
 
-def test_manager_logs_missing_eko_host_in_real_mode(monkeypatch, caplog) -> None:
+def test_production_rejects_missing_eko_host(monkeypatch) -> None:
     _disable_sensor_db(monkeypatch)
-    monkeypatch.setattr(manager, "MODE", "real")
+    monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
     monkeypatch.setattr(
         manager,
         "_load_config",
@@ -114,16 +140,13 @@ def test_manager_logs_missing_eko_host_in_real_mode(monkeypatch, caplog) -> None
         },
     )
 
-    with caplog.at_level("WARNING"):
-        clients = manager._make_clients_from_config()
-
-    assert clients == []
-    assert "missing 'host'" in caplog.text
+    with pytest.raises(manager.SensorConfigurationError, match="requires host"):
+        manager._make_clients_from_config()
 
 
-def test_manager_logs_invalid_eko_tcp_port_in_real_mode(monkeypatch, caplog) -> None:
+def test_production_rejects_invalid_eko_tcp_port(monkeypatch) -> None:
     _disable_sensor_db(monkeypatch)
-    monkeypatch.setattr(manager, "MODE", "real")
+    monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
     monkeypatch.setattr(
         manager,
         "_load_config",
@@ -139,65 +162,61 @@ def test_manager_logs_invalid_eko_tcp_port_in_real_mode(monkeypatch, caplog) -> 
         },
     )
 
-    with caplog.at_level("WARNING"):
-        clients = manager._make_clients_from_config()
-
-    assert clients == []
-    assert "invalid Modbus TCP config" in caplog.text
-    assert "COM5" in caplog.text
+    with pytest.raises(manager.SensorConfigurationError, match="invalid port"):
+        manager._make_clients_from_config()
 
 
-def test_real_mode_does_not_create_sim_clients(monkeypatch) -> None:
+def test_production_does_not_create_simulated_clients(monkeypatch) -> None:
     _disable_sensor_db(monkeypatch)
-    monkeypatch.setattr(manager, "MODE", "real")
+    monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
     monkeypatch.setattr(manager, "_load_config", _sensor_config)
-    monkeypatch.setattr(manager, "T10AClient", lambda **kwargs: FakeClient(kwargs["device_id"], "real"))
+    monkeypatch.setattr(manager, "T10AClient", lambda **kwargs: FakeClient(kwargs["device_id"], "physical"))
     monkeypatch.setattr(
         manager,
         "JetiSpectravalFileWatcher",
-        lambda **kwargs: FakeClient(kwargs["device_id"], "real"),
+        lambda **kwargs: FakeClient(kwargs["device_id"], "physical"),
     )
     monkeypatch.setattr(
         manager,
         "EkoCBoxModbusTcpClient",
-        lambda **kwargs: FakeClient(kwargs["device_id"], "real"),
+        lambda **kwargs: FakeClient(kwargs["device_id"], "physical"),
     )
     monkeypatch.setattr(
         manager,
         "T10ASimClient",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("T10A sim created in real mode")),
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("T10A simulator created in production")),
     )
     monkeypatch.setattr(
         manager,
         "JetiSpectravalSimClient",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("JETI sim created in real mode")),
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("JETI simulator created in production")),
     )
     monkeypatch.setattr(
         manager,
         "EkoMs90PlusSimClient",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("EKO sim created in real mode")),
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("EKO simulator created in production")),
     )
 
     clients = manager._make_clients_from_config()
 
     assert len(clients) == 3
-    assert all(client.source == "real" for client, _ in clients)
+    assert all(client.source == "physical" for client, _ in clients)
 
 
-def test_real_mode_does_not_emit_simulated_sensor_readings(monkeypatch) -> None:
+def test_production_does_not_emit_simulated_sensor_readings(monkeypatch) -> None:
     _disable_sensor_db(monkeypatch)
-    monkeypatch.setattr(manager, "MODE", "real")
+    monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
     monkeypatch.setattr(manager, "_load_config", _sensor_config)
-    monkeypatch.setattr(manager, "T10AClient", lambda **kwargs: FakeClient(kwargs["device_id"], "real"))
+    monkeypatch.setattr(manager, "T10AClient", lambda **kwargs: FakeClient(kwargs["device_id"], "physical"))
     monkeypatch.setattr(
         manager,
         "JetiSpectravalFileWatcher",
-        lambda **kwargs: FakeClient(kwargs["device_id"], "real"),
+        lambda **kwargs: FakeClient(kwargs["device_id"], "physical"),
     )
     monkeypatch.setattr(
         manager,
         "EkoCBoxModbusTcpClient",
-        lambda **kwargs: FakeClient(kwargs["device_id"], "real"),
+        lambda **kwargs: FakeClient(kwargs["device_id"], "physical"),
     )
 
     clients = manager._make_clients_from_config()
@@ -206,66 +225,121 @@ def test_real_mode_does_not_emit_simulated_sensor_readings(monkeypatch) -> None:
     assert readings == []
 
 
-def test_real_mode_clears_stale_readings_for_configured_sensors(monkeypatch) -> None:
-    monkeypatch.setattr(manager, "MODE", "real")
+def test_external_acquisition_registers_sensors_without_opening_hardware(
+    monkeypatch,
+) -> None:
+    registered = []
+    pruned = []
+    monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
+    monkeypatch.setattr(
+        manager,
+        "SENSOR_ACQUISITION",
+        SensorAcquisition.EXTERNAL,
+    )
+    monkeypatch.setattr(manager, "_load_config", _sensor_config)
+    monkeypatch.setattr(
+        manager,
+        "register_sensor",
+        lambda **kwargs: registered.append(kwargs["sensor_id"]),
+    )
+    monkeypatch.setattr(
+        manager,
+        "prune_sensors_to_ids",
+        lambda sensor_ids: pruned.extend(sensor_ids),
+    )
+    monkeypatch.setattr(
+        manager,
+        "resolve_serial_port",
+        lambda _config: (_ for _ in ()).throw(
+            AssertionError("API container attempted serial discovery")
+        ),
+    )
+    monkeypatch.setattr(
+        manager,
+        "T10AClient",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("API container opened T-10A")
+        ),
+    )
+    monkeypatch.setattr(
+        manager,
+        "JetiSpectravalFileWatcher",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("API container opened JETI")
+        ),
+    )
+    monkeypatch.setattr(
+        manager,
+        "EkoCBoxModbusTcpClient",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("API container opened EKO")
+        ),
+    )
+
+    clients = manager._make_clients_from_config()
+
+    assert clients == []
+    assert set(registered) == {"T10A1-H1", "JETI-00", "EKO-00"}
+    assert set(pruned) == {"T10A1-H1", "JETI-00", "EKO-00"}
+
+
+def test_production_aligns_active_sensors_without_deleting_history(monkeypatch) -> None:
+    monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
     monkeypatch.setattr(manager, "_load_config", lambda: {"eko_ms90_plus": _sensor_config()["eko_ms90_plus"]})
     monkeypatch.setattr(manager, "register_sensor", lambda **kwargs: None)
     monkeypatch.setattr(
         manager,
         "EkoCBoxModbusTcpClient",
-        lambda **kwargs: FakeClient(kwargs["device_id"], "real"),
+        lambda **kwargs: FakeClient(kwargs["device_id"], "physical"),
     )
-    cleared = []
     pruned = []
-    monkeypatch.setattr(manager, "delete_sensor_readings_for_ids", lambda sensor_ids: cleared.extend(sensor_ids))
     monkeypatch.setattr(manager, "prune_sensors_to_ids", lambda sensor_ids: pruned.extend(sensor_ids))
 
     manager._make_clients_from_config()
 
-    assert cleared == ["EKO-00"]
     assert pruned == ["EKO-00"]
 
 
-def test_sim_mode_uses_simulated_sensors(monkeypatch) -> None:
+def test_development_uses_simulated_sensors(monkeypatch) -> None:
     _disable_sensor_db(monkeypatch)
-    monkeypatch.setattr(manager, "MODE", "sim")
+    monkeypatch.setattr(manager, "ENVIRONMENT", Environment.DEVELOPMENT)
     monkeypatch.setattr(manager, "_load_config", _sensor_config)
     monkeypatch.setattr(
         manager,
         "T10AClient",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("T10A real created in sim mode")),
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("T10A physical client created in development")),
     )
     monkeypatch.setattr(
         manager,
         "EkoCBoxModbusTcpClient",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("EKO real created in sim mode")),
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("EKO physical client created in development")),
     )
-    monkeypatch.setattr(manager, "T10ASimClient", lambda **kwargs: FakeClient(kwargs["device_id"], "sim"))
+    monkeypatch.setattr(manager, "T10ASimClient", lambda **kwargs: FakeClient(kwargs["device_id"], "simulated"))
     monkeypatch.setattr(
         manager,
         "JetiSpectravalFileWatcher",
-        lambda **kwargs: FakeClient(kwargs["device_id"], "real"),
+        lambda **kwargs: FakeClient(kwargs["device_id"], "physical"),
     )
     monkeypatch.setattr(
         manager,
         "JetiSpectravalSimClient",
-        lambda **kwargs: FakeClient(kwargs["device_id"], "sim"),
+        lambda **kwargs: FakeClient(kwargs["device_id"], "simulated"),
     )
     monkeypatch.setattr(
         manager,
         "EkoMs90PlusSimClient",
-        lambda **kwargs: FakeClient(kwargs["device_id"], "sim"),
+        lambda **kwargs: FakeClient(kwargs["device_id"], "simulated"),
     )
 
     clients = manager._make_clients_from_config()
-    sim_sources = [client.source for client, _ in clients]
+    simulated_sources = [client.source for client, _ in clients]
 
-    assert sim_sources.count("sim") == 3
+    assert simulated_sources.count("simulated") == 3
 
 
-def test_sim_mode_tolerates_legacy_eko_com_port_config(monkeypatch) -> None:
+def test_development_rejects_invalid_eko_port(monkeypatch) -> None:
     _disable_sensor_db(monkeypatch)
-    monkeypatch.setattr(manager, "MODE", "sim")
+    monkeypatch.setattr(manager, "ENVIRONMENT", Environment.DEVELOPMENT)
     monkeypatch.setattr(
         manager,
         "_load_config",
@@ -281,18 +355,91 @@ def test_sim_mode_tolerates_legacy_eko_com_port_config(monkeypatch) -> None:
             ]
         },
     )
+    with pytest.raises(manager.SensorConfigurationError, match="invalid port"):
+        manager._make_clients_from_config()
+
+
+def test_disabled_sensor_config_is_not_validated_or_registered(monkeypatch) -> None:
+    _disable_sensor_db(monkeypatch)
+    monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
     monkeypatch.setattr(
         manager,
-        "EkoCBoxModbusTcpClient",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("EKO real created in sim mode")),
+        "_load_config",
+        lambda: {
+            "t10a": [{"enabled": False, "device_id": "retired"}],
+            "jeti_spectraval": [{"enabled": False, "sensor_id": "retired"}],
+            "eko_ms90_plus": [{"enabled": False, "sensor_id": "retired"}],
+        },
     )
+
+    assert manager._make_clients_from_config() == []
+
+
+class AcknowledgingClient:
+    id = "JETI-SB-1"
+
+    def __init__(self) -> None:
+        self.acknowledged = 0
+        self.rejected = 0
+
+    def poll(self):
+        return [
+            SensorReading(
+                sensor_id="SPECBOS-1",
+                metric="spectrum",
+                value=0.0,
+                ts=100.0,
+                spectrum=[1.0, 2.0],
+            ),
+            SensorReading(
+                sensor_id="SPECBOS-1",
+                metric="lux",
+                value=42.0,
+                ts=100.0,
+            ),
+        ]
+
+    def acknowledge(self) -> None:
+        self.acknowledged += 1
+
+    def reject(self) -> None:
+        self.rejected += 1
+
+
+def test_embedded_poll_is_batched_before_source_cursor_is_acknowledged(
+    monkeypatch,
+) -> None:
+    client = AcknowledgingClient()
+    stored = []
     monkeypatch.setattr(
         manager,
-        "EkoMs90PlusSimClient",
-        lambda **kwargs: FakeClient(kwargs["device_id"], "sim"),
+        "ingest_sensor_events",
+        lambda events: stored.extend(events) or (len(events), 0),
     )
 
-    clients = manager._make_clients_from_config()
+    readings = manager._poll_and_persist(client)
 
-    assert len(clients) == 1
-    assert clients[0][0].source == "sim"
+    assert len(readings) == 2
+    assert len(stored) == 1
+    assert stored[0].sensor_id == "SPECBOS-1"
+    assert stored[0].metrics == {"lux": 42.0}
+    assert stored[0].spectrum == [1.0, 2.0]
+    assert client.acknowledged == 1
+    assert client.rejected == 0
+
+
+def test_embedded_poll_rejects_source_batch_when_database_write_fails(
+    monkeypatch,
+) -> None:
+    client = AcknowledgingClient()
+
+    def fail(_events):
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(manager, "ingest_sensor_events", fail)
+
+    with pytest.raises(RuntimeError, match="database unavailable"):
+        manager._poll_and_persist(client)
+
+    assert client.acknowledged == 0
+    assert client.rejected == 1

@@ -63,7 +63,7 @@ def test_delete_sensor_readings_for_ids_removes_spectra():
     assert fetch_latest_spectrum("JETI-TEST") is None
 
 
-def test_prune_sensors_to_ids_removes_spectra_for_pruned_sensors():
+def test_prune_sensors_to_ids_preserves_spectra_for_inactive_sensors():
     register_sensor("JETI-KEEP", "jeti_spectraval", "JETI Keep", None, {})
     register_sensor("JETI-PRUNE", "jeti_spectraval", "JETI Prune", None, {})
     insert_sensor_spectrum("JETI-KEEP", 1000.0, [1.0, 2.0, 3.0])
@@ -72,7 +72,7 @@ def test_prune_sensors_to_ids_removes_spectra_for_pruned_sensors():
     prune_sensors_to_ids(["JETI-KEEP"])
 
     assert fetch_latest_spectrum("JETI-KEEP") is not None
-    assert fetch_latest_spectrum("JETI-PRUNE") is None
+    assert fetch_latest_spectrum("JETI-PRUNE") is not None
 
 
 def test_api_spectrum_endpoints():

@@ -10,7 +10,6 @@ FROM python:3.11-slim AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    SVC_DATA_DIR=data \
     WEB_DIST_DIR=/app/web/dist
 
 WORKDIR /app/svc
