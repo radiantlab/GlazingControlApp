@@ -255,6 +255,8 @@ svc/data/*.glazing-cursor.json
 # Local temporary research repo / scratch workspace
 /.tmp_luox/
 *.cap
+# Development simulator template referenced by config/development/sensors_config.json
+!svc/config/development/jeti_template.cap
 
 # Local Modbus log downloads
 scripts/sensors/modbus_logs/
