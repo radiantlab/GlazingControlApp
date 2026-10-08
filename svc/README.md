@@ -245,7 +245,7 @@ in that state do not reach the service or Halio. See `web/README.md`.
 
 Each routine runs as a separate `python3` subprocess started by the service. The
 `python3` on the service's `PATH` must be able to import `requests`, which the
-container image installs from `requirements.txt`. Routine scripts call the API
+container image installs from `uv.lock`. Routine scripts call the API
 at the hard-coded `http://127.0.0.1:8000`, so routines stop working if the
 service listens on a different port (`SVC_PORT`).
 

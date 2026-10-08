@@ -161,7 +161,7 @@ function runBackendTests(reason) {
 function createBackendSnapshot() {
     const snapshot = new Map();
     const watchDirs = ["app", "tests"];
-    const watchFiles = ["main.py", "pyproject.toml", "requirements.txt"];
+    const watchFiles = ["main.py", "pyproject.toml", "uv.lock"];
     const watchExt = new Set([".py", ".toml"]);
 
     for (const file of watchFiles) {

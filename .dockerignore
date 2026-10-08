@@ -29,3 +29,4 @@ web/.npm-cache
 # image's /app/svc/data, so keep it empty apart from the README.
 svc/data/*
 !svc/data/README.md
+**/.claude
