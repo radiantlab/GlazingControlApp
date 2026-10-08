@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { SensorInfo, SensorReadingResponse } from "../api";
 import {
     connectedSensors,
+    getDisplayMetricsForSensor,
     getFreshMetricsForSensor,
     pruneVisibleSensorIds,
     sensorFreshnessWindowSeconds,
@@ -48,6 +49,28 @@ describe("sensorDisplay", () => {
         ];
 
         expect(getFreshMetricsForSensor(sensor("S1", 10), readings, 1000).map(m => m.metric)).toEqual(["lux"]);
+    });
+
+    it("displays fresh metrics while a sensor is reporting", () => {
+        const readings = [reading("S1", "lux", 980), reading("S1", "board_temp_c", 960)];
+
+        const display = getDisplayMetricsForSensor(sensor("S1", 10), readings, 1000);
+
+        expect(display.stale).toBe(false);
+        expect(display.metrics.map(m => m.metric)).toEqual(["lux"]);
+    });
+
+    it("falls back to the last stored readings for an offline sensor", () => {
+        const readings = [
+            reading("S1", "lux", 100),
+            reading("S1", "cct_ohno_k", 90),
+            reading("S2", "lux", 1000),
+        ];
+
+        const display = getDisplayMetricsForSensor(sensor("S1", 10), readings, 1000);
+
+        expect(display.stale).toBe(true);
+        expect(display.metrics.map(m => m.metric)).toEqual(["lux", "cct_ohno_k"]);
     });
 
     it("prunes visible sensors to the allowed connected sensor order", () => {

@@ -101,6 +101,21 @@ def test_ingestion_is_atomic_and_idempotent(temp_db, monkeypatch) -> None:
     assert _row_count(temp_db, "sensor_readings") == 2
 
 
+def test_same_observation_from_another_source_is_a_duplicate(temp_db) -> None:
+    # Switching acquisition from the Windows agent to the embedded watcher
+    # re-reads the same capture under a different event-ID namespace.
+    register_sensor("T10A1-H1", "t10a", "T-10A head 1", None, {})
+    agent_event = SensorIngestEvent.model_validate(_event())
+    container_event = SensorIngestEvent.model_validate(
+        {**_event(event_id="container:T10A1-H1:abc"), "source": "container:T10A1-H1"}
+    )
+
+    assert ingest_sensor_events([agent_event]) == (1, 0)
+    assert ingest_sensor_events([container_event]) == (0, 1)
+    assert _row_count(temp_db, "sensor_ingest_events") == 1
+    assert _row_count(temp_db, "sensor_readings") == 2
+
+
 def test_unknown_sensor_rejects_entire_batch(temp_db) -> None:
     register_sensor("T10A1-H1", "t10a", "T-10A head 1", None, {})
     events = [
