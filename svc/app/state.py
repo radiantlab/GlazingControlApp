@@ -520,8 +520,11 @@ def ingest_sensor_events(events: list[SensorIngestEvent]) -> tuple[int, int]:
     """
     Atomically persist a batch of host-collected physical observations.
 
-    Event IDs provide retry-safe idempotency. Duplicate events are skipped in
-    full, so their readings and spectra cannot be inserted twice.
+    Event IDs provide retry-safe idempotency. An event is also a duplicate when
+    the sensor already has an observation at the same timestamp from any
+    source (e.g. the Windows agent and the embedded watcher reading the same
+    capture). Duplicate events are skipped in full, so their readings and
+    spectra cannot be inserted twice.
     """
     _ensure_sensor_db()
     if not events:
@@ -548,6 +551,18 @@ def ingest_sensor_events(events: list[SensorIngestEvent]) -> tuple[int, int]:
 
         received_ts = time.time()
         for event in events:
+            already_observed = conn.execute(
+                """
+                SELECT 1 FROM sensor_ingest_events
+                WHERE sensor_id = ? AND observed_ts = ?
+                LIMIT 1
+                """,
+                (event.sensor_id, float(event.observed_ts)),
+            ).fetchone()
+            if already_observed:
+                duplicates += 1
+                continue
+
             cursor = conn.execute(
                 """
                 INSERT INTO sensor_ingest_events (
