@@ -114,6 +114,11 @@ Sensor Agent natively on the Windows host:
 .\scripts\sensors\Start-SensorAgent.ps1 -Command continuous
 ```
 
+Install [uv](https://docs.astral.sh/uv/) first. See
+[Continuous production acquisition](../scripts/sensors/README.md#continuous-production-acquisition)
+for when the agent needs internet, which account the scheduled task must use,
+and how to update.
+
 The agent loads `svc/.env.production`, so it gets the same
 `SVC_SENSOR_INGEST_TOKEN` as the container, and it defaults its config to
 `SVC_PRODUCTION_CONFIG_DIR/sensors_config.json` (override with

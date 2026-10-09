@@ -62,4 +62,4 @@ npm run watch             # repository error watcher, see the root README
 `../scripts/watch.mjs`. Run from `web`, `npm run watch` defaults to the frontend
 type check only.
 
-Node.js 20 or newer is required.
+Node.js 24 is required (`.nvmrc` at the repository root).

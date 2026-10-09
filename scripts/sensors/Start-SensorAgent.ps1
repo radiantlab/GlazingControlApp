@@ -39,25 +39,75 @@ if (-not (Test-Path -LiteralPath $agentScript -PathType Leaf)) {
     throw "Sensor Agent entry point does not exist: $agentScript"
 }
 
+# Prefer uv: it reads svc/.python-version and uv.lock and brings svc/.venv up to
+# date first, so an upgrade cannot leave the agent on a stale interpreter or
+# stale packages. That install needs internet on a new PC and after an update
+# that changes either file.
+# Without uv, use svc/.venv only if it was built for the Python version in
+# svc/.python-version; otherwise stop and tell the operator to install uv.
+$installUvHint = 'Install uv from https://docs.astral.sh/uv/ and run this script again; it will set everything up.'
+$uvCommand = Get-Command 'uv' -ErrorAction SilentlyContinue
 $venvPython = Join-Path $servicePath '.venv\Scripts\python.exe'
-if (Test-Path -LiteralPath $venvPython -PathType Leaf) {
-    $agentExecutable = $venvPython
-    $agentArgs = @('scripts/sensor_agent.py', $Command)
-}
-else {
-    $uvCommand = Get-Command 'uv' -ErrorAction Stop
+if ($uvCommand) {
     $agentExecutable = $uvCommand.Source
     if (-not $env:UV_CACHE_DIR) {
         $env:UV_CACHE_DIR = Join-Path $servicePath '.uv-cache'
     }
+    # Sync as its own step so a failed install gets a plain message, not an
+    # agent error. The usual causes are no internet on the first run after an
+    # update, or a running agent task holding files in svc\.venv.
+    $syncExitCode = 1
+    $syncError = $null
+    try {
+        & $agentExecutable sync --frozen --no-dev --quiet --directory $servicePath
+        $syncExitCode = $LASTEXITCODE
+    }
+    catch {
+        # PowerShell 7 messages can span lines; keep the throw on one line.
+        $syncError = ($_.Exception.Message -replace '\s+', ' ').Trim().TrimEnd('.')
+    }
+    if ($syncExitCode -ne 0) {
+        $syncDetail = if ($syncError) { $syncError } else { "uv exit code $syncExitCode; its message is above" }
+        throw "uv could not install Python or the Sensor Agent packages ($syncDetail). The first run on a new PC, and the first run after an update to Python or the agent's packages, needs internet. Connect this PC to the internet, or if it already has internet, stop the Sensor Agent scheduled task. Then run this script again."
+    }
+    # --no-sync skips the install step above. --frozen also keeps an older uv,
+    # where --no-sync does not imply it, from rewriting uv.lock.
     $agentArgs = @(
         'run',
-        '--python',
-        '3.11',
+        '--frozen',
+        '--no-sync',
         'python',
         'scripts/sensor_agent.py',
         $Command
     )
+}
+elseif (Test-Path -LiteralPath $venvPython -PathType Leaf) {
+    # Nothing refreshes the venv without uv. Any failure to confirm its Python
+    # version (missing .python-version, a venv whose base Python was removed)
+    # ends in the same readable message instead of a PowerShell error.
+    $wantedPython = $null
+    $venvVersion = $null
+    try {
+        $wantedPython = "$(Get-Content -LiteralPath (Join-Path $servicePath '.python-version') -TotalCount 1)".Trim()
+        $venvVersion = "$(& $venvPython -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" 2>$null)".Trim()
+        if ($LASTEXITCODE -ne 0) {
+            $venvVersion = $null
+        }
+    }
+    catch {
+        $venvVersion = $null
+    }
+    if (-not $wantedPython -or -not $venvVersion) {
+        throw "svc\.venv could not be checked against svc\.python-version. $installUvHint"
+    }
+    if ($venvVersion -ne $wantedPython) {
+        throw "svc\.venv uses Python $venvVersion but this checkout needs Python $wantedPython. $installUvHint"
+    }
+    $agentExecutable = $venvPython
+    $agentArgs = @('scripts/sensor_agent.py', $Command)
+}
+else {
+    throw "Neither uv nor svc\.venv was found. $installUvHint"
 }
 
 if ($Command -ne 'list-ports') {

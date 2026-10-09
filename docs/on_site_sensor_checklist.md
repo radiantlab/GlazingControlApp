@@ -18,14 +18,19 @@ Use this at the trailer/lab PC after the hardware is physically installed.
 ## Windows Checks
 
 1. Open Device Manager.
-2. Run `.\scripts\sensors\Start-SensorAgent.ps1 -Command list-ports`. It
+2. If any device will be read by the Sensor Agent, confirm
+   [uv](https://docs.astral.sh/uv/) is installed (`uv --version`) and the PC
+   has internet for the first agent run below. See
+   [Continuous production acquisition](../scripts/sensors/README.md#continuous-production-acquisition)
+   for when internet is needed again.
+3. Run `.\scripts\sensors\Start-SensorAgent.ps1 -Command list-ports`. It
    lists ports without opening them. Record the USB `serial_number` (and `vid`,
    `pid`) for each `T-10A` body.
-3. Record the same identity for each JETI device that will use direct serial
+4. Record the same identity for each JETI device that will use direct serial
    mode.
-4. If a JETI device is missing, install the JETI USB driver and reconnect it.
-5. Open the C-BOX web UI from the site computer: `http://192.168.40.50/`.
-6. In the C-BOX web UI, open `Modbus -> Setup` and confirm Modbus TCP access is enabled.
+5. If a JETI device is missing, install the JETI USB driver and reconnect it.
+6. Open the C-BOX web UI from the site computer: `http://192.168.40.50/`.
+7. In the C-BOX web UI, open `Modbus -> Setup` and confirm Modbus TCP access is enabled.
 
 ## Update the production `sensors_config.json`
 
@@ -79,6 +84,10 @@ If any device is marked external, start the Sensor Agent on the Windows host:
 .\scripts\sensors\Start-SensorAgent.ps1 -Command once
 .\scripts\sensors\Start-SensorAgent.ps1 -Command continuous
 ```
+
+To keep it running unattended, schedule `continuous` as described in
+[Continuous production acquisition](../scripts/sensors/README.md#continuous-production-acquisition),
+which says which Windows account to use.
 
 ## Acceptance Checks
 
