@@ -1,6 +1,4 @@
 .git
-.agents
-.codex
 .github
 .pytest_cache
 docs
@@ -17,10 +15,11 @@ svc/.test-tmp*
 svc/.uv-cache
 svc/sensor-agent-data
 svc/db-backups
-svc/data/*.db
-svc/data/*.sqlite
-svc/data/*.sqlite3
-svc/data/*.log
-svc/data/*.db-journal
-svc/data/*.db-wal
-svc/data/*.db-shm
+svc/tests
+svc/config/production
+web/.npm-cache
+# svc/data is runtime-only; the development named volume is seeded from the
+# image's /app/svc/data, so keep it empty apart from the README.
+svc/data/*
+!svc/data/README.md
+**/.claude

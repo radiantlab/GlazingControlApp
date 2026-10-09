@@ -55,9 +55,9 @@ class HalioAdapter:
         # Cache for window states to enforce dwell time
         self._state_cache: Dict[str, Dict] = {}
 
-        logger.info(f"HalioAdapter initialized for site {self.site_id}")
         logger.info(
-            "Using Halio-discovered windows/groups without local window_mapping.json"
+            "HalioAdapter initialized for site %s; panels are Halio windows",
+            self.site_id,
         )
 
     def _extract_results(self, response_data: Any) -> Any:

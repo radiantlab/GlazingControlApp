@@ -6,7 +6,7 @@ from app.sensors.spectral_metrics import compute_jeti_metrics
 
 
 def _load_first_cap_row() -> tuple[float, list[str]]:
-    cap_path = Path(__file__).resolve().parents[1] / "data" / "251118_Jeti_Spectraval_Data.cap"
+    cap_path = Path(__file__).resolve().parent / "fixtures" / "251118_Jeti_Spectraval_Data.cap"
     line = cap_path.read_text(encoding="latin-1").splitlines()[0]
     parts = [p.strip() for p in line.split(";")]
     lux = float(parts[5])
