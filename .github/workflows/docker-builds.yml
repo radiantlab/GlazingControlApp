@@ -27,7 +27,7 @@ jobs:
       HALIO_SITE_ID: ci-placeholder
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Check Dockerfile matches CI runtime versions
         run: scripts/check-runtime-versions.sh
