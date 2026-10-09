@@ -15,6 +15,17 @@ interface LiveGraphProps {
     endTs?: number;
 }
 
+// Recharts types tooltip labels and values loosely (ReactNode, number | string |
+// array). Timestamps and readings are numbers; accept numeric strings too, and
+// treat anything else as missing.
+function toFiniteNumber(value: unknown): number | undefined {
+    const parsed =
+        typeof value === "number" ? value
+        : typeof value === "string" && value.trim() !== "" ? Number(value)
+        : Number.NaN;
+    return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, variant = "card", yAxisLabel, valueFormatter, endTs }: LiveGraphProps) {
     const [data, setData] = useState<SensorReadingResponse[]>([]);
     const [loading, setLoading] = useState(true);
@@ -107,8 +118,8 @@ function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, v
                     />
                     <Tooltip
                         contentStyle={{ backgroundColor: '#222', border: '1px solid #444', borderRadius: 4, color: '#fff' }}
-                        labelFormatter={(label) => new Date(Number(label) * 1000).toLocaleString()}
-                        formatter={(value) => [formatTooltipValue(typeof value === "number" ? value : undefined), yAxisLabel || metric]}
+                        labelFormatter={(label) => { const ts = toFiniteNumber(label); return ts === undefined ? "" : new Date(ts * 1000).toLocaleString(); }}
+                        formatter={(value) => [formatTooltipValue(toFiniteNumber(value)), yAxisLabel || metric]}
                     />
                     <Area
                         type="monotone"
