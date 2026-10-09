@@ -107,8 +107,8 @@ function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, v
                     />
                     <Tooltip
                         contentStyle={{ backgroundColor: '#222', border: '1px solid #444', borderRadius: 4, color: '#fff' }}
-                        labelFormatter={(label) => new Date(label * 1000).toLocaleString()}
-                        formatter={(value: number | undefined) => [formatTooltipValue(value), yAxisLabel || metric]}
+                        labelFormatter={(label) => new Date(Number(label) * 1000).toLocaleString()}
+                        formatter={(value) => [formatTooltipValue(typeof value === "number" ? value : undefined), yAxisLabel || metric]}
                     />
                     <Area
                         type="monotone"
