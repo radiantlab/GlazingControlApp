@@ -7,8 +7,10 @@ cd "$(dirname "$0")/.."
 
 python_file=$(tr -d '[:space:]' < svc/.python-version)
 node_file=$(tr -d '[:space:]' < .nvmrc)
-# The uv pin is the first `version:` input after the setup-uv step.
-uv_ci=$(awk '/astral-sh\/setup-uv/ { in_uv = 1 }
+# The uv pin is the `version:` input of the setup-uv step; matching stops at
+# the next step, so a missing input reads as empty and fails below.
+uv_ci=$(awk '/astral-sh\/setup-uv/ { in_uv = 1; next }
+    in_uv && /^ *- name: / { exit }
     in_uv && /^ *version: / { gsub(/[^0-9.]/, "", $2); print $2; exit }' .github/workflows/ci.yml)
 
 python_image=$(sed -n 's/^FROM python:\([0-9.]*\)-.*/\1/p' Dockerfile)

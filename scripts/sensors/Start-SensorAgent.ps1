@@ -60,6 +60,13 @@ if ($uvCommand) {
     )
 }
 elseif (Test-Path -LiteralPath $venvPython -PathType Leaf) {
+    # Without uv nothing refreshes the venv, so refuse one built for another
+    # Python version instead of failing later with an unreadable error.
+    $wantedPython = (Get-Content -LiteralPath (Join-Path $servicePath '.python-version') -TotalCount 1).Trim()
+    $venvVersion = (& $venvPython -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')").Trim()
+    if ($venvVersion -ne $wantedPython) {
+        throw "svc\.venv uses Python $venvVersion but this version needs Python $wantedPython. Install uv from https://docs.astral.sh/uv/ and run this script again; it will set everything up."
+    }
     $agentExecutable = $venvPython
     $agentArgs = @('scripts/sensor_agent.py', $Command)
 }
