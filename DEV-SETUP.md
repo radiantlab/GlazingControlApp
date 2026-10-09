@@ -10,9 +10,9 @@ accepted.
 
 ## Prerequisites
 
-- Python `>=3.11,<3.14`
+- Python 3.14 (`svc/.python-version`; `uv sync` installs it if missing)
 - [uv](https://docs.astral.sh/uv/)
-- Node.js 20 and npm
+- Node.js 24 and npm (`.nvmrc`)
 - Docker or Podman for container deployments
 
 ## Local development

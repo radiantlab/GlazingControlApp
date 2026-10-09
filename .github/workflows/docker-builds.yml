@@ -29,6 +29,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check Dockerfile matches CI runtime versions
+        run: scripts/check-runtime-versions.sh
+
       - name: Validate compose file
         run: docker compose config --quiet
 

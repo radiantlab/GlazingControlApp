@@ -31,13 +31,13 @@ This app provides researchers and facility managers with a local-first system to
   <em>Real-time sensor monitoring, visibility toggles, and live/historical spectral irradiance graphs.</em>
 </div>
 
-For a clean machine setup, use [`DEV-SETUP.md`](./DEV-SETUP.md). The backend expects Python `>=3.11,<3.14`; the frontend uses Node.js/NPM. EKO site deployments now use the C-BOX Ethernet Modbus TCP interface (`host` plus TCP `port` 502) and no longer use USB-to-RS485 or a COM port for EKO.
+For a clean machine setup, use [`DEV-SETUP.md`](./DEV-SETUP.md). The backend runs on Python 3.14; the frontend uses Node.js 24 and npm. EKO site deployments now use the C-BOX Ethernet Modbus TCP interface (`host` plus TCP `port` 502) and no longer use USB-to-RS485 or a COM port for EKO.
 
 ## How to Try It
 
 **Prerequisites:**
-- [Node.js](https://nodejs.org/) 20 or newer (CI and the Dockerfile use 20; `react-router` requires `>=20`)
-- Python 3.11 to 3.13 (`svc/pyproject.toml` pins `>=3.11,<3.14`)
+- [Node.js](https://nodejs.org/) 24 (`.nvmrc`; CI and the Dockerfile use the same version)
+- Python 3.14 (`svc/.python-version`; uv installs it if missing)
 - [uv](https://docs.astral.sh/uv/)
 - [Docker](https://www.docker.com/) or [Podman Desktop](https://podman-desktop.io/), only for the container path
 

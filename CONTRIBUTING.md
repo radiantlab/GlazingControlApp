@@ -8,8 +8,8 @@ Report concerns to the rest of the team and the project partner. For private con
 ## Getting Started
 Prereqs  
 - Git installed  
-- Python 3.11 or newer  
-- Node LTS  
+- Python 3.14 (uv installs it from `svc/.python-version`)  
+- Node.js 24 (`.nvmrc`)  
 - A terminal and an editor
 
 Backend setup  
