@@ -52,23 +52,25 @@ if ($uvCommand) {
     if (-not $env:UV_CACHE_DIR) {
         $env:UV_CACHE_DIR = Join-Path $servicePath '.uv-cache'
     }
-    # Sync as its own step so a failed download (usually no internet on the
-    # first run after an update) gets a plain message, not an agent error.
+    # Sync as its own step so a failed install gets a plain message, not an
+    # agent error. The usual causes are no internet on the first run after an
+    # update, or a running agent task holding files in svc\.venv.
     $syncExitCode = 1
+    $syncError = $null
     try {
         & $agentExecutable sync --frozen --no-dev --quiet --directory $servicePath
         $syncExitCode = $LASTEXITCODE
     }
     catch {
-        $syncExitCode = 1
+        $syncError = $_.Exception.Message.TrimEnd(".")
     }
     if ($syncExitCode -ne 0) {
-        throw 'uv could not install Python or the Sensor Agent packages. The first run on a new PC, and the first run after an update, needs internet access. Connect this PC to the internet and run this script again.'
+        $syncDetail = if ($syncError) { $syncError } else { "uv exit code $syncExitCode; its message is above" }
+        throw "uv could not install Python or the Sensor Agent packages ($syncDetail). The first run on a new PC, and the first run after an update to Python or the agent's packages, needs internet. Connect this PC to the internet, or if it already has internet, stop the Sensor Agent scheduled task. Then run this script again."
     }
+    # --no-sync skips the install step above and implies --frozen.
     $agentArgs = @(
         'run',
-        '--frozen',
-        '--no-dev',
         '--no-sync',
         'python',
         'scripts/sensor_agent.py',

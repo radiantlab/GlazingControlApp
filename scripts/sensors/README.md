@@ -48,8 +48,9 @@ The script runs the agent through [uv](https://docs.astral.sh/uv/), which
 installs the Python version in `svc/.python-version` and the packages in
 `svc/uv.lock` before starting. The first run on a new PC, and the first run
 after pulling an update that changes either file, needs internet access; later
-runs work offline. If that download fails, the script stops and says the PC
-needs internet. Install uv: without it, the script uses an existing
+runs work offline. If the install fails, the script stops and says what to
+check: internet access, or a running Sensor Agent task holding files in
+`svc\.venv`. Without uv, the script uses an existing
 `svc\.venv` only if it was built for the Python version in
 `svc/.python-version`; otherwise it stops and asks you to install uv.
 
@@ -63,14 +64,17 @@ one bounded pass:
 Run `continuous` from Task Scheduler at system startup. uv installs per user,
 so run the task as the Windows account that installed uv and ran the first
 `list-ports` and `once` passes, with **Run whether user is logged on or not**.
-A task running as `SYSTEM` or another account does not find uv. The task
-should use `powershell.exe` with:
+A task running as `SYSTEM` or another account does not find uv. Task
+Scheduler asks for that account's password once when you save the task. The
+task should use `powershell.exe` with:
 
 ```text
 -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\GlazingControlApp\scripts\sensors\Start-SensorAgent.ps1 -Command continuous
 ```
 
-Use **Do not start a new instance** and restart the task after a failure. The
+Use **Do not start a new instance** and restart the task after a failure. To
+update, end the task, pull the update, run `once` by hand, then start the task
+again. The
 agent retains undelivered events in its separate
 `svc/sensor-agent-data/outbox.db`; it never opens `audit.db`.
 Operational logs rotate at 10 MiB with five retained files under
