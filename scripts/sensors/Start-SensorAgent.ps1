@@ -42,7 +42,9 @@ if (-not (Test-Path -LiteralPath $agentScript -PathType Leaf)) {
 # Prefer uv: it reads svc/.python-version and uv.lock and brings svc/.venv up to
 # date first, so an upgrade cannot leave the agent on a stale interpreter or
 # stale packages. The first run after an upgrade needs internet access once.
-# Without uv, fall back to whatever svc/.venv already holds.
+# Without uv, use svc/.venv only if it was built for the Python version in
+# svc/.python-version; otherwise stop and tell the operator to install uv.
+$installUvHint = 'Install uv from https://docs.astral.sh/uv/ and run this script again; it will set everything up.'
 $uvCommand = Get-Command 'uv' -ErrorAction SilentlyContinue
 $venvPython = Join-Path $servicePath '.venv\Scripts\python.exe'
 if ($uvCommand) {
@@ -60,18 +62,32 @@ if ($uvCommand) {
     )
 }
 elseif (Test-Path -LiteralPath $venvPython -PathType Leaf) {
-    # Without uv nothing refreshes the venv, so refuse one built for another
-    # Python version instead of failing later with an unreadable error.
-    $wantedPython = (Get-Content -LiteralPath (Join-Path $servicePath '.python-version') -TotalCount 1).Trim()
-    $venvVersion = (& $venvPython -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')").Trim()
+    # Nothing refreshes the venv without uv. Any failure to confirm its Python
+    # version (missing .python-version, a venv whose base Python was removed)
+    # ends in the same readable message instead of a PowerShell error.
+    $wantedPython = $null
+    $venvVersion = $null
+    try {
+        $wantedPython = "$(Get-Content -LiteralPath (Join-Path $servicePath '.python-version') -TotalCount 1)".Trim()
+        $venvVersion = "$(& $venvPython -c "import sys; print(f'{sys.version_info[0]}.{sys.version_info[1]}')" 2>$null)".Trim()
+        if ($LASTEXITCODE -ne 0) {
+            $venvVersion = $null
+        }
+    }
+    catch {
+        $venvVersion = $null
+    }
+    if (-not $wantedPython -or -not $venvVersion) {
+        throw "svc\.venv could not be checked against svc\.python-version. $installUvHint"
+    }
     if ($venvVersion -ne $wantedPython) {
-        throw "svc\.venv uses Python $venvVersion but this version needs Python $wantedPython. Install uv from https://docs.astral.sh/uv/ and run this script again; it will set everything up."
+        throw "svc\.venv uses Python $venvVersion but this version needs Python $wantedPython. $installUvHint"
     }
     $agentExecutable = $venvPython
     $agentArgs = @('scripts/sensor_agent.py', $Command)
 }
 else {
-    throw "Neither uv nor $venvPython was found. Install uv from https://docs.astral.sh/uv/ and run this script again."
+    throw "Neither uv nor svc\.venv was found. $installUvHint"
 }
 
 if ($Command -ne 'list-ports') {

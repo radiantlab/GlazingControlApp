@@ -106,7 +106,11 @@ podman compose --env-file svc/.env.production up -d --build
 
 `docker compose` takes the same arguments. Neither Podman nor Docker gives the
 Linux container Windows COM access. If any device is marked external, run the
-Sensor Agent natively on the Windows host:
+Sensor Agent natively on the Windows host. The script needs
+[uv](https://docs.astral.sh/uv/) installed. The first run on a new PC, and the
+first run after pulling an update that changes `svc/.python-version` or
+`svc/uv.lock`, needs internet access so uv can install Python and the agent's
+packages; later runs work offline:
 
 ```powershell
 .\scripts\sensors\Start-SensorAgent.ps1 -Command list-ports
