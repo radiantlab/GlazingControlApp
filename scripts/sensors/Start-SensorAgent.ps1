@@ -52,10 +52,24 @@ if ($uvCommand) {
     if (-not $env:UV_CACHE_DIR) {
         $env:UV_CACHE_DIR = Join-Path $servicePath '.uv-cache'
     }
+    # Sync as its own step so a failed download (usually no internet on the
+    # first run after an update) gets a plain message, not an agent error.
+    $syncExitCode = 1
+    try {
+        & $agentExecutable sync --frozen --no-dev --quiet --directory $servicePath
+        $syncExitCode = $LASTEXITCODE
+    }
+    catch {
+        $syncExitCode = 1
+    }
+    if ($syncExitCode -ne 0) {
+        throw 'uv could not install Python or the Sensor Agent packages. The first run on a new PC, and the first run after an update, needs internet access. Connect this PC to the internet and run this script again.'
+    }
     $agentArgs = @(
         'run',
         '--frozen',
         '--no-dev',
+        '--no-sync',
         'python',
         'scripts/sensor_agent.py',
         $Command
@@ -81,7 +95,7 @@ elseif (Test-Path -LiteralPath $venvPython -PathType Leaf) {
         throw "svc\.venv could not be checked against svc\.python-version. $installUvHint"
     }
     if ($venvVersion -ne $wantedPython) {
-        throw "svc\.venv uses Python $venvVersion but this version needs Python $wantedPython. $installUvHint"
+        throw "svc\.venv uses Python $venvVersion but this checkout needs Python $wantedPython. $installUvHint"
     }
     $agentExecutable = $venvPython
     $agentArgs = @('scripts/sensor_agent.py', $Command)

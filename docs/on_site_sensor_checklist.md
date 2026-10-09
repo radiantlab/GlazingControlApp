@@ -19,10 +19,10 @@ Use this at the trailer/lab PC after the hardware is physically installed.
 
 1. Open Device Manager.
 2. If any device will be read by the Sensor Agent, confirm
-   [uv](https://docs.astral.sh/uv/) is installed (`uv --version`) and that the
-   PC has internet for the first agent run below: uv downloads Python and the
-   agent's packages once, then works offline. Repeat this after pulling an
-   update that changes `svc/.python-version` or `svc/uv.lock`.
+   [uv](https://docs.astral.sh/uv/) is installed (`uv --version`) and the PC
+   has internet for the first agent run below. See
+   [Continuous production acquisition](../scripts/sensors/README.md#continuous-production-acquisition)
+   for when internet is needed again.
 3. Run `.\scripts\sensors\Start-SensorAgent.ps1 -Command list-ports`. It
    lists ports without opening them. Record the USB `serial_number` (and `vid`,
    `pid`) for each `T-10A` body.

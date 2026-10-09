@@ -48,7 +48,8 @@ The script runs the agent through [uv](https://docs.astral.sh/uv/), which
 installs the Python version in `svc/.python-version` and the packages in
 `svc/uv.lock` before starting. The first run on a new PC, and the first run
 after pulling an update that changes either file, needs internet access; later
-runs work offline. Without uv installed, the script uses an existing
+runs work offline. If that download fails, the script stops and says the PC
+needs internet. Install uv: without it, the script uses an existing
 `svc\.venv` only if it was built for the Python version in
 `svc/.python-version`; otherwise it stops and asks you to install uv.
 
@@ -59,8 +60,11 @@ one bounded pass:
 .\scripts\sensors\Start-SensorAgent.ps1 -Command once
 ```
 
-Run `continuous` from Task Scheduler at system startup. The task should use
-`powershell.exe` with:
+Run `continuous` from Task Scheduler at system startup. uv installs per user,
+so run the task as the Windows account that installed uv and ran the first
+`list-ports` and `once` passes, with **Run whether user is logged on or not**.
+A task running as `SYSTEM` or another account does not find uv. The task
+should use `powershell.exe` with:
 
 ```text
 -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\GlazingControlApp\scripts\sensors\Start-SensorAgent.ps1 -Command continuous
