@@ -99,7 +99,7 @@ Required before merge
 - svc tests pass locally  pytest -q  
 - web builds locally  npm run build
 
-We will expand CI to run pytest and a web type check. Until then reviewers must run these locally.
+We will expand CI to run pytest and a web type check. Until then reviewers must run these locally.  
 
 ## Security and Secrets
 - never commit secrets or API keys  
@@ -130,3 +130,8 @@ Need help?
 - ask in the team Discord first  
 - if stuck for more than a day, post in the issue and tag the lead  
 - for project questions, contact Dr. Pierson or Alex  
+
+## Contribution Norms
+Each team member owns one piece of accepted work per sprint.  
+- Claim an issue on the repo (or create one which reflects what your change addresses)  
+- Pull request must be reviewed by at least one other team member  
