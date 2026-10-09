@@ -44,6 +44,13 @@ ports without opening them:
 .\scripts\sensors\Start-SensorAgent.ps1 -Command list-ports
 ```
 
+The script runs the agent through [uv](https://docs.astral.sh/uv/), which
+installs the Python version in `svc/.python-version` and the packages in
+`svc/uv.lock` before starting. The first run on a new PC, and the first run
+after pulling an update that changes either file, needs internet access; later
+runs work offline. Without uv installed, the script falls back to an existing
+`svc\.venv`.
+
 After enrolling stable `port_identity` values in `sensors_config.json`, test
 one bounded pass:
 

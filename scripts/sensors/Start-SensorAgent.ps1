@@ -39,25 +39,32 @@ if (-not (Test-Path -LiteralPath $agentScript -PathType Leaf)) {
     throw "Sensor Agent entry point does not exist: $agentScript"
 }
 
+# Prefer uv: it reads svc/.python-version and uv.lock and brings svc/.venv up to
+# date first, so an upgrade cannot leave the agent on a stale interpreter or
+# stale packages. The first run after an upgrade needs internet access once.
+# Without uv, fall back to whatever svc/.venv already holds.
+$uvCommand = Get-Command 'uv' -ErrorAction SilentlyContinue
 $venvPython = Join-Path $servicePath '.venv\Scripts\python.exe'
-if (Test-Path -LiteralPath $venvPython -PathType Leaf) {
-    $agentExecutable = $venvPython
-    $agentArgs = @('scripts/sensor_agent.py', $Command)
-}
-else {
-    $uvCommand = Get-Command 'uv' -ErrorAction Stop
+if ($uvCommand) {
     $agentExecutable = $uvCommand.Source
     if (-not $env:UV_CACHE_DIR) {
         $env:UV_CACHE_DIR = Join-Path $servicePath '.uv-cache'
     }
     $agentArgs = @(
         'run',
-        '--python',
-        '3.11',
+        '--frozen',
+        '--no-dev',
         'python',
         'scripts/sensor_agent.py',
         $Command
     )
+}
+elseif (Test-Path -LiteralPath $venvPython -PathType Leaf) {
+    $agentExecutable = $venvPython
+    $agentArgs = @('scripts/sensor_agent.py', $Command)
+}
+else {
+    throw "Neither uv nor $venvPython was found. Install uv from https://docs.astral.sh/uv/ and run this script again."
 }
 
 if ($Command -ne 'list-ports') {
