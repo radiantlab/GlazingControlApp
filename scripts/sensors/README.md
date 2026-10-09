@@ -74,8 +74,7 @@ task should use `powershell.exe` with:
 
 Use **Do not start a new instance** and restart the task after a failure. To
 update, end the task, pull the update, run `once` by hand, then start the task
-again. The
-agent retains undelivered events in its separate
+again. The agent retains undelivered events in its separate
 `svc/sensor-agent-data/outbox.db`; it never opens `audit.db`.
 Operational logs rotate at 10 MiB with five retained files under
 `svc/sensor-agent-data/agent.log` by default.

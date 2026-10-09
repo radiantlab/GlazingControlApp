@@ -41,7 +41,8 @@ if (-not (Test-Path -LiteralPath $agentScript -PathType Leaf)) {
 
 # Prefer uv: it reads svc/.python-version and uv.lock and brings svc/.venv up to
 # date first, so an upgrade cannot leave the agent on a stale interpreter or
-# stale packages. The first run after an upgrade needs internet access once.
+# stale packages. That install needs internet on a new PC and after an update
+# that changes either file.
 # Without uv, use svc/.venv only if it was built for the Python version in
 # svc/.python-version; otherwise stop and tell the operator to install uv.
 $installUvHint = 'Install uv from https://docs.astral.sh/uv/ and run this script again; it will set everything up.'
@@ -62,15 +63,18 @@ if ($uvCommand) {
         $syncExitCode = $LASTEXITCODE
     }
     catch {
-        $syncError = $_.Exception.Message.TrimEnd(".")
+        # PowerShell 7 messages can span lines; keep the throw on one line.
+        $syncError = ($_.Exception.Message -replace '\s+', ' ').Trim().TrimEnd('.')
     }
     if ($syncExitCode -ne 0) {
         $syncDetail = if ($syncError) { $syncError } else { "uv exit code $syncExitCode; its message is above" }
         throw "uv could not install Python or the Sensor Agent packages ($syncDetail). The first run on a new PC, and the first run after an update to Python or the agent's packages, needs internet. Connect this PC to the internet, or if it already has internet, stop the Sensor Agent scheduled task. Then run this script again."
     }
-    # --no-sync skips the install step above and implies --frozen.
+    # --no-sync skips the install step above. --frozen also keeps an older uv,
+    # where --no-sync does not imply it, from rewriting uv.lock.
     $agentArgs = @(
         'run',
+        '--frozen',
         '--no-sync',
         'python',
         'scripts/sensor_agent.py',

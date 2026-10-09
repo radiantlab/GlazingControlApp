@@ -86,9 +86,8 @@ If any device is marked external, start the Sensor Agent on the Windows host:
 ```
 
 To keep it running unattended, schedule `continuous` as described in
-[Continuous production acquisition](../scripts/sensors/README.md#continuous-production-acquisition).
-Use the Windows account that ran the commands above; Task Scheduler asks for
-its password once.
+[Continuous production acquisition](../scripts/sensors/README.md#continuous-production-acquisition),
+which says which Windows account to use.
 
 ## Acceptance Checks
 
