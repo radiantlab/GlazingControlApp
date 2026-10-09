@@ -244,7 +244,7 @@ svc/data/panels_config.json
 svc/data/routines/
 svc/db-backups/
 
-# JETI simulator output (configured as either file or directory)
+# JETI watcher cursors
 svc/data/*.glazing-cursor.json
 
 # Vendor manuals, extracted text, and ad hoc sensor docs used for local AI context

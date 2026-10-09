@@ -226,6 +226,14 @@ integration alternatives are documented in
 
 ### Method A: JETI over USB with file-based capture ingestion
 
+Production reads one LiVal capture, from the Specbos (`SPECBOS-1`). The two
+Spectravals from the old site config (`SPECTRAVAL-1`, `SPECTRAVAL-2`, kept in
+`docs/reference/sensors_config.legacy-site.json`) are left out on purpose:
+each file source needs its own read-only capture mount in
+`docker-compose.yml`, and Compose cannot start with a missing file mount. To
+bring one back, add its entry with its own `input_path` and a matching mount,
+or read it over SPECFIRM as an external device (Method B).
+
 Use this when LiVal writes its line-oriented continuous capture output to a
 file. LiVal stays open and owns the USB port. The API container reads the
 capture file through a read-only bind mount; the Sensor Agent is not involved.

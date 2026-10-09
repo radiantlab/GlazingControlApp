@@ -1,5 +1,8 @@
 """Production Halio adapter and service-selection tests."""
 
+import json
+from pathlib import Path
+
 from app.adapter import HalioAdapter
 from app.config import Environment
 from app.service import ControlService
@@ -264,3 +267,39 @@ def test_adapter_omits_api_key_header_when_unset(monkeypatch):
 
     monkeypatch.setattr("app.adapter.HALIO_API_KEY", "legacy-key")
     assert HalioAdapter().headers["X-API-Key"] == "legacy-key"
+
+
+HALIO_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "halio"
+
+
+def test_list_panels_from_captured_trailer_responses(monkeypatch):
+    # Window and group listings captured from the trailer's controller.
+    windows = json.loads((HALIO_FIXTURES / "exampleWindowResp.json").read_text())
+    groups = json.loads((HALIO_FIXTURES / "exampleGroupsResp.json").read_text())
+    monkeypatch.setattr("app.adapter.HAS_REQUESTS", True)
+    monkeypatch.setattr("app.adapter.HALIO_API_KEY", "")
+    monkeypatch.setattr("app.adapter.HALIO_SITE_ID", "site")
+    monkeypatch.setattr("app.adapter.HALIO_API_URL", "http://halio/api/v3")
+    created = []
+
+    def fake_get(url, headers=None, timeout=10):
+        if url.startswith("http://halio/api/v3/sites/site/windows?"):
+            return FakeResponse(200, windows)
+        if url == "http://halio/api/v3/sites/site/groups":
+            return FakeResponse(200, groups)
+        return FakeResponse(404, {})
+
+    def fake_post(url, headers=None, json=None, timeout=10):
+        created.append(json)
+        return FakeResponse(201, {"results": {"id": f"group-{len(created)}"}})
+
+    monkeypatch.setattr("app.adapter.requests.get", fake_get)
+    monkeypatch.setattr("app.adapter.requests.post", fake_post)
+
+    panels = HalioAdapter().list_panels()
+
+    expected = sorted(window["name"] for window in windows["results"])
+    assert [panel.name for panel in panels] == expected
+    assert len(panels) == 20
+    assert {"DR-1.1", "DR-2.9", "SK-1.1", "SK-1.2"} <= set(expected)
+

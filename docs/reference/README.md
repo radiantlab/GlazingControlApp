@@ -6,4 +6,6 @@
   heads each), three JETI file sources (SPECTRAVAL-1, SPECTRAVAL-2, SPECBOS-1)
   and the EKO C-BOX. The current template is
   `svc/config/production.example/sensors_config.json`, which carries the T-10A
-  bodies as external devices; the two Spectraval entries exist only here.
+  bodies as external devices; the two Spectraval entries exist only here. They are left
+  out of production on purpose (see the JETI section of
+  `docs/production_sensor_setup.md`).

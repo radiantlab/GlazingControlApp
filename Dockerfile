@@ -1,4 +1,5 @@
-# Base image majors are kept in sync by hand with .nvmrc and svc/.python-version.
+# The base image versions must match .nvmrc and svc/.python-version, which CI
+# tests against. A Dependabot bump here needs those files updated in the same PR.
 FROM node:20-bookworm-slim AS web-build
 
 WORKDIR /build/web
@@ -28,7 +29,7 @@ RUN uv sync --frozen --no-dev --no-install-project --no-cache
 
 COPY svc/ ./
 # Routines run as `python3` subprocesses, so check that the python3 on PATH is
-# the project venv with requests installed.
+# the project venv with its runtime dependencies (requests among them).
 RUN uv sync --frozen --no-dev --no-cache \
     && python3 -c "import requests, fastapi, pymodbus, serial"
 

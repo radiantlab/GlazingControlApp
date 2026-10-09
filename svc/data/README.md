@@ -20,8 +20,9 @@ Former tracked files moved on 2026-10-08 (tag `archive/pre-cleanup-2026-10`
 holds the old layout):
 
 - `sensors_config.json` (the old full-site config) is in
-  `docs/reference/sensors_config.legacy-site.json`; its T-10A and EKO entries
-  live on in `svc/config/production.example/sensors_config.json`.
+  `docs/reference/sensors_config.legacy-site.json`, with its real COM ports and
+  C-BOX host. The production template keeps the same T-10A and EKO sensor IDs,
+  with `port: auto` and a placeholder host.
 - `window_mapping.json` is retired; the Halio window UUIDs are tabulated in
   `docs/glazing_configuration.md`.
 - `ResponseData/` Halio samples are test fixtures in `svc/tests/fixtures/halio/`;

@@ -15,13 +15,6 @@ svc/.test-tmp*
 svc/.uv-cache
 svc/sensor-agent-data
 svc/db-backups
-svc/data/*.db
-svc/data/*.sqlite
-svc/data/*.sqlite3
-svc/data/*.log
-svc/data/*.db-journal
-svc/data/*.db-wal
-svc/data/*.db-shm
 svc/tests
 svc/config/production
 web/.npm-cache
