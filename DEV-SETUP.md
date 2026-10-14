@@ -17,6 +17,42 @@ accepted.
 
 ## Local development
 
+### Pre-commit setup
+
+Install the `pre-commit` package as a standalone development tool using uv:
+
+```powershell
+uv tool install pre-commit
+```
+
+From the repository root, run the one-time setup for each new clone:
+
+```powershell
+pre-commit install
+```
+
+This installs the Git hook configured by `.pre-commit-config.yaml`. Hooks then
+run automatically on staged files when committing. The first run needs internet
+access to download the hook repositories and install their dependencies.
+
+Validate the configuration and optionally check all tracked files:
+
+```powershell
+pre-commit validate-config
+pre-commit run --all-files
+```
+
+The hooks check trailing whitespace, final newlines, YAML syntax, potential
+secrets, and Python style with Flake8. Whitespace hooks can modify files; review
+their changes and stage the intended fixes before retrying a commit. Existing
+files may need cleanup before an all-files run passes. These hooks do not replace
+the backend tests or frontend checks below.
+
+If `pre-commit` is not found after installation, run `uv tool update-shell` and
+restart the terminal.
+
+### Start the application
+
 From the repository root:
 
 ```powershell
