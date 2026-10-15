@@ -1,7 +1,7 @@
 // Control Management System
 // Tracks active control sources and manages priority
 
-export type ControlSource = 
+export type ControlSource =
     | { type: 'manual'; panelId: string }
     | { type: 'group'; groupId: string; panelIds: string[] }
     | { type: 'routine'; routineId: string; routineName: string; panelIds: string[]; stepIndex?: number };
@@ -168,5 +168,3 @@ export class ControlManager {
 
 // Singleton instance
 export const controlManager = new ControlManager();
-
-

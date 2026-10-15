@@ -240,4 +240,3 @@ class JetiSpecfirmClient(SensorClient):
             self.ser.close()
         except Exception:
             pass
-

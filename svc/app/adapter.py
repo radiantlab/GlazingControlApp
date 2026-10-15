@@ -203,7 +203,7 @@ class HalioAdapter:
                 else:
                     # No results field (shouldn't happen for 200, but handle gracefully)
                     current_tint = 0
-                
+
                 # Only update cache if we don't have it, or if the tint level changed
                 # Don't update last_updated timestamp - that should only change when WE send a command
                 if window_id not in self._state_cache:
@@ -218,7 +218,7 @@ class HalioAdapter:
                 else:
                     # Just update the current tint, keep the last_updated timestamp
                     self._state_cache[window_id]["current_tint"] = current_tint
-                
+
                 return self._state_cache[window_id]
             elif response.status_code == 206:
                 # No Tint Data - API returns: {"statusCode": 200, "message": "No Tint Data", "success": true}
@@ -302,7 +302,7 @@ class HalioAdapter:
                 if not isinstance(hg, dict):
                     logger.warning(f"Skipping invalid group entry: {hg}")
                     continue
-                    
+
                 group_id = hg.get("id")
                 if not group_id:
                     logger.warning(f"Group entry missing id: {hg}")

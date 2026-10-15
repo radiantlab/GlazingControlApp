@@ -8,10 +8,10 @@ from typing import Dict, Any
 
 from app.config import ROUTINES_DIR
 from app.state import (
-    save_routine, 
-    get_routine, 
-    update_routine_status, 
-    delete_routine, 
+    save_routine,
+    get_routine,
+    update_routine_status,
+    delete_routine,
     list_routines
 )
 
@@ -43,7 +43,7 @@ class SensorsWrapper:
         except Exception as e:
             log(f"Error fetching sensor data: {e}")
             return None
-            
+
     def list(self):
         try:
             r = requests.get(f"{API_URL}/sensors")
@@ -58,7 +58,7 @@ class PanelsWrapper:
             return r.json()
         except:
             return []
-            
+
     def set_level(self, panel_id: str, level: int):
         try:
             r = requests.post(
@@ -78,7 +78,7 @@ class GroupsWrapper:
             return r.json()
         except:
             return []
-            
+
     def set_level(self, group_id: str, level: int):
         try:
             r = requests.post(
@@ -107,7 +107,7 @@ def _log_reader(process: subprocess.Popen, routine_id: str):
     """Background thread to read stdout from the subprocess and append to the buffer."""
     if routine_id not in active_routines:
         return
-        
+
     try:
         if process.stdout:
             for line in iter(process.stdout.readline, ''):
@@ -122,7 +122,7 @@ def _log_reader(process: subprocess.Popen, routine_id: str):
         pass # Handle closed file gracefully
 
     process.wait()
-    
+
     # Process ended
     if routine_id in active_routines:
         code = process.returncode
@@ -140,10 +140,10 @@ def _log_reader(process: subprocess.Popen, routine_id: str):
 def _execute_subprocess(routine_id: str, code: str, mode: str, interval_ms: int | None, indefinite: bool):
     _ensure_routines_dir()
     script_path = os.path.join(ROUTINES_DIR, f"{routine_id}.py")
-    
+
     # Build the script content
     script_content = f"ROUTINE_ID = '{routine_id}'\n" + PREAMBLE + "\n"
-    
+
     if mode == "once":
         script_content += code
     elif mode == "interval":
@@ -155,7 +155,7 @@ def _execute_subprocess(routine_id: str, code: str, mode: str, interval_ms: int 
             # Run for max 1 hour (3600 seconds)
             script_content += f"start_time = time.time()\n"
             script_content += f"while time.time() - start_time < 3600:\n"
-            
+
         # Indent the user's code inside the loop
         for line in code.split("\n"):
             script_content += f"    {line}\n"
@@ -186,7 +186,7 @@ def _execute_subprocess(routine_id: str, code: str, mode: str, interval_ms: int 
         "logs": existing_logs,
         "timer": active_routines.get(routine_id, {}).get("timer")
     }
-    
+
     update_routine_status(routine_id, "running")
 
     # Start reader thread
@@ -206,10 +206,10 @@ def start_routine(
     run_at_ts: float | None,
     indefinite: bool
 ) -> None:
-    
+
     delay_s = 0.0
     initial_status = "running"
-    
+
     if run_at_ts:
         delay_s = run_at_ts - time.time()
         if delay_s > 0:
@@ -219,16 +219,16 @@ def start_routine(
             run_at_ts = time.time()
     else:
         run_at_ts = time.time()
-        
+
     save_routine(routine_id, name, code, mode, interval_ms, run_at_ts, indefinite, initial_status)
-    
+
     if delay_s > 0:
         active_routines[routine_id] = {
             "process": None,
             "logs": [f"⏳ Scheduled to start at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(run_at_ts))}"],
             "timer": None
         }
-        
+
         timer = threading.Timer(delay_s, _execute_subprocess, args=(routine_id, code, mode, interval_ms, indefinite))
         timer.daemon = True
         timer.start()
@@ -245,10 +245,10 @@ def stop_routine(routine_id: str) -> None:
             r["timer"].cancel()
         if r.get("process"):
             r["process"].terminate()
-            
+
         r["logs"].append(f"⏹ Routine stopped at {time.strftime('%Y-%m-%d %H:%M:%S')}")
         del active_routines[routine_id]
-        
+
     update_routine_status(routine_id, "stopped")
 
 

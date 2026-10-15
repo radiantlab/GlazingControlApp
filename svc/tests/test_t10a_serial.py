@@ -1,7 +1,7 @@
 import time
 import serial
 
-PORT = "COM3"  
+PORT = "COM3"
 
 
 def main():
@@ -25,12 +25,12 @@ def main():
         return line
 
     # 1) Build PC mode frame (command 54, head 0)
-    pc_mode_frame = b""  
+    pc_mode_frame = b""
     send_frame(pc_mode_frame)
     time.sleep(0.5)
 
     # 2) Build measurement frame (command 10, head 0)
-    meas_frame = b""  
+    meas_frame = b""
     send_frame(meas_frame)
 
     ser.close()

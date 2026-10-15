@@ -23,17 +23,17 @@ def get_default_panel_ids() -> List[str]:
 def reset_default_panel_timestamps(preserve_levels: bool = False) -> None:
     """
     Reset timestamps for default panels to 0.0 to allow immediate changes.
-    
+
     This is useful for:
     - Initial bootstrap (preserve_levels=False, sets level to 0)
     - Test setup (preserve_levels=True, keeps existing levels)
-    
+
     Args:
         preserve_levels: If True, preserve existing panel levels; if False, set level to 0
     """
     _ensure_panel_state_db()
     default_panel_ids = get_default_panel_ids()
-    
+
     with _db_connection() as conn:
         for panel_id in default_panel_ids:
             if preserve_levels:
@@ -66,12 +66,12 @@ SQLITE_BUSY_TIMEOUT_S = 60.0
 def _db_connection(row_factory: Optional[Callable[[sqlite3.Cursor, tuple], Any]] = None) -> Iterator[sqlite3.Connection]:
     """
     Context manager for database connections.
-    
+
     Automatically handles:
     - Connection creation and cleanup
     - Transaction commit on success
     - Transaction rollback on error
-    
+
     Args:
         row_factory: Optional row factory (e.g., sqlite3.Row) to set on connection
     """
@@ -92,7 +92,7 @@ def _db_connection(row_factory: Optional[Callable[[sqlite3.Cursor, tuple], Any]]
 def initialize_database(*, migrate_legacy: bool = True) -> None:
     """
     Initialize database and run all migrations once at application startup.
-    
+
     This function should be called once when the application starts, not during
     runtime operations. It ensures:
     - Directories exist
@@ -141,7 +141,7 @@ def _migrate_from_legacy_panels_json() -> None:
     # Write config file (panels only, groups go to DB)
     with open(PANELS_CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(config_data, f, indent=2)
-    
+
     # Migrate groups to database
     groups_data = data.get("groups", {})
     if groups_data:
@@ -168,7 +168,7 @@ def _migrate_from_legacy_panels_json() -> None:
             "level": panel_data.get("level", 0),
             "last_change_ts": panel_data.get("last_change_ts", 0.0),
         }
-    
+
     # Write state to SQLite database
     _ensure_panel_state_db()
     with _db_connection() as conn:
@@ -205,7 +205,7 @@ def load_state() -> Dict[str, Dict]:
 
     with _db_connection() as conn:
         rows = conn.execute("SELECT panel_id, level, last_change_ts FROM panel_state").fetchall()
-        
+
         state_data = {}
         for row in rows:
             panel_id, level, last_change_ts = row
@@ -213,7 +213,7 @@ def load_state() -> Dict[str, Dict]:
                 "level": level,
                 "last_change_ts": last_change_ts,
             }
-        
+
         return state_data
 
 
@@ -223,7 +223,7 @@ def load_groups() -> Dict[str, Group]:
 
     with _db_connection() as conn:
         rows = conn.execute("SELECT id, name, member_ids FROM groups").fetchall()
-        
+
         groups = {}
         for row in rows:
             group_id, name, member_ids_json = row
@@ -236,7 +236,7 @@ def load_groups() -> Dict[str, Group]:
                 name=name,
                 member_ids=member_ids,
             )
-        
+
         return groups
 
 
@@ -244,11 +244,11 @@ def save_groups(groups: Dict[str, Group]) -> None:
     """Save groups to SQLite database."""
     _ensure_dirs()
     _ensure_groups_db()
-    
+
     with _db_connection() as conn:
         # Delete all existing groups
         conn.execute("DELETE FROM groups")
-        
+
         # Insert all groups
         for group_id, group in groups.items():
             conn.execute(
@@ -302,7 +302,7 @@ def save_state(panels: Dict[str, Panel]) -> None:
     """Save panel runtime state (level, last_change_ts) to SQLite database."""
     _ensure_dirs()
     _ensure_panel_state_db()
-    
+
     # Write to SQLite database
     with _db_connection() as conn:
         for panel_id, panel in panels.items():
@@ -317,20 +317,20 @@ def save_state(panels: Dict[str, Panel]) -> None:
 
 def update_panel_state(panel_id: str, level: int) -> None:
     """
-    Update a single panel's state (level and last_change_ts) in SQLite database 
+    Update a single panel's state (level and last_change_ts) in SQLite database
     when a successful command is received.
     This keeps the displayed tint level accurate based on successful API responses.
-    
+
     Note: Database initialization/migration should be done at app startup via initialize_database().
-    
+
     Args:
         panel_id: Panel ID to update
         level: New tint level
     """
     _ensure_panel_state_db()  # Only ensure table exists, no migration
-    
+
     last_change_ts = time.time()
-    
+
     # Update SQLite database
     with _db_connection() as conn:
         conn.execute(
@@ -982,11 +982,11 @@ def prune_sensors_to_ids(sensor_ids: list[str]) -> None:
 def _migrate_json_state_to_db() -> None:
     """Migrate panel state from JSON file to SQLite database if JSON exists and DB is empty."""
     _ensure_panel_state_db()
-    
+
     # Check if JSON file exists
     if not os.path.exists(PANELS_STATE_FILE):
         return
-    
+
     # Use manual transaction handling for this special case that needs explicit rollback
     conn = sqlite3.connect(AUDIT_DB_FILE, timeout=SQLITE_BUSY_TIMEOUT_S)
     try:
@@ -1043,11 +1043,11 @@ def _migrate_json_state_to_db() -> None:
 def _migrate_groups_json_to_db() -> None:
     """Migrate groups from JSON file to SQLite database if JSON exists and DB is empty."""
     _ensure_groups_db()
-    
+
     # Check if config file exists and has groups
     if not os.path.exists(PANELS_CONFIG_FILE):
         return
-    
+
     # Use manual transaction handling for this special case that needs explicit rollback
     conn = sqlite3.connect(AUDIT_DB_FILE, timeout=SQLITE_BUSY_TIMEOUT_S)
     try:
@@ -1130,7 +1130,7 @@ def fetch_audit_entries(limit: int = 500, offset: int = 0, input_sort_field: str
             '''.format(input_sort_field, input_sort_dir),
             (limit, offset),
         ).fetchall()
-        
+
         result: List[Dict[str, Any]] = []
         for r in rows:
             row_dict = dict(r)
@@ -1147,14 +1147,14 @@ def fetch_audit_entries(limit: int = 500, offset: int = 0, input_sort_field: str
 def bootstrap_default_if_empty() -> Snapshot:
     """
     Bootstrap default panels and groups if config doesn't exist.
-    
+
     Only resets last_change_ts to 0.0 when actually creating new panels (initial bootstrap).
     On subsequent app starts, preserves existing timestamps to maintain dwell time protection.
     """
     snap = load_snapshot()
     created_new_panels = False
     needs_bootstrap = False
-    
+
     # Check if we need to bootstrap panels
     if not snap.panels:
         created_new_panels = True
@@ -1166,7 +1166,7 @@ def bootstrap_default_if_empty() -> Snapshot:
             snap.panels[pid] = Panel(id=pid, name=f"Facade {i}", last_change_ts=0.0)
         snap.panels["SK1"] = Panel(id="SK1", name="Skylight 1", last_change_ts=0.0)
         snap.panels["SK2"] = Panel(id="SK2", name="Skylight 2", last_change_ts=0.0)
-    
+
     # Check if we need to bootstrap groups (even if panels exist)
     if not snap.groups or "G-facade" not in snap.groups or "G-skylights" not in snap.groups:
         needs_bootstrap = True
@@ -1183,7 +1183,7 @@ def bootstrap_default_if_empty() -> Snapshot:
                 name="Skylights",
                 member_ids=["SK1", "SK2"],
             )
-    
+
     # Only reset timestamps if we actually created new panels (initial bootstrap)
     # This preserves dwell time protection on subsequent app starts
     if created_new_panels:
@@ -1233,7 +1233,7 @@ def save_routine(
     with _db_connection() as conn:
         conn.execute(
             """
-            INSERT OR REPLACE INTO routines 
+            INSERT OR REPLACE INTO routines
             (id, name, code, mode, interval_ms, run_at_ts, indefinite, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,

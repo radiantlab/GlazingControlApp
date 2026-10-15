@@ -58,5 +58,3 @@ export default function ActiveControllersBar({ controlState, onCancelRoutine, on
         </div>
     );
 }
-
-

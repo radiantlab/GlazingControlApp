@@ -1103,13 +1103,13 @@ def update_sensor_labels(
                         config.pop("custom_label", None)
                     else:
                         config["custom_label"] = custom_label.strip()
-                
+
                 if device_custom_label is not None:
                     if device_custom_label.strip() == "":
                         config.pop("device_custom_label", None)
                     else:
                         config["device_custom_label"] = device_custom_label.strip()
-                
+
                 conn.execute(
                     "UPDATE sensors SET config_json = ? WHERE id = ?",
                     (json.dumps(config), sensor_id),
@@ -1124,14 +1124,14 @@ def update_sensor_labels(
                     h_id = r["id"]
                     if h_id == sensor_id:
                         continue # Already updated
-                    
+
                     h_config = json.loads(r["config_json"] or "{}")
                     if h_config.get("device_id") == target_device_id:
                         if device_custom_label.strip() == "":
                             h_config.pop("device_custom_label", None)
                         else:
                             h_config["device_custom_label"] = device_custom_label.strip()
-                        
+
                         conn.execute(
                             "UPDATE sensors SET config_json = ? WHERE id = ?",
                             (json.dumps(h_config), h_id),

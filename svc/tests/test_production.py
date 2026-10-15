@@ -302,4 +302,3 @@ def test_list_panels_from_captured_trailer_responses(monkeypatch):
     assert [panel.name for panel in panels] == expected
     assert len(panels) == 20
     assert {"DR-1.1", "DR-2.9", "SK-1.1", "SK-1.2"} <= set(expected)
-

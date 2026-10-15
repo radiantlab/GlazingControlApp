@@ -21,12 +21,12 @@ def temp_db(tmp_path, monkeypatch):
     db_file = tmp_path / "test_audit.db"
     monkeypatch.setattr("app.state.AUDIT_DB_FILE", str(db_file))
     monkeypatch.setattr("app.config.AUDIT_DB_FILE", str(db_file))
-    
+
     if db_file.exists():
         db_file.unlink()
-    
+
     yield str(db_file)
-    
+
     if db_file.exists():
         db_file.unlink()
 

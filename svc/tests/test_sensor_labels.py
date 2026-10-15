@@ -14,7 +14,7 @@ def temp_db(tmp_path, monkeypatch):
     db_file = tmp_path / "test_audit.db"
     monkeypatch.setattr("app.state.AUDIT_DB_FILE", str(db_file))
     monkeypatch.setattr("app.config.AUDIT_DB_FILE", str(db_file))
-    
+
     config_file = tmp_path / "sensors_config.json"
     dummy_config = {
         "t10a": [
@@ -31,12 +31,12 @@ def temp_db(tmp_path, monkeypatch):
     }
     config_file.write_text(json.dumps(dummy_config), encoding="utf-8")
     monkeypatch.setattr(manager, "SENSORS_CONFIG_FILE", str(config_file))
-    
+
     if db_file.exists():
         db_file.unlink()
-    
+
     yield str(db_file)
-    
+
     if db_file.exists():
         db_file.unlink()
 
@@ -70,7 +70,7 @@ def test_update_sensor_labels_success():
     config_path = manager.SENSORS_CONFIG_FILE
     with open(config_path, "r") as f:
         cfg = json.load(f)
-    
+
     dev = cfg["t10a"][0]
     assert "custom_label" not in dev
     assert "custom_label" not in dev["heads"][0]
@@ -82,7 +82,7 @@ def test_update_sensor_labels_success():
 
     assert h1["config"]["custom_label"] == "Office Desk"
     assert h1["config"]["device_custom_label"] == "Main Body"
-    
+
     # Verify the body custom label cascaded to the other head belonging to the same device
     assert h2["config"]["device_custom_label"] == "Main Body"
     assert "custom_label" not in h2["config"]
@@ -96,7 +96,7 @@ def test_update_sensor_labels_clears_labels():
         location=None,
         config={"device_id": "KM1", "port": "COM3", "head_no": 0, "custom_label": "Office Desk", "device_custom_label": "Main Body"}
     )
-    
+
     # Invoke update with empty strings to clear labels
     success = manager.update_sensor_labels(
         sensor_id="T10A1-H1",
@@ -128,7 +128,7 @@ def test_register_sensor_preserves_database_custom_labels():
         location=None,
         config={"device_id": "KM1", "port": "COM3", "head_no": 0}
     )
-    
+
     # 2. Update its labels
     success = manager.update_sensor_labels(
         sensor_id="T10A1-H1",
@@ -136,7 +136,7 @@ def test_register_sensor_preserves_database_custom_labels():
         device_custom_label="Main Body"
     )
     assert success is True
-    
+
     # 3. Simulate startup/reload by reregistering the sensor with clean config (as loaded from file)
     register_sensor(
         sensor_id="T10A1-H1",
@@ -145,7 +145,7 @@ def test_register_sensor_preserves_database_custom_labels():
         location=None,
         config={"device_id": "KM1", "port": "COM3", "head_no": 0}
     )
-    
+
     # 4. Verify custom labels are still preserved in the database config
     db_sensors = list_sensors()
     h1 = next(s for s in db_sensors if s["id"] == "T10A1-H1")

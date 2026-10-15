@@ -130,7 +130,7 @@ class JetiSpectravalSimClient(SensorClient):
     def _ensure_output_dir(self) -> None:
         if os.path.exists(self._output_abs) and os.path.isdir(self._output_abs):
              self._output_abs = os.path.join(self._output_abs, "sim_output.cap")
-        
+
         # Ensure dir exists if it's a file path
         out_dir = os.path.dirname(self._output_abs)
         if out_dir and not os.path.exists(out_dir):
@@ -155,7 +155,7 @@ class JetiSpectravalSimClient(SensorClient):
         if not self._template_rows:
             return
         base_lux, spectral = self._template_rows[self._row_index]
-        
+
         # Add +/- 5% random jitter to the lux value so the graph doesn't look identical every loop
         jitter_factor = random.uniform(0.95, 1.05)
         lux = round(base_lux * jitter_factor, 1)
@@ -169,5 +169,5 @@ class JetiSpectravalSimClient(SensorClient):
                 self._row_index = 0
             else:
                 self._row_index = len(self._template_rows) - 1
-        
+
         return []

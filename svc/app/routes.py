@@ -2,7 +2,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Depends, Header, status, Query
 from fastapi.responses import Response
 from .models import (
-    Panel, Group, CommandRequest, CommandResult, GroupCreate, GroupUpdate, 
+    Panel, Group, CommandRequest, CommandResult, GroupCreate, GroupUpdate,
     AuditEntry, HealthResponse, DeleteGroupResponse, ErrorResponse, SensorInfo,
     SensorReadingResponse, SensorLogEntry, RoutineRequest, RoutineStatusResponse, SavedRoutine,
     SensorSpectrumResponse, SensorIngestBatch, SensorIngestResult, SensorLabelUpdateRequest
@@ -236,10 +236,10 @@ def export_audit_logs_csv(
     # that might match the filters, then apply limit after filtering.
     # This prevents missing entries that fall outside the most recent N entries.
     has_filters = (
-        start_date is not None or 
-        end_date is not None or 
-        (target_type and target_type != "all") or 
-        target_filter or 
+        start_date is not None or
+        end_date is not None or
+        (target_type and target_type != "all") or
+        target_filter or
         result_filter or
         sort_field or
         sort_dir
@@ -248,7 +248,7 @@ def export_audit_logs_csv(
     #check for potential injection
     allowed_fields = ["ts", "actor", "target_type", "target_id", "level"]
     allowed_dirs = ["desc", "asc"]
-    
+
     if (sort_field is None) or (sort_field not in allowed_fields):
         sort_field = "ts"
     if (sort_dir is None) or (sort_dir not in allowed_dirs):
@@ -261,20 +261,20 @@ def export_audit_logs_csv(
     else:
         # No filters, safe to apply limit upfront for performance
         rows = fetch_audit_entries(limit=limit, offset=0, input_sort_field=sort_field, input_sort_dir=sort_dir)
-    
+
     # Apply filters (matching frontend filtering logic)
     filtered_rows = rows
-    
+
     # Date range filtering
     if start_date is not None:
         filtered_rows = [r for r in filtered_rows if r["ts"] >= start_date]
     if end_date is not None:
         filtered_rows = [r for r in filtered_rows if r["ts"] <= end_date]
-    
+
     # Target type filtering
     if target_type and target_type != "all":
         filtered_rows = [r for r in filtered_rows if r["target_type"] == target_type]
-    
+
     # Target ID/applied_to filtering
     if target_filter:
         needle = target_filter.lower()
@@ -283,20 +283,20 @@ def export_audit_logs_csv(
             if needle in r["target_id"].lower() or
             any(needle in id.lower() for id in r["applied_to"])
         ]
-    
+
     # Result filtering
     if result_filter:
         needle = result_filter.lower()
         filtered_rows = [r for r in filtered_rows if needle in r["result"].lower()]
-    
+
     # Apply limit to filtered results (only if filters were used, since limit was already applied otherwise)
     if has_filters:
         filtered_rows = filtered_rows[:limit]
-    
+
     # Create CSV in memory
     output = io.StringIO()
     writer = csv.writer(output)
-    
+
     # Write header
     writer.writerow([
         "Timestamp",
@@ -307,7 +307,7 @@ def export_audit_logs_csv(
         "Applied To",
         "Result"
     ])
-    
+
     # Write data rows
     for row in filtered_rows:
         # Convert timestamp to human-readable format using UTC timezone
@@ -322,10 +322,10 @@ def export_audit_logs_csv(
             ", ".join(row["applied_to"]),
             row["result"]
         ])
-    
+
     # Generate filename with current date in UTC to match UTC timestamps in CSV
     filename = f"audit_logs_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_sorted_{sort_field}_{sort_dir}.csv"
-    
+
     return Response(
         content=output.getvalue(),
         media_type="text/csv",
@@ -614,11 +614,11 @@ def create_routine(body: RoutineRequest) -> RoutineStatusResponse:
         run_at_ts=body.run_at_ts,
         indefinite=body.indefinite
     )
-    
+
     # fetch back to return
     r = get_routine(rid)
     logs = active_routines.get(rid, {}).get("logs", [])
-    
+
     return RoutineStatusResponse(
         id=rid,
         name=r["name"],
@@ -642,7 +642,7 @@ def delete_routine_endpoint(routine_id: str):
     r = get_routine(routine_id)
     if not r:
         raise HTTPException(status_code=404, detail="Routine not found")
-        
+
     remove_routine(routine_id)
     return {"ok": True}
 
@@ -656,7 +656,7 @@ def stop_routine_endpoint(routine_id: str):
     r = get_routine(routine_id)
     if not r:
         raise HTTPException(status_code=404, detail="Routine not found")
-        
+
     stop_routine(routine_id)
     return {"ok": True}
 
@@ -702,7 +702,7 @@ def patch_sensor_labels(
     req: SensorLabelUpdateRequest,
 ) -> dict:
     from app.sensors.manager import update_sensor_labels
-    
+
     success = update_sensor_labels(
         sensor_id=sensor_id,
         custom_label=req.custom_label,
