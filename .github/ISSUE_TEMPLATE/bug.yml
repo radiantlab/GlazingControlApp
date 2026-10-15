@@ -1,0 +1,41 @@
+name: Bug report
+description: Something isn't working.
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Do not paste credentials, private network details, or raw sensor
+        data. Describe the problem or attach sanitized excerpts instead.
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: Current behavior
+      description: What happens, including any error messages and steps to reproduce.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What should happen instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: The `SVC_ENVIRONMENT` the problem occurred in.
+      options:
+        - development
+        - production
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: How we will know the bug is fixed.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true

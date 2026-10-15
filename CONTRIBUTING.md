@@ -116,7 +116,7 @@ Each team member owns one piece of accepted work per sprint.
 
 ## Issues and Labels
 
-Work is tracked in GitHub Issues. When filing or triaging work, apply the appropriate labels:
+Work is tracked in GitHub Issues. File new work with the **Bug report** or **Enhancement** issue form; both apply `needs-triage` automatically. When triaging, apply the appropriate labels:
 
 - `bug` — something isn't working
 - `enhancement` — new feature or behavioral improvement
