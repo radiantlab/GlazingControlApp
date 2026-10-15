@@ -1,137 +1,92 @@
 # Contributing Guide
-How to set up code test review and release so contributions meet our Definition of Done
 
-## Code of Conduct
-We will work with respect and clarity. No harassment. No abuse. Speak up if something is off.  
-Report concerns to the rest of the team and the project partner. For private concers use direct email.
+How to set up, test, review, and merge contributions to DIAL Control Center.
 
-## Getting Started
-Prereqs  
-- Git installed  
-- Python 3.14 (uv installs it from `svc/.python-version`)  
-- Node.js 24 (`.nvmrc`)  
-- A terminal and an editor
+## The Pipeline
 
-Backend setup  
-- open a terminal  
-- cd svc  
-- install UV: https://github.com/astral-sh/uv
-- uv sync  (creates venv and installs dependencies)
-- copy .env.example to .env  
-- run: uv run python main.py
-- open http://127.0.0.1:8000/api/docs and test GET health
+All code changes follow a strict pipeline:
 
-Frontend setup  
-- open a new terminal  
-- cd web  
-- npm install  
-- npm run dev  
-- open the URL that Vite prints
+1. **Issue**: Every change starts from an issue describing the problem or desired enhancement.
+2. **Branch**: Create a short-lived branch off `main` using one of the accepted branch prefixes:
+   - `feat/` — new feature
+   - `fix/` — bug fix
+   - `docs/` — documentation only
+   - `chore/` — maintenance, dependencies, tooling
+   - `ci/` — CI/CD workflow changes
+   - `refactor/` — code restructuring without behavior changes
+3. **Commits**: Follow Conventional Commits format for commit subjects (e.g. `feat(sensors): add T-10A auto-discovery`, `fix(routes): enforce dwell time on group tint`).
+4. **Pull Request**: Open a PR against `main`. All CI status check gates must pass.
+5. **Review & Merge**: 0 approvals now; raised to 1 when the student team joins. Merged to `main` exclusively via **squash merge** (no merge commits, no rebase merges).
 
-## Branching and Workflow
-We use a light trunk model with short lived feature branches  
-- default branch is main  
-- create branches as feature short name or fix short name  
-- rebase small branches before merge if there are conflicts  
-- do not force push main
+## Quality Gates & Ruleset 24736232
 
-## Issues and Planning
-We track all work in GitHub Issues  
-- write a clear title, and one sentence summary  
-- add labels, feature, fix, docs, chore  
-- link to related PRs, and meeting notes  
+Branch protection is enforced on `main` via GitHub **Ruleset 24736232**. Direct pushes and branch deletions are disabled. All PRs must satisfy the following gates:
 
-## Commit Messages
-Keep messages short and clear  
-- describe what you changed, and why it matters  
-- one focused change per commit, when possible  
+| Gate / Rule | Enforced By | Details |
+| :--- | :--- | :--- |
+| **Backend Tests** | CI job `backend-tests` | Runs `uv run pytest tests/ -v` on Python (`svc/.python-version`) with dependencies frozen from `uv.lock`. |
+| **Frontend Checks** | CI job `frontend-checks` | Runs `npm run test` (Vitest), `npm run typecheck` (`tsc`), and `npm run build` on Node (`.nvmrc`). |
+| **Docker & Version Checks** | CI job `docker-builds` | Runs `scripts/check-runtime-versions.sh`, validates `docker compose config --quiet`, and builds the combined image. |
+| **Runtime Version Parity** | `docker-builds` & scripts | `Dockerfile` base images must match `svc/.python-version` and `.nvmrc`, and the uv image must match `.github/workflows/ci.yml`. |
+| **Python Dependency Pinning** | `backend-tests` | `uv.lock` is the only exact Python pin. Dependencies are synced with `uv sync --frozen`. |
+| **Approving Reviews** | Ruleset 24736232 | 0 approvals now; raised to 1 when the student team joins. |
+| **Merge Method** | Ruleset 24736232 | Squash merge only. |
 
-- keep each commit focused on one change  
-## Code Style, Linting, and Formatting
-Python  
-- follow PEP 8 style  
-- keep functions short and clear  
-- use type hints for public functions  
-- run tests before pushing  
+## Exact Local Commands
 
-Web  
-- use TypeScript types, avoid any  
-- keep components small and simple  
-- never include secrets in code  
+Run these checks locally before opening or updating a PR.
 
-## Testing
-Required tests  
-- service  
-  - update or add tests for any code change  
-  - test both normal use and one error case  
-- web  
-  - do a quick manual check for now  
-  - add unit tests later when the UI is stable  
+### 1. Pre-commit Hooks (Linting & Secrets)
+```bash
+uv tool install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
 
-How to run  
-- svc: uv run pytest -q  (or pytest -q if venv is activated)
-- web: run the app and make sure it runs properly
+### 2. Backend Validation (from `svc/`)
+```bash
+cd svc
+uv sync --frozen
+uv run pytest tests/ -v
+```
 
-## Pull Requests and Reviews
-Before you open a PR  
-- branch is up to date with main  
-- code runs locally  
-- tests pass locally  
-- update docs if the user sees a change
+### 3. Frontend Validation (from `web/`)
+```bash
+cd web
+npm ci
+npm run test
+npm run typecheck
+npm run build
+```
 
-PR requirements  
-- use the PR template in the repo  
-- small PRs are preferred  
-- request at least one reviewer who is not the author
+### 4. Runtime & Container Checks (from repository root)
+```bash
+# Verify Dockerfile matches runtime versions
+./scripts/check-runtime-versions.sh
 
-Review rules  
-- at least one approval  
-- all review comments resolved  
-- no red CI checks
+# Validate compose configuration
+docker compose config --quiet
 
-## CI/CD
-Current CI  
-- file  .github workflows ci.yml  
-- runs on push and pull request and confirms the pipeline is wired
+# Build Docker image
+docker build -t glazing-control-app:local .
+```
 
-Required before merge  
-- CI is green  
-- svc tests pass locally  pytest -q  
-- web builds locally  npm run build
+## Runtime Versions and Dependency Management
 
-We will expand CI to run pytest and a web type check. Until then reviewers must run these locally.  
+- **Python Pinning**: `svc/uv.lock` is the only exact Python pin. `pyproject.toml` defines abstract dependencies. Never edit `uv.lock` by hand; update dependencies using `uv add` or `uv lock --upgrade`.
+- **Node Pinning**: `web/package-lock.json` pins frontend dependencies. Always install with `npm ci`.
+- **Runtime Parity**: When updating `svc/.python-version`, `.nvmrc`, or the uv setup action version in `.github/workflows/ci.yml`, the corresponding `FROM` or `COPY` stages in `Dockerfile` must be updated as well. Enforced by `scripts/check-runtime-versions.sh`.
 
-## Security and Secrets
-- never commit secrets or API keys  
-- do not paste keys in issues or PRs  
-- use .env files that are ignored by git  
-- report security bugs privately to the lead and partner  
-- keep dependencies current when possible
+## Issues and Labels
 
-Prohibited  
-- hard coded credentials  
-- copying key material into sample code
+Work is tracked in GitHub Issues. When filing or triaging work, use the issue forms and apply the appropriate labels:
 
-## Documentation Expectations
-Update docs when something changes  
-- update README for setup or usage changes  
-- add short docstrings for important functions  
-- note visible changes in the PR description  
-
-## Release Process
-We make tags when needed  
-- tag format: v0.minor.patch  
-- update README if needed  
-- add a short summary of changes in the PR  
-- to undo a release, revert the merge commit  
-
-## Support and Contact
-Need help?  
-- ask in the team Discord first  
-- if stuck for more than a day, post in the issue and tag the lead  
-- for project questions, contact Dr. Pierson or Alex  
-
-## Contribution Norms
-Each team member owns one piece of accepted work per sprint.  
-- Claim an issue on the repo (or create one which reflects what your change addresses)  
-- Pull request must be reviewed by at least one other team member  
+- `bug` — something isn't working
+- `enhancement` — new feature or behavioral improvement
+- `documentation` — documentation additions or updates
+- `chore` — maintenance, dependencies, and tooling
+- `hardware` — physical trailer instruments (Halio, T-10A, JETI, EKO C-BOX)
+- `ready-for-agent` — task well-specified for AI agent execution
+- `ready-for-human` — requires human testing, physical hardware, or partner discussion
+- `needs-triage` — new issue awaiting review and categorization
+- `dependencies` — dependency updates
