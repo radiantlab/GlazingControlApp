@@ -196,7 +196,9 @@ def test_list_panels_creates_single_group_per_dial_driver(monkeypatch):
         if url == "http://halio/api/sites/test-site/groups":
             created_payloads.append(json)
             group_name = json["group"]["name"]
-            return FakeResponse(201, {"results": {"id": f"group-{group_name}", "name": group_name}})
+            return FakeResponse(
+                201, {"results": {"id": f"group-{group_name}", "name": group_name}}
+            )
         raise AssertionError(f"Unexpected POST {url}")
 
     monkeypatch.setattr("app.adapter.requests.get", fake_get)

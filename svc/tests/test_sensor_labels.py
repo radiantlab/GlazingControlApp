@@ -94,7 +94,13 @@ def test_update_sensor_labels_clears_labels():
         kind="t10a",
         label="T-10A #1 Head 1",
         location=None,
-        config={"device_id": "KM1", "port": "COM3", "head_no": 0, "custom_label": "Office Desk", "device_custom_label": "Main Body"}
+        config={
+            "device_id": "KM1",
+            "port": "COM3",
+            "head_no": 0,
+            "custom_label": "Office Desk",
+            "device_custom_label": "Main Body",
+        }
     )
 
     # Invoke update with empty strings to clear labels
@@ -137,7 +143,8 @@ def test_register_sensor_preserves_database_custom_labels():
     )
     assert success is True
 
-    # 3. Simulate startup/reload by reregistering the sensor with clean config (as loaded from file)
+    # 3. Simulate startup/reload by reregistering the sensor with clean config
+    # (as loaded from file)
     register_sensor(
         sensor_id="T10A1-H1",
         kind="t10a",

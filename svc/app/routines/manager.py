@@ -1,5 +1,4 @@
 from __future__ import annotations
-import asyncio
 import os
 import time
 import subprocess
@@ -9,7 +8,6 @@ from typing import Dict, Any
 from app.config import ROUTINES_DIR
 from app.state import (
     save_routine,
-    get_routine,
     update_routine_status,
     delete_routine,
     list_routines
@@ -63,7 +61,12 @@ class PanelsWrapper:
         try:
             r = requests.post(
                 f"{API_URL}/commands/set-level",
-                json={"target_type": "panel", "target_id": panel_id, "level": int(level), "actor": f"routine:{ROUTINE_ID}"}
+                json={
+                    "target_type": "panel",
+                    "target_id": panel_id,
+                    "level": int(level),
+                    "actor": f"routine:{ROUTINE_ID}",
+                }
             )
             log(f"✓ Panel {panel_id} -> {level}%")
             return r.json()
@@ -83,7 +86,12 @@ class GroupsWrapper:
         try:
             r = requests.post(
                 f"{API_URL}/commands/set-level",
-                json={"target_type": "group", "target_id": group_id, "level": int(level), "actor": f"routine:{ROUTINE_ID}"}
+                json={
+                    "target_type": "group",
+                    "target_id": group_id,
+                    "level": int(level),
+                    "actor": f"routine:{ROUTINE_ID}",
+                }
             )
             log(f"✓ Group {group_id} -> {level}%")
             return r.json()
@@ -119,7 +127,7 @@ def _log_reader(process: subprocess.Popen, routine_id: str):
                 if len(logs) > 500:
                     active_routines[routine_id]["logs"] = logs[-500:]
     except ValueError:
-        pass # Handle closed file gracefully
+        pass  # Handle closed file gracefully
 
     process.wait()
 
@@ -128,16 +136,22 @@ def _log_reader(process: subprocess.Popen, routine_id: str):
         code = process.returncode
         end_time = time.strftime('%Y-%m-%d %H:%M:%S')
         if code == 0:
-            active_routines[routine_id]["logs"].append(f"✅ Routine finished cleanly at {end_time}.")
+            active_routines[routine_id]["logs"].append(
+                f"✅ Routine finished cleanly at {end_time}."
+            )
             update_routine_status(routine_id, "done")
-        elif code == -15 or code == 15: # SIGTERM
-            pass # We manually killed it, handled in stop_routine
+        elif code == -15 or code == 15:  # SIGTERM
+            pass  # We manually killed it, handled in stop_routine
         else:
-            active_routines[routine_id]["logs"].append(f"❌ Routine crashed with exit code {code} at {end_time}.")
+            active_routines[routine_id]["logs"].append(
+                f"❌ Routine crashed with exit code {code} at {end_time}."
+            )
             update_routine_status(routine_id, "error")
 
 
-def _execute_subprocess(routine_id: str, code: str, mode: str, interval_ms: int | None, indefinite: bool):
+def _execute_subprocess(
+    routine_id: str, code: str, mode: str, interval_ms: int | None, indefinite: bool
+):
     _ensure_routines_dir()
     script_path = os.path.join(ROUTINES_DIR, f"{routine_id}.py")
 
@@ -148,13 +162,13 @@ def _execute_subprocess(routine_id: str, code: str, mode: str, interval_ms: int 
         script_content += code
     elif mode == "interval":
         interval_secs = (interval_ms or 5000) / 1000.0
-        script_content += f"import time\n"
+        script_content += "import time\n"
         if indefinite:
-            script_content += f"while True:\n"
+            script_content += "while True:\n"
         else:
             # Run for max 1 hour (3600 seconds)
-            script_content += f"start_time = time.time()\n"
-            script_content += f"while time.time() - start_time < 3600:\n"
+            script_content += "start_time = time.time()\n"
+            script_content += "while time.time() - start_time < 3600:\n"
 
         # Indent the user's code inside the loop
         for line in code.split("\n"):
@@ -165,7 +179,8 @@ def _execute_subprocess(routine_id: str, code: str, mode: str, interval_ms: int 
     with open(script_path, "w", encoding="utf-8") as f:
         f.write(script_content)
 
-    # Spawn process using python3 (or uv run python if needed, but python3 usually works inside venv contexts)
+    # Spawn process using python3 (or uv run python if needed, but python3
+    # usually works inside venv contexts)
     process = subprocess.Popen(
         ["python3", script_path],
         stdout=subprocess.PIPE,
@@ -192,9 +207,6 @@ def _execute_subprocess(routine_id: str, code: str, mode: str, interval_ms: int 
     # Start reader thread
     t = threading.Thread(target=_log_reader, args=(process, routine_id), daemon=True)
     t.start()
-
-
-
 
 
 def start_routine(
@@ -225,11 +237,18 @@ def start_routine(
     if delay_s > 0:
         active_routines[routine_id] = {
             "process": None,
-            "logs": [f"⏳ Scheduled to start at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(run_at_ts))}"],
+            "logs": [
+                "⏳ Scheduled to start at "
+                f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(run_at_ts))}"
+            ],
             "timer": None
         }
 
-        timer = threading.Timer(delay_s, _execute_subprocess, args=(routine_id, code, mode, interval_ms, indefinite))
+        timer = threading.Timer(
+            delay_s,
+            _execute_subprocess,
+            args=(routine_id, code, mode, interval_ms, indefinite),
+        )
         timer.daemon = True
         timer.start()
         active_routines[routine_id]["timer"] = timer
@@ -259,7 +278,8 @@ def remove_routine(routine_id: str) -> None:
 
 
 def resume_routines() -> None:
-    """Called at startup to resume routines from SQLite that should still be running or scheduled."""
+    """Called at startup to resume routines from SQLite that should still
+    be running or scheduled."""
     routines = list_routines()
     for r in routines:
         status = r["status"]

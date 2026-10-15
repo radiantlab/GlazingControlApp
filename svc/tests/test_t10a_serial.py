@@ -16,7 +16,6 @@ def main():
 
     print(f"Opened {PORT}")
 
-
     def send_frame(raw: bytes) -> str:
         ser.write(raw)
         ser.flush()

@@ -117,7 +117,8 @@ def test_watcher_yields_spectrum(tmp_path):
 
     # Write data to the cap file
     cap_file.write_text(
-        "Date and Time:; 11/18/2025; 08:49:54am; ; Ev [lx] (CIE1931 2°); 67.9; ; Spectral Values (380 nm - 1000 nm); 1.5; 2.5; 3.5\n",
+        "Date and Time:; 11/18/2025; 08:49:54am; ; Ev [lx] (CIE1931 2°); 67.9; ; "
+        "Spectral Values (380 nm - 1000 nm); 1.5; 2.5; 3.5\n",
         encoding="utf-8",
     )
 

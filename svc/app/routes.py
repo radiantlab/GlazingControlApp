@@ -105,11 +105,17 @@ def list_groups(service: ControlService = Depends(get_service)) -> List[Group]:
     response_model=CommandResult,
     status_code=status.HTTP_200_OK,
     summary="Set tint level",
-    description="Set the tint level (0-100) for a panel or group. Enforces dwell time between changes.",
+    description=(
+        "Set the tint level (0-100) for a panel or group. "
+        "Enforces dwell time between changes."
+    ),
     responses={
         200: {"description": "Command accepted"},
         404: {"model": ErrorResponse, "description": "Panel or group not found"},
-        429: {"model": ErrorResponse, "description": "Dwell time not met - panel changed too recently"},
+        429: {
+            "model": ErrorResponse,
+            "description": "Dwell time not met - panel changed too recently",
+        },
         500: {"model": ErrorResponse, "description": "Internal server error"}
     },
     tags=["Commands"]
@@ -138,10 +144,18 @@ def set_level(
     response_model=Group,
     status_code=status.HTTP_201_CREATED,
     summary="Create a group",
-    description="Create a new group with specified name and member panel IDs. Only available in development.",
+    description=(
+        "Create a new group with specified name and member panel IDs. "
+        "Only available in development."
+    ),
     responses={
         201: {"description": "Group created successfully"},
-        400: {"model": ErrorResponse, "description": "Invalid request or operation not supported in the current environment"}
+        400: {
+            "model": ErrorResponse,
+            "description": (
+                "Invalid request or operation not supported in the current environment"
+            ),
+        }
     },
     tags=["Groups"]
 )
@@ -153,7 +167,6 @@ def create_group(body: GroupCreate, service: ControlService = Depends(get_servic
         raise HTTPException(status_code=400, detail=str(e))
 
 
-
 @router.patch(
     "/groups/{group_id}",
     response_model=Group,
@@ -162,7 +175,12 @@ def create_group(body: GroupCreate, service: ControlService = Depends(get_servic
     responses={
         200: {"description": "Group updated successfully"},
         404: {"model": ErrorResponse, "description": "Group not found"},
-        400: {"model": ErrorResponse, "description": "Invalid request or operation not supported in the current environment"}
+        400: {
+            "model": ErrorResponse,
+            "description": (
+                "Invalid request or operation not supported in the current environment"
+            ),
+        }
     },
     tags=["Groups"]
 )
@@ -191,7 +209,9 @@ def update_group(
     },
     tags=["Groups"]
 )
-def delete_group(group_id: str, service: ControlService = Depends(get_service)) -> DeleteGroupResponse:
+def delete_group(
+    group_id: str, service: ControlService = Depends(get_service)
+) -> DeleteGroupResponse:
     """Delete a group."""
     ok = service.delete_group(group_id)
     if not ok:
@@ -207,7 +227,9 @@ def delete_group(group_id: str, service: ControlService = Depends(get_service)) 
     tags=["Logs"]
 )
 def get_audit_logs(
-    limit: int = Query(default=500, ge=1, le=1000, description="Maximum number of entries to return"),
+    limit: int = Query(
+        default=500, ge=1, le=1000, description="Maximum number of entries to return"
+    ),
     offset: int = Query(default=0, ge=0, description="Number of entries to skip")
 ) -> List[AuditEntry]:
     """Get audit log entries."""
@@ -222,7 +244,9 @@ def get_audit_logs(
     tags=["Logs"]
 )
 def export_audit_logs_csv(
-    limit: int = Query(default=10000, ge=1, le=100000, description="Maximum number of entries to export"),
+    limit: int = Query(
+        default=10000, ge=1, le=100000, description="Maximum number of entries to export"
+    ),
     start_date: Optional[float] = Query(None, description="Start timestamp (Unix seconds)"),
     end_date: Optional[float] = Query(None, description="End timestamp (Unix seconds)"),
     target_type: Optional[str] = Query(None, description="Filter by target type (panel/group)"),
@@ -245,7 +269,7 @@ def export_audit_logs_csv(
         sort_dir
     )
 
-    #check for potential injection
+    # check for potential injection
     allowed_fields = ["ts", "actor", "target_type", "target_id", "level"]
     allowed_dirs = ["desc", "asc"]
 
@@ -257,10 +281,14 @@ def export_audit_logs_csv(
     if has_filters:
         # Filters require fetching all entries to find matches across the full range
         # Use a very high limit to get all entries (practical maximum for exports)
-        rows = fetch_audit_entries(limit=1000000, offset=0, input_sort_field=sort_field, input_sort_dir=sort_dir)
+        rows = fetch_audit_entries(
+            limit=1000000, offset=0, input_sort_field=sort_field, input_sort_dir=sort_dir
+        )
     else:
         # No filters, safe to apply limit upfront for performance
-        rows = fetch_audit_entries(limit=limit, offset=0, input_sort_field=sort_field, input_sort_dir=sort_dir)
+        rows = fetch_audit_entries(
+            limit=limit, offset=0, input_sort_field=sort_field, input_sort_dir=sort_dir
+        )
 
     # Apply filters (matching frontend filtering logic)
     filtered_rows = rows
@@ -289,7 +317,8 @@ def export_audit_logs_csv(
         needle = result_filter.lower()
         filtered_rows = [r for r in filtered_rows if needle in r["result"].lower()]
 
-    # Apply limit to filtered results (only if filters were used, since limit was already applied otherwise)
+    # Apply limit to filtered results (only if filters were used, since limit
+    # was already applied otherwise)
     if has_filters:
         filtered_rows = filtered_rows[:limit]
 
@@ -311,8 +340,11 @@ def export_audit_logs_csv(
     # Write data rows
     for row in filtered_rows:
         # Convert timestamp to human-readable format using UTC timezone
-        # This ensures consistency regardless of server timezone, matching the UTC-based Unix timestamps
-        human_readable_ts = datetime.fromtimestamp(row["ts"], tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+        # This ensures consistency regardless of server timezone, matching the
+        # UTC-based Unix timestamps
+        human_readable_ts = datetime.fromtimestamp(row["ts"], tz=timezone.utc).strftime(
+            '%Y-%m-%d %H:%M:%S UTC'
+        )
         writer.writerow([
             human_readable_ts,
             row["actor"],
@@ -324,7 +356,10 @@ def export_audit_logs_csv(
         ])
 
     # Generate filename with current date in UTC to match UTC timestamps in CSV
-    filename = f"audit_logs_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_sorted_{sort_field}_{sort_dir}.csv"
+    filename = (
+        f"audit_logs_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
+        f"_sorted_{sort_field}_{sort_dir}.csv"
+    )
 
     return Response(
         content=output.getvalue(),
@@ -341,7 +376,9 @@ def export_audit_logs_csv(
     tags=["Logs"],
 )
 def get_sensor_logs(
-    limit: int = Query(default=500, ge=1, le=5000, description="Maximum number of entries to return"),
+    limit: int = Query(
+        default=500, ge=1, le=5000, description="Maximum number of entries to return"
+    ),
     offset: int = Query(default=0, ge=0, description="Number of entries to skip"),
     sensor_id: Optional[str] = Query(None, description="Filter by sensor ID"),
     sensor_ids: Optional[List[str]] = Query(None, description="Filter by one or more sensor IDs"),
@@ -382,7 +419,12 @@ def get_sensor_logs(
     tags=["Logs"],
 )
 def export_sensor_logs_csv(
-    limit: int = Query(default=100000, ge=1, le=1000000, description="Maximum number of entries to export"),
+    limit: int = Query(
+        default=100000,
+        ge=1,
+        le=1000000,
+        description="Maximum number of entries to export",
+    ),
     sensor_id: Optional[str] = Query(None, description="Filter by sensor ID"),
     sensor_ids: Optional[List[str]] = Query(None, description="Filter by one or more sensor IDs"),
     sensor_kind: Optional[str] = Query(None, description="Filter by sensor kind"),
@@ -561,7 +603,10 @@ def get_historical_spectrum(
 ) -> SensorSpectrumResponse:
     res = fetch_historical_spectrum(sensor_id, ts)
     if not res:
-        raise HTTPException(status_code=404, detail="No spectrum found for this sensor at this timestamp")
+        raise HTTPException(
+            status_code=404,
+            detail="No spectrum found for this sensor at this timestamp",
+        )
     return SensorSpectrumResponse(**res)
 
 

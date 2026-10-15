@@ -4,7 +4,7 @@ import os
 import time
 import sqlite3
 from contextlib import contextmanager
-from typing import Dict, List, Tuple, Any, Iterator, Optional, Callable
+from typing import Dict, List, Any, Iterator, Optional, Callable
 from .models import Panel, Group, Snapshot, AuditEntry, SensorIngestEvent
 from .config import PANELS_FILE, PANELS_CONFIG_FILE, PANELS_STATE_FILE, AUDIT_DB_FILE
 
@@ -41,7 +41,8 @@ def reset_default_panel_timestamps(preserve_levels: bool = False) -> None:
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO panel_state (panel_id, level, last_change_ts)
-                    VALUES (?, COALESCE((SELECT level FROM panel_state WHERE panel_id = ?), 0), 0.0)
+                    VALUES (?, COALESCE((SELECT level FROM panel_state WHERE panel_id = ?), 0),
+                            0.0)
                     """,
                     (panel_id, panel_id),
                 )
@@ -63,7 +64,9 @@ SQLITE_BUSY_TIMEOUT_S = 60.0
 
 
 @contextmanager
-def _db_connection(row_factory: Optional[Callable[[sqlite3.Cursor, tuple], Any]] = None) -> Iterator[sqlite3.Connection]:
+def _db_connection(
+    row_factory: Optional[Callable[[sqlite3.Cursor, tuple], Any]] = None,
+) -> Iterator[sqlite3.Connection]:
     """
     Context manager for database connections.
 
@@ -321,7 +324,8 @@ def update_panel_state(panel_id: str, level: int) -> None:
     when a successful command is received.
     This keeps the displayed tint level accurate based on successful API responses.
 
-    Note: Database initialization/migration should be done at app startup via initialize_database().
+    Note: Database initialization/migration should be done at app startup via
+    initialize_database().
 
     Args:
         panel_id: Panel ID to update
@@ -427,6 +431,7 @@ def _ensure_saved_routines_db() -> None:
         )
 
 # --- SENSOR TABLES ---------------------------------------------------------
+
 
 def _ensure_sensor_db() -> None:
     """Create tables for sensor metadata and readings if they do not exist."""
@@ -978,7 +983,6 @@ def prune_sensors_to_ids(sensor_ids: list[str]) -> None:
         )
 
 
-
 def _migrate_json_state_to_db() -> None:
     """Migrate panel state from JSON file to SQLite database if JSON exists and DB is empty."""
     _ensure_panel_state_db()
@@ -998,14 +1002,17 @@ def _migrate_json_state_to_db() -> None:
             conn.rollback()
             return
 
-        # Load JSON state before starting DB transaction to avoid holding locks for I/O, and to fail early on file errors
+        # Load JSON state before starting DB transaction to avoid holding locks for
+        # I/O, and to fail early on file errors
         try:
             with open(PANELS_STATE_FILE, "r", encoding="utf-8") as f:
                 state_data = json.load(f)
         except (json.JSONDecodeError, IOError, OSError) as e:
             # Log error and skip migration if file cannot be read
             import logging
-            logging.getLogger(__name__).warning(f"Failed to load panel state JSON for migration: {e}")
+            logging.getLogger(__name__).warning(
+                f"Failed to load panel state JSON for migration: {e}"
+            )
             conn.rollback()
             return
 
@@ -1033,7 +1040,9 @@ def _migrate_json_state_to_db() -> None:
         conn.rollback()
     except Exception as e:
         import logging
-        logging.getLogger(__name__).error(f"Unexpected error during panel state migration: {e}", exc_info=True)
+        logging.getLogger(__name__).error(
+            f"Unexpected error during panel state migration: {e}", exc_info=True
+        )
         conn.rollback()
         raise
     finally:
@@ -1117,8 +1126,16 @@ def append_audit(entry: AuditEntry) -> None:
         )
 
 
-def fetch_audit_entries(limit: int = 500, offset: int = 0, input_sort_field: str = "ts", input_sort_dir: str = "desc") -> List[Dict[str, Any]]:
-    """Fetch audit entries from SQLite ordered by input_sort_field & input_sort_dir. By default, by ts, descending."""
+def fetch_audit_entries(
+    limit: int = 500,
+    offset: int = 0,
+    input_sort_field: str = "ts",
+    input_sort_dir: str = "desc",
+) -> List[Dict[str, Any]]:
+    """Fetch audit entries from SQLite ordered by input_sort_field & input_sort_dir.
+
+    By default, by ts, descending.
+    """
     _ensure_audit_db()
     with _db_connection(row_factory=sqlite3.Row) as conn:
         rows = conn.execute(
@@ -1141,7 +1158,6 @@ def fetch_audit_entries(limit: int = 500, offset: int = 0, input_sort_field: str
                 row_dict["applied_to"] = []
             result.append(row_dict)
         return result
-
 
 
 def bootstrap_default_if_empty() -> Snapshot:
@@ -1218,6 +1234,7 @@ def audit(
     )
 
 # --- ROUTINE TABLES --------------------------------------------------------
+
 
 def save_routine(
     routine_id: str,

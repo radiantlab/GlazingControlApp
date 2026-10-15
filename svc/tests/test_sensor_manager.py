@@ -28,7 +28,9 @@ def test_load_config_uses_environment_config_path(tmp_path, monkeypatch) -> None
 def test_default_jeti_baudrate_uses_specbos_defaults() -> None:
     assert manager._default_jeti_baudrate({"device_id": "SPECBOS-1211-2"}) == 115200
     assert manager._default_jeti_baudrate({"label": "Jeti Spectraval 1511"}) == 921600
-    assert manager._default_jeti_baudrate({"device_id": "SPECBOS-1211-2", "baudrate": 230400}) == 230400
+    assert manager._default_jeti_baudrate(
+        {"device_id": "SPECBOS-1211-2", "baudrate": 230400}
+    ) == 230400
 
 
 def test_legacy_data_prefix_resolves_inside_selected_runtime(tmp_path, monkeypatch) -> None:
@@ -111,7 +113,11 @@ def test_production_creates_eko_tcp_client_without_com_port(monkeypatch) -> None
     _disable_sensor_db(monkeypatch)
     captured = {}
     monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
-    monkeypatch.setattr(manager, "_load_config", lambda: {"eko_ms90_plus": _sensor_config()["eko_ms90_plus"]})
+    monkeypatch.setattr(
+        manager,
+        "_load_config",
+        lambda: {"eko_ms90_plus": _sensor_config()["eko_ms90_plus"]},
+    )
 
     def fake_eko_client(**kwargs):
         captured.update(kwargs)
@@ -170,7 +176,11 @@ def test_production_does_not_create_simulated_clients(monkeypatch) -> None:
     _disable_sensor_db(monkeypatch)
     monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
     monkeypatch.setattr(manager, "_load_config", _sensor_config)
-    monkeypatch.setattr(manager, "T10AClient", lambda **kwargs: FakeClient(kwargs["device_id"], "physical"))
+    monkeypatch.setattr(
+        manager,
+        "T10AClient",
+        lambda **kwargs: FakeClient(kwargs["device_id"], "physical"),
+    )
     monkeypatch.setattr(
         manager,
         "JetiSpectravalFileWatcher",
@@ -184,17 +194,23 @@ def test_production_does_not_create_simulated_clients(monkeypatch) -> None:
     monkeypatch.setattr(
         manager,
         "T10ASimClient",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("T10A simulator created in production")),
+        lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("T10A simulator created in production")
+        ),
     )
     monkeypatch.setattr(
         manager,
         "JetiSpectravalSimClient",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("JETI simulator created in production")),
+        lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("JETI simulator created in production")
+        ),
     )
     monkeypatch.setattr(
         manager,
         "EkoMs90PlusSimClient",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("EKO simulator created in production")),
+        lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("EKO simulator created in production")
+        ),
     )
 
     clients = manager._make_clients_from_config()
@@ -207,7 +223,11 @@ def test_production_does_not_emit_simulated_sensor_readings(monkeypatch) -> None
     _disable_sensor_db(monkeypatch)
     monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
     monkeypatch.setattr(manager, "_load_config", _sensor_config)
-    monkeypatch.setattr(manager, "T10AClient", lambda **kwargs: FakeClient(kwargs["device_id"], "physical"))
+    monkeypatch.setattr(
+        manager,
+        "T10AClient",
+        lambda **kwargs: FakeClient(kwargs["device_id"], "physical"),
+    )
     monkeypatch.setattr(
         manager,
         "JetiSpectravalFileWatcher",
@@ -369,7 +389,11 @@ def test_embedded_health_checks_staleness_only_for_external_devices(
 
 def test_production_aligns_active_sensors_without_deleting_history(monkeypatch) -> None:
     monkeypatch.setattr(manager, "ENVIRONMENT", Environment.PRODUCTION)
-    monkeypatch.setattr(manager, "_load_config", lambda: {"eko_ms90_plus": _sensor_config()["eko_ms90_plus"]})
+    monkeypatch.setattr(
+        manager,
+        "_load_config",
+        lambda: {"eko_ms90_plus": _sensor_config()["eko_ms90_plus"]},
+    )
     monkeypatch.setattr(manager, "register_sensor", lambda **kwargs: None)
     monkeypatch.setattr(
         manager,
@@ -377,7 +401,11 @@ def test_production_aligns_active_sensors_without_deleting_history(monkeypatch) 
         lambda **kwargs: FakeClient(kwargs["device_id"], "physical"),
     )
     pruned = []
-    monkeypatch.setattr(manager, "prune_sensors_to_ids", lambda sensor_ids: pruned.extend(sensor_ids))
+    monkeypatch.setattr(
+        manager,
+        "prune_sensors_to_ids",
+        lambda sensor_ids: pruned.extend(sensor_ids),
+    )
 
     manager._make_clients_from_config()
 
@@ -391,14 +419,22 @@ def test_development_uses_simulated_sensors(monkeypatch) -> None:
     monkeypatch.setattr(
         manager,
         "T10AClient",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("T10A physical client created in development")),
+        lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("T10A physical client created in development")
+        ),
     )
     monkeypatch.setattr(
         manager,
         "EkoCBoxModbusTcpClient",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("EKO physical client created in development")),
+        lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("EKO physical client created in development")
+        ),
     )
-    monkeypatch.setattr(manager, "T10ASimClient", lambda **kwargs: FakeClient(kwargs["device_id"], "simulated"))
+    monkeypatch.setattr(
+        manager,
+        "T10ASimClient",
+        lambda **kwargs: FakeClient(kwargs["device_id"], "simulated"),
+    )
     monkeypatch.setattr(
         manager,
         "JetiSpectravalFileWatcher",

@@ -9,13 +9,10 @@ Tests cover:
 - Database initialization
 - Migration from JSON to SQLite
 """
-import os
 import json
 import sqlite3
-import tempfile
 import time
 from pathlib import Path
-from typing import Dict
 
 import pytest
 
@@ -113,7 +110,8 @@ class TestDatabaseContextManager:
 
         with _db_connection() as conn:
             conn.execute(
-                "INSERT INTO audit_log (ts, actor, target_type, target_id, level, applied_to, result) "
+                "INSERT INTO audit_log "
+                "(ts, actor, target_type, target_id, level, applied_to, result) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (time.time(), "test", "panel", "P01", 50, "[]", "test"),
             )
@@ -130,7 +128,8 @@ class TestDatabaseContextManager:
         try:
             with _db_connection() as conn:
                 conn.execute(
-                    "INSERT INTO audit_log (ts, actor, target_type, target_id, level, applied_to, result) "
+                    "INSERT INTO audit_log "
+                    "(ts, actor, target_type, target_id, level, applied_to, result) "
                     "VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (time.time(), "test", "panel", "P01", 50, "[]", "test"),
                 )
@@ -150,7 +149,8 @@ class TestDatabaseContextManager:
 
         with _db_connection(row_factory=sqlite3.Row) as conn:
             conn.execute(
-                "INSERT INTO audit_log (ts, actor, target_type, target_id, level, applied_to, result) "
+                "INSERT INTO audit_log "
+                "(ts, actor, target_type, target_id, level, applied_to, result) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (time.time(), "test", "panel", "P01", 50, "[]", "test"),
             )
@@ -301,7 +301,8 @@ class TestAuditLogOperations:
         _ensure_audit_db()
         with _db_connection() as conn:
             conn.execute(
-                "INSERT INTO audit_log (ts, actor, target_type, target_id, level, applied_to, result) "
+                "INSERT INTO audit_log "
+                "(ts, actor, target_type, target_id, level, applied_to, result) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (time.time(), "test", "panel", "P01", 50, "invalid json", "test"),
             )
@@ -612,7 +613,9 @@ class TestMigration:
         groups = load_groups()
         assert len(groups) == 0
 
-    def test_migrate_groups_json_to_db_skips_if_db_has_data(self, temp_db, temp_state_file, monkeypatch):
+    def test_migrate_groups_json_to_db_skips_if_db_has_data(
+        self, temp_db, temp_state_file, monkeypatch
+    ):
         """_migrate_groups_json_to_db should skip if database already has groups."""
         # Create initial groups in database
         groups1 = {

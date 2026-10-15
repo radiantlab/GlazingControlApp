@@ -1,5 +1,4 @@
 from __future__ import annotations
-import os
 import time
 import logging
 from typing import Any, List, Dict, Optional
@@ -205,7 +204,8 @@ class HalioAdapter:
                     current_tint = 0
 
                 # Only update cache if we don't have it, or if the tint level changed
-                # Don't update last_updated timestamp - that should only change when WE send a command
+                # Don't update last_updated timestamp - that should only change when WE
+                # send a command
                 if window_id not in self._state_cache:
                     self._state_cache[window_id] = {
                         "current_tint": current_tint,
@@ -221,7 +221,8 @@ class HalioAdapter:
 
                 return self._state_cache[window_id]
             elif response.status_code == 206:
-                # No Tint Data - API returns: {"statusCode": 200, "message": "No Tint Data", "success": true}
+                # No Tint Data - API returns:
+                # {"statusCode": 200, "message": "No Tint Data", "success": true}
                 logger.debug(f"No tint data available for window {window_id}")
                 # Return None to indicate no data available
                 return None
@@ -229,7 +230,9 @@ class HalioAdapter:
                 logger.error(f"Window {window_id} not found")
                 return None
             else:
-                logger.error(f"Failed to get window state: {response.status_code} - {response.text}")
+                logger.error(
+                    f"Failed to get window state: {response.status_code} - {response.text}"
+                )
                 return None
         except Exception as e:
             logger.error(f"Error querying window state: {e}")
@@ -316,7 +319,11 @@ class HalioAdapter:
                     if isinstance(window, dict) and isinstance(window.get("id"), str)
                 ]
 
-                group = Group(id=group_id, name=hg.get("name", f"Group {group_id}"), member_ids=member_ids)
+                group = Group(
+                    id=group_id,
+                    name=hg.get("name", f"Group {group_id}"),
+                    member_ids=member_ids,
+                )
                 groups.append(group)
 
             return sorted(groups, key=lambda group: group.name.lower())
@@ -361,7 +368,8 @@ class HalioAdapter:
             return applied is not None
 
         logger.error(
-            f"No single-window Halio group exists for window {window.get('name', window_id)} ({window_id}). "
+            f"No single-window Halio group exists for window "
+            f"{window.get('name', window_id)} ({window_id}). "
             "Create one in Halio before using individual control."
         )
         raise KeyError(f"No single-window group exists for window {window_id}")
@@ -414,7 +422,8 @@ class HalioAdapter:
                     logger.info(f"  Applied to {len(applied)} panels: {applied}")
                 else:
                     logger.info(
-                        f"  Group {group_id} accepted; member panel IDs are unknown in this deployment"
+                        f"  Group {group_id} accepted; member panel IDs are unknown "
+                        "in this deployment"
                     )
                 return applied
             if response.status_code == 404:

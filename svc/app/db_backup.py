@@ -58,7 +58,9 @@ def backup_database_once(
 
 
 class DatabaseBackupWorker:
-    def __init__(self, *, interval_hours: float, backup_dir: str, db_file: str = AUDIT_DB_FILE) -> None:
+    def __init__(
+        self, *, interval_hours: float, backup_dir: str, db_file: str = AUDIT_DB_FILE
+    ) -> None:
         self.interval_seconds = interval_hours * 60 * 60
         self.backup_dir = backup_dir
         self.db_file = db_file
@@ -75,7 +77,9 @@ class DatabaseBackupWorker:
     def _run(self) -> None:
         while not self._stop.is_set():
             try:
-                backup_path = backup_database_once(db_file=self.db_file, backup_dir=self.backup_dir)
+                backup_path = backup_database_once(
+                    db_file=self.db_file, backup_dir=self.backup_dir
+                )
                 logger.info("SQLite database backup written to %s", backup_path)
             except Exception:
                 logger.exception("SQLite database backup failed")
@@ -89,7 +93,10 @@ def start_database_backup_worker_from_env() -> DatabaseBackupWorker | None:
     backup_dir = os.getenv("SVC_DB_BACKUP_DIR", "").strip()
 
     if interval_hours <= 0:
-        logger.info("SQLite database backups disabled; set SVC_DB_BACKUP_INTERVAL_HOURS > 0 to enable")
+        logger.info(
+            "SQLite database backups disabled; "
+            "set SVC_DB_BACKUP_INTERVAL_HOURS > 0 to enable"
+        )
         return None
     if not backup_dir:
         logger.warning("SQLite database backups disabled; SVC_DB_BACKUP_DIR is not set")

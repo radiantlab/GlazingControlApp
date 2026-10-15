@@ -2,14 +2,18 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
+      # JETI LiVal .cap captures end each row with "; "; keep them as written.
       - id: trailing-whitespace
+        exclude: \.cap$
       - id: end-of-file-fixer
+        exclude: \.cap$
       - id: check-yaml
 
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
       - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
 
   - repo: https://github.com/pycqa/flake8
     rev: 7.3.0
