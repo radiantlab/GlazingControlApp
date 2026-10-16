@@ -1,0 +1,3 @@
+[flake8]
+# PEP 8 allows a team to raise the limit to 99 characters; chosen in #72.
+max-line-length = 99

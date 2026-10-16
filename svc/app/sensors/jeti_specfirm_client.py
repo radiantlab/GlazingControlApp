@@ -164,7 +164,7 @@ class JetiSpecfirmClient(SensorClient):
 
         spectral = self._extract_floats(raw)
         if self._expected_samples > 0 and len(spectral) > (self._expected_samples + 10):
-            return spectral[-self._expected_samples :]
+            return spectral[-self._expected_samples:]
         if self._expected_samples > 0 and len(spectral) >= self._expected_samples:
             return spectral[: self._expected_samples]
         return spectral
@@ -240,4 +240,3 @@ class JetiSpecfirmClient(SensorClient):
             self.ser.close()
         except Exception:
             pass
-

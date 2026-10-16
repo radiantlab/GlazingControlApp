@@ -12,7 +12,7 @@ def reset_panel_timestamps():
     """Reset all panel timestamps to 0.0 for tests to avoid dwell time issues."""
     # Use shared utility function, preserving existing levels
     reset_default_panel_timestamps(preserve_levels=True)
-    
+
     # Reload simulator's snapshot to pick up the reset timestamps
     service = get_service()
     if hasattr(service.backend, 'snap'):

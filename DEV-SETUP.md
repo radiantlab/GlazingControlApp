@@ -43,10 +43,11 @@ pre-commit run --all-files
 ```
 
 The hooks check trailing whitespace, final newlines, YAML syntax, potential
-secrets, and Python style with Flake8. Whitespace hooks can modify files; review
-their changes and stage the intended fixes before retrying a commit. Existing
-files may need cleanup before an all-files run passes. These hooks do not replace
-the backend tests or frontend checks below.
+secrets, and Python style with Flake8 (99-character lines, set in `.flake8`).
+Whitespace hooks can modify files; review their changes and stage the intended
+fixes before retrying a commit. An all-files run passes on a clean `main`, so a
+failure points to your change. These hooks do not replace the backend tests or
+frontend checks below.
 
 If `pre-commit` is not found after installation, run `uv tool update-shell` and
 restart the terminal.
