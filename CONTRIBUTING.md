@@ -112,6 +112,7 @@ Each team member owns one piece of accepted work per sprint.
 - Never commit secrets, API keys, or site-specific credentials. Use the git-ignored `.env` files described in `DEV-SETUP.md`.
 - Do not paste credentials, private network details, or raw sensor data into issues, PRs, or logs.
 - The `detect-secrets` pre-commit hook catches some mistakes, not all of them; review your diff before pushing.
+- Reviewed false positives (the Halio `hardwareId` values in the test fixtures) are recorded in `.secrets.baseline`. If the hook flags a value that is not a secret, update the baseline with `detect-secrets scan --baseline .secrets.baseline`, mark the finding with `detect-secrets audit .secrets.baseline`, and say so in the PR.
 - Report security problems privately to the team lead and project partner, not in a public issue.
 
 ## Issues and Labels

@@ -77,7 +77,7 @@ The API reference (Swagger UI) is at `/api/docs` on a running backend, for examp
 
 ## The Team
 
-This project was built by Team 76 for the OSU Radiant Lab. 
+This project was built by Team 76 for the OSU Radiant Lab.
 
 - **Aidan Lusk** - [luskai@oregonstate.edu](mailto:luskai@oregonstate.edu)
 - **Carlos Vasquez** - [vasqueca@oregonstate.edu](mailto:vasqueca@oregonstate.edu)

@@ -960,7 +960,6 @@ def _poll_and_persist(client: SensorClient) -> List[SensorReading]:
 
 
 def _worker_loop(client: SensorClient, interval_s: float) -> None:
-    global _stop_flag
     logger.info(f"Sensor worker started for {client} with interval {interval_s}s")
     client_id = str(getattr(client, "id", client))
     stale_after_s = float(
@@ -1103,19 +1102,20 @@ def update_sensor_labels(
                         config.pop("custom_label", None)
                     else:
                         config["custom_label"] = custom_label.strip()
-                
+
                 if device_custom_label is not None:
                     if device_custom_label.strip() == "":
                         config.pop("device_custom_label", None)
                     else:
                         config["device_custom_label"] = device_custom_label.strip()
-                
+
                 conn.execute(
                     "UPDATE sensors SET config_json = ? WHERE id = ?",
                     (json.dumps(config), sensor_id),
                 )
 
-            # If device_custom_label is updated, we must update all heads belonging to this device_id
+            # If device_custom_label is updated, we must update all heads belonging
+            # to this device_id
             if device_custom_label is not None and target_device_id:
                 rows = conn.execute(
                     "SELECT id, config_json FROM sensors WHERE kind = 't10a'"
@@ -1123,15 +1123,15 @@ def update_sensor_labels(
                 for r in rows:
                     h_id = r["id"]
                     if h_id == sensor_id:
-                        continue # Already updated
-                    
+                        continue  # Already updated
+
                     h_config = json.loads(r["config_json"] or "{}")
                     if h_config.get("device_id") == target_device_id:
                         if device_custom_label.strip() == "":
                             h_config.pop("device_custom_label", None)
                         else:
                             h_config["device_custom_label"] = device_custom_label.strip()
-                        
+
                         conn.execute(
                             "UPDATE sensors SET config_json = ? WHERE id = ?",
                             (json.dumps(h_config), h_id),

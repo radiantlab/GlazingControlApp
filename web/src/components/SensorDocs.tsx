@@ -36,8 +36,8 @@ export default function SensorDocs() {
                 </div>
 
                 {/* Quick Overview Callout */}
-                <div className="room-section" style={{ 
-                    background: "linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(15, 23, 42, 0.4) 100%)", 
+                <div className="room-section" style={{
+                    background: "linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(15, 23, 42, 0.4) 100%)",
                     border: "1px solid rgba(37, 99, 235, 0.3)",
                     boxShadow: "var(--hmi-shadow)"
                 }}>
@@ -58,7 +58,7 @@ export default function SensorDocs() {
                     <p style={{ lineHeight: "1.6" }}>
                         The system supports single-head and multi-head daisy-chained illuminance configurations via USB/virtual COM port.
                     </p>
-                    
+
                     <h3 style={{ color: "var(--hmi-text-bright)", fontSize: "15px", margin: "16px 0 8px 0" }}>Physical Connection Steps:</h3>
                     <ul style={{ lineHeight: "1.6", paddingLeft: "20px", margin: "0 0 20px 0" }}>
                         <li style={{ marginBottom: "8px" }}>
@@ -116,10 +116,10 @@ export default function SensorDocs() {
                         <li style={{ marginBottom: "8px" }}>In <code>sensors_config.json</code>, set <code>"transport"</code> to <code>"file"</code> and <code>"input_path"</code> to <code>"specbos-lival.capture"</code> (the production template already does). Relative <code>input_path</code> values resolve under <code>SVC_SENSOR_INPUT_DIR</code> (<code>/app/svc/sensor-input</code>).</li>
                     </ol>
 
-                    <div style={{ 
-                        borderLeft: "4px solid var(--hmi-warning)", 
-                        backgroundColor: "rgba(245, 158, 11, 0.08)", 
-                        padding: "12px 16px", 
+                    <div style={{
+                        borderLeft: "4px solid var(--hmi-warning)",
+                        backgroundColor: "rgba(245, 158, 11, 0.08)",
+                        padding: "12px 16px",
                         borderRadius: "0 8px 8px 0",
                         margin: "16px 0 20px 0"
                     }}>
@@ -133,10 +133,10 @@ export default function SensorDocs() {
                     <p style={{ lineHeight: "1.6", marginBottom: "12px" }}>
                         Use this when you want the backend service to communicate with the JETI device directly using virtual serial.
                     </p>
-                    <div style={{ 
-                        borderLeft: "4px solid var(--hmi-warning)", 
-                        backgroundColor: "rgba(245, 158, 11, 0.08)", 
-                        padding: "12px 16px", 
+                    <div style={{
+                        borderLeft: "4px solid var(--hmi-warning)",
+                        backgroundColor: "rgba(245, 158, 11, 0.08)",
+                        padding: "12px 16px",
                         borderRadius: "0 8px 8px 0",
                         margin: "12px 0 20px 0"
                     }}>
@@ -198,7 +198,7 @@ export default function SensorDocs() {
                 {/* Section 4: Verification */}
                 <div className="room-section">
                     <h2 className="room-header">4. Troubleshooting & Verification</h2>
-                    
+
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
                         <div style={{ backgroundColor: "var(--hmi-panel-bg)", padding: "16px", borderRadius: "8px", border: "1px solid var(--hmi-border)" }}>
                             <h4 style={{ color: "var(--hmi-text-bright)", margin: "0 0 8px 0", fontSize: "14px" }}>Start Backend in Production</h4>

@@ -21,12 +21,12 @@ def temp_db(tmp_path, monkeypatch):
     db_file = tmp_path / "test_audit.db"
     monkeypatch.setattr("app.state.AUDIT_DB_FILE", str(db_file))
     monkeypatch.setattr("app.config.AUDIT_DB_FILE", str(db_file))
-    
+
     if db_file.exists():
         db_file.unlink()
-    
+
     yield str(db_file)
-    
+
     if db_file.exists():
         db_file.unlink()
 
@@ -117,7 +117,8 @@ def test_watcher_yields_spectrum(tmp_path):
 
     # Write data to the cap file
     cap_file.write_text(
-        "Date and Time:; 11/18/2025; 08:49:54am; ; Ev [lx] (CIE1931 2°); 67.9; ; Spectral Values (380 nm - 1000 nm); 1.5; 2.5; 3.5\n",
+        "Date and Time:; 11/18/2025; 08:49:54am; ; Ev [lx] (CIE1931 2°); 67.9; ; "
+        "Spectral Values (380 nm - 1000 nm); 1.5; 2.5; 3.5\n",
         encoding="utf-8",
     )
 

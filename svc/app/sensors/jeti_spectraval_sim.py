@@ -7,8 +7,9 @@ Emulates the Jeti Spectraval by:
 2. Feeding the existing sensor API via SensorReading so /metrics/latest and /metrics/history
    show the data without a separate .cap reader.
 
-Template .cap format: semicolon-delimited lines;
-  "Date and Time:; <date>; <time>; ; Ev [lx] (CIE1931 2°); <lux>; ; Spectral Values (380 nm - 1000 nm); <v380>; ..."
+Template .cap format: semicolon-delimited lines (one line, wrapped here);
+  "Date and Time:; <date>; <time>; ; Ev [lx] (CIE1931 2°); <lux>; ;
+   Spectral Values (380 nm - 1000 nm); <v380>; ..."
 """
 from __future__ import annotations
 import logging
@@ -43,7 +44,9 @@ def _parse_cap_row(line: str) -> Tuple[float, List[str]]:
     return lux, spectral
 
 
-def load_template_rows(template_path: str, encoding: str = "latin-1") -> Tuple[List[str], List[Tuple[float, List[str]]]]:
+def load_template_rows(
+    template_path: str, encoding: str = "latin-1"
+) -> Tuple[List[str], List[Tuple[float, List[str]]]]:
     """
     Load template .cap file. Returns (header_parts_from_first_line, [(lux, spectral_strs), ...]).
     header_parts is the full list of field strings for the first line so we can reuse labels.
@@ -68,14 +71,20 @@ def load_template_rows(template_path: str, encoding: str = "latin-1") -> Tuple[L
     return header_parts, rows
 
 
-def build_cap_line(header_parts: List[str], date_str: str, time_str: str, lux: float, spectral: List[str]) -> str:
+def build_cap_line(
+    header_parts: List[str],
+    date_str: str,
+    time_str: str,
+    lux: float,
+    spectral: List[str],
+) -> str:
     """Build one .cap line reusing header labels and supplying date, time, lux, spectral values."""
     out = list(header_parts)
     out[_IDX_DATE] = date_str
     out[_IDX_TIME] = time_str
     out[_IDX_LUX] = str(lux)
     n = min(len(spectral), len(out) - _IDX_SPECTRAL_START)
-    out[_IDX_SPECTRAL_START : _IDX_SPECTRAL_START + n] = spectral[:n]
+    out[_IDX_SPECTRAL_START:_IDX_SPECTRAL_START + n] = spectral[:n]
     return _DELIM.join(out)
 
 
@@ -129,8 +138,8 @@ class JetiSpectravalSimClient(SensorClient):
 
     def _ensure_output_dir(self) -> None:
         if os.path.exists(self._output_abs) and os.path.isdir(self._output_abs):
-             self._output_abs = os.path.join(self._output_abs, "sim_output.cap")
-        
+            self._output_abs = os.path.join(self._output_abs, "sim_output.cap")
+
         # Ensure dir exists if it's a file path
         out_dir = os.path.dirname(self._output_abs)
         if out_dir and not os.path.exists(out_dir):
@@ -155,7 +164,7 @@ class JetiSpectravalSimClient(SensorClient):
         if not self._template_rows:
             return
         base_lux, spectral = self._template_rows[self._row_index]
-        
+
         # Add +/- 5% random jitter to the lux value so the graph doesn't look identical every loop
         jitter_factor = random.uniform(0.95, 1.05)
         lux = round(base_lux * jitter_factor, 1)
@@ -169,5 +178,5 @@ class JetiSpectravalSimClient(SensorClient):
                 self._row_index = 0
             else:
                 self._row_index = len(self._template_rows) - 1
-        
+
         return []

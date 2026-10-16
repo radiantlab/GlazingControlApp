@@ -5,11 +5,13 @@ from typing import Dict, List
 from .models import Panel, Group, TintLevel, Snapshot
 from .state import load_snapshot, save_snapshot
 
+
 class Simulator:
     def __init__(self) -> None:
         # load from disk so levels persist across restarts
         self.snap: Snapshot = load_snapshot()
-        # Track panels currently transitioning, api only responds with request received, not completed initially
+        # Track panels currently transitioning, api only responds with request
+        # received, not completed initially
         self._transitioning: Dict[str, threading.Thread] = {}
         if not self.snap.panels:
             # caller should have bootstrapped but keep safe
@@ -50,7 +52,6 @@ class Simulator:
         t = threading.Thread(target=_commit, daemon=True)
         t.start()
         return True
-
 
     def set_group(self, group_id: str, level: TintLevel, min_dwell: int) -> List[str]:
         if group_id not in self.snap.groups:
