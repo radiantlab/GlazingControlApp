@@ -9,7 +9,8 @@ svc/.venv
 svc/.env
 svc/.env.production
 svc/.runtime
-svc/__pycache__
+**/__pycache__
+**/*.pyc
 svc/.pytest_cache
 svc/.test-tmp*
 svc/.uv-cache

@@ -58,3 +58,13 @@ services:
       # Optional: the v3 API on :8083 is unauthenticated.
       HALIO_API_KEY: ${HALIO_API_KEY:-}
     restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
