@@ -168,7 +168,7 @@ export default function SensorDocs() {
                     <h3 style={{ color: "var(--hmi-text-bright)", fontSize: "15px", margin: "16px 0 8px 0" }}>Network & Hardware Setup:</h3>
                     <ol style={{ lineHeight: "1.6", paddingLeft: "20px", margin: "0 0 20px 0" }}>
                         <li style={{ marginBottom: "8px" }}>Verify the EKO sensors are wired into the C-BOX and powered.</li>
-                        <li style={{ marginBottom: "8px" }}>Connect the C-BOX Ethernet port to the local trailer network.</li>
+                        <li style={{ marginBottom: "8px" }}>Connect the C-BOX Ethernet port to a trailer network that the production PC is connected to (the PC is on both the Halio network and the regular network).</li>
                         <li style={{ marginBottom: "8px" }}>Open a web browser on the PC and visit the C-BOX Web UI (trailer C-BOX: <code>http://192.168.40.50/</code>). Confirm live values appear.</li>
                         <li style={{ marginBottom: "8px" }}>Go to <code>Modbus {"->"} Setup</code> and verify <strong>Modbus TCP Access</strong> is enabled (allow access from any IP address).</li>
                     </ol>

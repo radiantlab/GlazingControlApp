@@ -54,10 +54,14 @@ listed in [`svc/README.md`](./svc/README.md#configuration).
 
 Production (native or Compose) works only on a machine connected to the
 [Halio network](./CONTEXT.md), the trailer LAN that the Halio controller is
-on. The trailer has a second network that does not reach Halio. The Halio
-network has no internet access, so install dependencies and build images
-before connecting to it. Production controls the live Halio panels and reads
-physical sensors.
+on. The trailer's second network, the [regular network](./CONTEXT.md), does
+not reach Halio. The trailer's production machine is connected to both (a
+network card on the Halio network, Ethernet to the regular network), so it
+reaches Halio and the network sensors such as the EKO C-BOX. A machine
+connected only to the Halio network may not reach the C-BOX. The Halio network
+has no internet access, so install dependencies and build images before
+connecting to it. Production controls the live Halio panels and reads physical
+sensors.
 
 ## Local development
 

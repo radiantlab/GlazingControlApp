@@ -25,6 +25,12 @@ production must be connected to it. It is LAN-only with no internet access, so
 anything that downloads (`uv sync`, `npm ci`, container image builds) must
 happen before connecting. "Trailer network" alone is ambiguous; name which one.
 
+**Regular network**: The trailer's other network, separate from the glazing
+controls; it does not reach Halio. The trailer's production machine is
+connected to both: a network card on the Halio network and an Ethernet
+connection to the regular network. Sensors such as the EKO C-BOX are reached
+over whichever network they are wired to.
+
 **Room**: One of the trailer's two test rooms, `room1` and `room2`. Rooms are not stored
 anywhere: `web/src/utils/panelRooms.ts` works out each panel's room from its
 `id` or `name` so the UI can lay panels out by room. A panel whose room cannot

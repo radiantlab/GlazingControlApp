@@ -67,7 +67,9 @@ Bring or confirm access to:
 - `T-A20`, `T-A21`, and `AC-A412` if the T-10A heads are being used in multi-point mode
 - straight CAT5 patch cables for T-10A head/adaptor runs
 - Ethernet access from the local PC/network to the EKO `C-BOX`
-- the C-BOX IP address, `192.168.40.50` on the trailer network
+- the C-BOX IP address, `192.168.40.50`, on a trailer network the production
+  machine is connected to (it is connected to both the Halio and regular
+  networks; see [CONTEXT.md](../CONTEXT.md))
 - confirmation that the C-BOX web UI is reachable from the site computer
 - JETI Windows drivers and either:
   - LiVal, which will write the capture file mounted through `SVC_JETI_CAPTURE_PATH`, or
