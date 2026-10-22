@@ -84,6 +84,9 @@ in the external directory selected by `SVC_PRODUCTION_CONFIG_DIR`.
 
 ### Recommended production startup
 
+This section covers Compose. To run production natively with `uv run`, see
+[Native production](../DEV-SETUP.md#native-production).
+
 Create `svc/.env.production` from `svc/.env.production.example`. The older
 `svc/.env` is a local/legacy file and is not sufficient for production compose:
 production requires four absolute host paths, all mounted with

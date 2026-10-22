@@ -49,9 +49,9 @@ For a clean machine setup, use [`DEV-SETUP.md`](./DEV-SETUP.md). The backend run
    cd GlazingControlApp
    ```
 
-2. **Run the app.** [`DEV-SETUP.md`](./DEV-SETUP.md) has the full procedure. In short:
-   - Development: copy `svc/.env.example` to `svc/.env`, start the backend with `cd svc && uv sync && uv run python main.py` (API on `http://127.0.0.1:8000`), then the frontend with `cd web && npm ci && npm run dev` (HMI on `http://localhost:5173`).
-   - Container: `podman compose -f docker-compose.development.yml up --build` serves the API and the built HMI together on `http://localhost:8000`.
+2. **Run the app.** [Ways to run in `DEV-SETUP.md`](./DEV-SETUP.md#ways-to-run) lists every development and production method (uv + npm, Docker, Podman) with full steps. In short, for development:
+   - Native: copy `svc/.env.example` to `svc/.env`, start the backend with `cd svc && uv sync && uv run python main.py` (API on `http://127.0.0.1:8000`), then the frontend with `cd web && npm ci && npm run dev` (HMI on `http://localhost:5173`).
+   - Container: `docker compose -f docker-compose.development.yml up --build` (or `podman compose` with the same arguments) serves the API and the built HMI together on `http://localhost:8000`.
 
 3. **Watch for errors (optional):** `npm run watch` from the repository root runs `tsc --noEmit --watch` for the frontend and re-runs `uv run pytest -q` in `svc` whenever a backend Python or TOML file changes. It starts no servers. Pass `backend`, `frontend`, or `both` to pick a side (`npm run watch -- backend`); from inside `svc` or `web` it defaults to that side.
 

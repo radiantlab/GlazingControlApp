@@ -19,6 +19,12 @@ production, groups are Halio groups, and the app creates a single-window group
 for any window that lacks one. Creating, editing, and deleting groups is
 allowed only in development. See `docs/adr/0001-halio-is-the-source-of-truth-for-panels.md`.
 
+**Halio network**: The trailer LAN that the Halio controller is on. The trailer
+has two networks, and only this one reaches Halio, so a machine running
+production must be connected to it. It is LAN-only with no internet access, so
+anything that downloads (`uv sync`, `npm ci`, container image builds) must
+happen before connecting. "Trailer network" alone is ambiguous; name which one.
+
 **Room**: One of the trailer's two test rooms, `room1` and `room2`. Rooms are not stored
 anywhere: `web/src/utils/panelRooms.ts` works out each panel's room from its
 `id` or `name` so the UI can lay panels out by room. A panel whose room cannot
