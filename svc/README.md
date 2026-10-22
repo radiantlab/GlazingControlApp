@@ -12,19 +12,10 @@ audit logging.
 
 Legacy `SVC_MODE`, `sim`, and `real` environment values are rejected.
 
-## Local development
+## Running
 
-```powershell
-Copy-Item .env.example .env
-uv sync
-uv run python main.py
-```
-
-Development reads `config/development` and writes only to
-`.runtime/development`. Native production keeps its values in
-`.env.production` and starts with
-`uv run --env-file .env.production python main.py`. For full steps and the
-Docker and Podman methods, see [Ways to run](../DEV-SETUP.md#ways-to-run).
+All setup and run steps, for development and production, are in
+[`DEV-SETUP.md`](../DEV-SETUP.md#ways-to-run).
 
 ## Configuration
 
@@ -86,13 +77,11 @@ Production needs exactly two Halio values:
 - `HALIO_SITE_ID`: the Halio site whose windows and groups the service
   controls. Every request goes to `<HALIO_API_URL>/sites/<HALIO_SITE_ID>/...`.
   It is not a credential, but it is site-specific, so keep it in the ignored
-  environment file. Get it from the private
-  [`radiantlab/DIAL-Internal-Documentation`](https://github.com/radiantlab/DIAL-Internal-Documentation)
-  repository; request access from the project partner.
+  environment file.
 
-The API is reachable only on the [Halio network](../CONTEXT.md), the LAN-only
-trailer network the controller is on; the trailer's other network does not
-reach it, so production must run on a machine connected to the Halio network.
+Both values come from `LOCAL-DEVELOPMENT.md` in the private internal
+documentation; see [Before you start](../DEV-SETUP.md#before-you-start). The
+API is reachable only on the [Halio network](../CONTEXT.md).
 
 ### Compose host paths
 

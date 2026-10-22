@@ -53,10 +53,12 @@ Run these checks locally before opening or updating a PR. Each block starts from
 
 ### 1. Pre-commit Hooks (Linting & Secrets)
 ```bash
-uv tool install pre-commit
-pre-commit install
+uv tool install pre-commit   # once per machine
+pre-commit install           # once per clone; hooks then run on staged files at commit
 pre-commit run --all-files
 ```
+
+The hooks check trailing whitespace, final newlines, YAML syntax, potential secrets, and Python style with Flake8 (99-character lines, set in `.flake8`). Whitespace hooks can modify files; review and stage their fixes before retrying a commit. The first run needs internet access to download the hooks. If `pre-commit` is not found after installation, run `uv tool update-shell` and restart the terminal.
 
 ### 2. Backend Validation
 ```bash
@@ -110,7 +112,7 @@ Each team member owns one piece of accepted work per sprint.
 ## Secrets and Data
 
 - Never commit secrets, API keys, or site-specific credentials. Use the git-ignored `.env` files described in `DEV-SETUP.md`.
-- Secrets and site-specific values (such as `HALIO_SITE_ID`) live in the private [`radiantlab/DIAL-Internal-Documentation`](https://github.com/radiantlab/DIAL-Internal-Documentation) repository. Request access from the project partner, and copy values from there into your ignored `.env` files rather than into this repository.
+- Secrets and site-specific values (such as `HALIO_SITE_ID`) live in [`LOCAL-DEVELOPMENT.md`](https://github.com/radiantlab/DIAL-Internal-Documentation/blob/main/LOCAL-DEVELOPMENT.md) in the private `radiantlab/DIAL-Internal-Documentation` repository. Request access from the project partner, and copy values from there into your ignored `.env` files rather than into this repository (see [Before you start](./DEV-SETUP.md#before-you-start)).
 - Do not paste credentials, private network details, or raw sensor data into issues, PRs, or logs.
 - The `detect-secrets` pre-commit hook catches some mistakes, not all of them; review your diff before pushing.
 - Reviewed false positives (the Halio `hardwareId` values in the test fixtures) are recorded in `.secrets.baseline`. If the hook flags a value that is not a secret, update the baseline with `detect-secrets scan --baseline .secrets.baseline`, mark the finding with `detect-secrets audit .secrets.baseline`, and say so in the PR.
