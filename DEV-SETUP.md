@@ -14,6 +14,11 @@ accepted.
 - [uv](https://docs.astral.sh/uv/)
 - Node.js 24 and npm (`.nvmrc`)
 - Docker or Podman for container deployments
+- Production only: access to the private
+  [`radiantlab/DIAL-Internal-Documentation`](https://github.com/radiantlab/DIAL-Internal-Documentation)
+  repository, which you request from the project partner. It holds
+  `HALIO_SITE_ID` and the project's other secrets and site-specific values.
+  Development needs none of them.
 
 ## Ways to run
 
@@ -179,8 +184,10 @@ have internet access; after connecting to the Halio network, only the
    cp svc/.env.production.example svc/.env.production
    ```
 
-   Set `HALIO_API_URL`, `HALIO_SITE_ID`, `SVC_DB_BACKUP_DIR` and, if any
-   device is external, `SVC_SENSOR_INGEST_TOKEN`. `SVC_DATA_DIR` defaults to
+   Set `HALIO_API_URL`, `HALIO_SITE_ID` (from
+   `radiantlab/DIAL-Internal-Documentation`; see [Prerequisites](#prerequisites)),
+   `SVC_DB_BACKUP_DIR` and, if any device is external,
+   `SVC_SENSOR_INGEST_TOKEN`. `SVC_DATA_DIR` defaults to
    `.runtime/production`; to continue existing production history, point it at
    the directory containing that `audit.db` and run the preflight in
    [step 4](#4-verify-and-back-up-the-existing-database) first. Set
@@ -284,7 +291,9 @@ Copy `svc/.env.production.example` to the ignored
   network. The old `:8084/api` endpoint no longer accepts connections.
 - `HALIO_SITE_ID`: the Halio site whose windows and groups the service
   controls. Every request goes to `<HALIO_API_URL>/sites/<HALIO_SITE_ID>/...`,
-  so a wrong value leaves the HMI with no panels.
+  so a wrong value leaves the HMI with no panels. Copy it from the private
+  [`radiantlab/DIAL-Internal-Documentation`](https://github.com/radiantlab/DIAL-Internal-Documentation)
+  repository; request access from the project partner.
 
 Every Compose bind mount uses `create_host_path: false`. The data directory,
 configuration directory, and capture file must already exist. The preflight in

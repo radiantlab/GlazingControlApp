@@ -86,7 +86,9 @@ Production needs exactly two Halio values:
 - `HALIO_SITE_ID`: the Halio site whose windows and groups the service
   controls. Every request goes to `<HALIO_API_URL>/sites/<HALIO_SITE_ID>/...`.
   It is not a credential, but it is site-specific, so keep it in the ignored
-  environment file.
+  environment file. Get it from the private
+  [`radiantlab/DIAL-Internal-Documentation`](https://github.com/radiantlab/DIAL-Internal-Documentation)
+  repository; request access from the project partner.
 
 The API is reachable only on the [Halio network](../CONTEXT.md), the LAN-only
 trailer network the controller is on; the trailer's other network does not
