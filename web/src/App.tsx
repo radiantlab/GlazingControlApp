@@ -3,9 +3,13 @@ import { api} from "./api";
 import {Panel, Group} from "./types"
 
 import PanelGrid from "./components/PanelGrid";
+import SystemHealthDetails from "./components/SystemHealthDetails";
+import { useSystemHealth } from "./utils/useSystemHealth";
 
 export default function App() {
-    const [health, setHealth] = useState<string>("checking");
+    const diagnostics = useSystemHealth();
+    const { health, healthError, healthText, refreshHealth } = diagnostics;
+    const [controlError, setControlError] = useState<string | null>(null);
     const [panels, setPanels] = useState<Panel[]>([]);
     const [groups, setGroups] = useState<Group[]>([]);
     const [busy, setBusy] = useState<string | null>(null);
@@ -13,15 +17,19 @@ export default function App() {
     const [groupId, setGroupId] = useState<string>("");
 
     async function refresh() {
-        const [p, g, h] = await Promise.all([api.panels(), api.groups(), api.health()]);
+        void refreshHealth();
+        const [p, g] = await Promise.all([api.panels(), api.groups()]);
         setPanels(p);
         setGroups(g);
-        setHealth(`${h.status}  environment  ${h.environment}`);
-        if (!groupId && g.length) setGroupId(g[0].id);
+        setControlError(null);
+        if (g.length) setGroupId(prev => prev || g[0].id);
     }
 
     useEffect(() => {
-        refresh().catch(err => setHealth(`error  ${String(err)}`));
+        const poll = () => refresh().catch(err => setControlError(`Panel controls unavailable: ${String(err)}`));
+        poll();
+        const interval = setInterval(poll, 5000);
+        return () => clearInterval(interval);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -58,10 +66,14 @@ export default function App() {
                         <span className="dot" />
                         <span>Electrochromic Control</span>
                     </div>
-                    <span className="pill">
-                        <span>status</span>
-                        <strong>{health}</strong>
-                    </span>
+                    <SystemHealthDetails {...diagnostics} warnings={[
+                        ...diagnostics.warnings, ...(controlError ? [controlError] : []),
+                    ]}>
+                        <span className="pill">
+                            <span>status</span>
+                            <strong>{health && !healthError ? `${health.status}  environment  ${health.environment}` : healthText}</strong>
+                        </span>
+                    </SystemHealthDetails>
                 </div>
             </header>
 
