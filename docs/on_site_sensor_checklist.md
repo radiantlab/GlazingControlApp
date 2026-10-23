@@ -60,34 +60,16 @@ Use this at the trailer/lab PC after the hardware is physically installed.
 The file must come from the external directory selected by
 `SVC_PRODUCTION_CONFIG_DIR`; it is mounted read-only in the container.
 
-## Update `svc/.env.production`
+## Start Production
 
-1. Set `SVC_PRODUCTION_DATA_DIR`, `SVC_PRODUCTION_CONFIG_DIR`, and
-   `SVC_DB_BACKUP_DIR` to existing absolute directories.
-2. Set `SVC_JETI_CAPTURE_PATH` to the exact LiVal capture file. It must exist
-   before the container starts.
-3. If any device is marked `"acquisition": "external"` (any enabled T-10A, or
-   JETI serial), set `SVC_SENSOR_INGEST_TOKEN` to a long random value. The API
-   refuses to start without it while an enabled device is marked external.
-
-## Start The Backend
-
-```powershell
-podman compose --env-file svc/.env.production up -d --build
-```
-
-`docker compose` takes the same arguments.
-
-If any device is marked external, start the Sensor Agent on the Windows host:
-
-```powershell
-.\scripts\sensors\Start-SensorAgent.ps1 -Command once
-.\scripts\sensors\Start-SensorAgent.ps1 -Command continuous
-```
-
-To keep it running unattended, schedule `continuous` as described in
-[Continuous production acquisition](../scripts/sensors/README.md#continuous-production-acquisition),
-which says which Windows account to use.
+1. Fill in `svc/.env.production`:
+   [step 2 in `DEV-SETUP.md`](../DEV-SETUP.md#2-create-svcenvproduction). Set
+   `SVC_JETI_CAPTURE_PATH` to the exact LiVal capture file, and set
+   `SVC_SENSOR_INGEST_TOKEN` if any device is marked external.
+2. Start the service:
+   [step 4](../DEV-SETUP.md#4-start-production).
+3. If any device is marked external, start the Sensor Agent:
+   [step 5](../DEV-SETUP.md#5-start-the-sensor-agent).
 
 ## Acceptance Checks
 

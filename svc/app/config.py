@@ -118,6 +118,8 @@ class Settings:
 
         halio_api_url = os.getenv("HALIO_API_URL", "").strip()
         halio_site_id = os.getenv("HALIO_SITE_ID", "").strip()
+        # Optional and undocumented: the v3 API takes no key. Kept for a
+        # controller that requires one again; see docs/adr/0005.
         halio_api_key = os.getenv("HALIO_API_KEY", "").strip()
         sensor_ingest_token = os.getenv("SVC_SENSOR_INGEST_TOKEN", "").strip()
         raw_sensor_acquisition = os.getenv(
