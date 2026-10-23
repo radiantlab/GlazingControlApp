@@ -68,6 +68,105 @@ describe("commits", () => {
     allowed("echo 'never run git commit here'");
     allowed('grep -n "git add ." CONTRIBUTING.md');
     allowed("cat <<'EOF'\ngit commit -m x\nEOF");
+    allowed("echo '$(git commit -m x)'");
+    allowed("cat <<'EOF'\n$(git commit -m x)\nEOF");
+    allowed('gh pr create --title "x" --body "Run git commit yourself"');
+    allowed('git log --grep "git commit" --oneline');
+  });
+});
+
+describe("quoting", () => {
+  it("unquotes words before applying the rules", () => {
+    for (const command of [
+      'git "commit" -m x',
+      "git 'add' .",
+      '"git" commit -m x',
+      'g"it" add .',
+      'git com"mit" -m x',
+      "g\\it commit -m x",
+      'git -C "my dir" commit -m x',
+      '"/usr/bin/git" add .',
+      'git push "--force"',
+      'git reset "--hard"',
+      'git push origin "main"',
+    ]) {
+      blocked(command);
+    }
+  });
+
+  it("checks commands the shell runs from inside a string", () => {
+    for (const command of [
+      'echo "$(git commit -m x)"',
+      'echo "`git add .`"',
+      "cat <<EOF\n$(git commit -m x)\nEOF",
+      'bash -c "git commit -m x"',
+      "sh -c 'git add .'",
+      "bash -lc 'cd svc && git add .'",
+      'eval "git commit -m x"',
+      "xargs sh -c 'git add \"$1\"' _",
+    ]) {
+      blocked(command);
+    }
+  });
+
+  it("still allows quoted arguments to allowed commands", () => {
+    allowed('git push -u origin "docs/example"');
+    allowed('git switch -c "fix/x"');
+    allowed('git log --format="%h %s" -5');
+    allowed('bash -c "git status --short"');
+  });
+});
+
+describe("PowerShell", () => {
+  const ps = "powershell";
+  const blockedPs = (command) =>
+    assert.notEqual(check(command, onFeature, ps), null, `expected block: ${command}`);
+  const allowedPs = (command) =>
+    assert.equal(check(command, onFeature, ps), null, `expected allow: ${command}`);
+  const encoded = (command) => Buffer.from(command, "utf16le").toString("base64");
+
+  it("blocks the same commands with PowerShell quoting", () => {
+    for (const command of [
+      "git commit -m 'docs: x'",
+      "& git add .",
+      '& "C:\\Program Files\\Git\\cmd\\git.exe" commit -m x',
+      "GIT commit -m x",
+      "g`it commit -m x",
+      "git push origin main; Write-Host done",
+      'Write-Output "$(git commit -m x)"',
+      "Write-Output $(git add .)",
+      "@\"\n$(git commit -m x)\n\"@",
+      'pwsh -NoProfile -Command "git add ."',
+      "powershell.exe git commit -m x",
+      `pwsh -EncodedCommand ${encoded("git commit -m x")}`,
+      'Invoke-Expression "git commit -m x"',
+      "iex 'git add .'",
+      "Invoke-Command -ScriptBlock { git commit -m x }",
+    ]) {
+      blockedPs(command);
+    }
+  });
+
+  it("treats the backtick as an escape, not a substitution", () => {
+    allowedPs('Write-Host "run `"git add`" yourself"');
+    allowedPs("Write-Host 'git commit'");
+    allowedPs("@'\n$(git commit -m x)\n'@");
+    allowedPs('Select-String -Pattern "git add ." -Path CONTRIBUTING.md');
+    allowedPs("git status --short");
+    allowedPs('git push -u origin "docs/example"');
+  });
+});
+
+describe("nesting", () => {
+  it("refuses commands nested deeper than it unwraps", () => {
+    const deep = "bash -c " + JSON.stringify(
+      "bash -c " + JSON.stringify(
+        "bash -c " + JSON.stringify(
+          "bash -c " + JSON.stringify("bash -c " + JSON.stringify("ls"))
+        )
+      )
+    );
+    blocked(deep);
   });
 });
 
@@ -148,11 +247,20 @@ describe("destructive commands", () => {
 });
 
 describe("as a hook process", () => {
-  const run = (command) =>
+  const run = (command, toolName = "Bash") =>
     spawnSync(process.execPath, [HOOK], {
-      input: JSON.stringify({ tool_input: { command }, cwd: onFeature }),
+      input: JSON.stringify({
+        tool_name: toolName,
+        tool_input: { command },
+        cwd: onFeature,
+      }),
       encoding: "utf8",
     });
+
+  it("reads PowerShell tool input with PowerShell quoting", () => {
+    assert.equal(run("g`it commit -m x", "PowerShell").status, 2);
+    assert.equal(run("git status", "PowerShell").status, 0);
+  });
 
   it("exits 2 with the reason on stderr when blocking", () => {
     const result = run("git commit -m x");

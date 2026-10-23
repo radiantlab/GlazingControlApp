@@ -1,4 +1,21 @@
 {
+  "permissions": {
+    "deny": [
+      "Read(/**/.env)",
+      "Read(/**/.env.production)",
+      "Read(/svc/config/production/**)",
+      "Read(/svc/data/*.db*)",
+      "Read(/svc/data/audit.json)",
+      "Read(/svc/data/**/*.cap)",
+      "Read(/svc/.runtime/production/**)",
+      "Read(/svc/db-backups/**)",
+      "Read(/svc/sensor-agent-data/**)",
+      "Read(/scripts/sensors/backups/**)",
+      "Read(/scripts/sensors/modbus_logs/**)",
+      "Read(/docs/TintSpecifics.txt)",
+      "Read(/docs/TintSpecificAPIPages.pdf)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -15,7 +32,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|PowerShell",
         "hooks": [
           {
             "type": "command",

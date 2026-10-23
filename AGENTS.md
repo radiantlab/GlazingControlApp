@@ -107,6 +107,13 @@ for contribution and setup steps.
   or unpublished vendor material to an AI tool.
 - Never put secrets or site-specific credentials in source, examples, logs,
   prompts, issues, or pull requests; use ignored local configuration instead.
+- `.claude/settings.json` denies agent reads of the files that hold this
+  material: `.env` and `.env.production` files, `svc/config/production/`,
+  production databases and backups, sensor captures and logs, and the
+  ignored API documents `docs/TintSpecifics*`. The `.example` templates stay
+  readable. The rules cover Claude Code's file tools and simple shell reads
+  such as `cat`, but not recursive searches or scripts that open files
+  themselves, so they back up this rule rather than replace it.
 - If data classification or tool approval is unclear, do not share the material;
   ask the team's AI Coordinator and project partner first.
 

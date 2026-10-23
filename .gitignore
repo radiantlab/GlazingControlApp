@@ -266,4 +266,3 @@ scripts/sensors/backups/
 
 # Claude Code personal settings (the shared .claude/settings.json is tracked)
 .claude/settings.local.json
-
