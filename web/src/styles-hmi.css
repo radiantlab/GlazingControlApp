@@ -173,7 +173,7 @@ body {
     margin: 0 auto;
     padding: 16px 24px;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     gap: 24px;
     width: 100%;
@@ -235,6 +235,82 @@ body {
     gap: 16px;
 }
 
+.hmi-identity {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.hmi-system-status {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 6px 0;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.hmi-system-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font: inherit;
+}
+
+.hmi-system-state {
+    color: var(--hmi-text);
+    font: inherit;
+}
+
+.hmi-system-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    flex: 0 0 10px;
+    border-radius: 50%;
+}
+
+.hmi-system-dot.status-ok {
+    background: var(--hmi-success);
+}
+
+.hmi-system-dot.status-error {
+    background: var(--hmi-danger);
+}
+
+.hmi-system-dot.status-checking {
+    background: var(--hmi-text-muted);
+}
+
+.hmi-environment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border: 1px solid var(--hmi-border-light);
+    border-radius: 6px;
+    background: var(--hmi-bg);
+    color: var(--hmi-text);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.hmi-environment-badge > span {
+    color: var(--hmi-text-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.hmi-environment-badge.is-production {
+    border-color: var(--hmi-warning);
+}
+
 .hmi-logo {
     width: 48px;
     height: 48px;
@@ -268,6 +344,7 @@ body {
 
 .hmi-status {
     display: flex;
+    margin-left: auto;
     gap: 24px;
     align-items: center;
     flex-wrap: wrap;
@@ -1929,6 +2006,21 @@ select option[disabled] {
     color: var(--hmi-text-muted);
     font-size: 12px;
     line-height: 1.35;
+}
+
+.sensor-health-notice {
+    margin: 12px 0;
+    padding: 10px 12px;
+    border-left: 3px solid var(--hmi-warning);
+    border-radius: 4px;
+    background: var(--hmi-bg-alt);
+    color: var(--hmi-warning);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.sensor-health-notice p {
+    margin: 4px 0;
 }
 
 .sensor-empty-state {
