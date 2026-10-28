@@ -1,6 +1,14 @@
 from __future__ import annotations
 from typing import Annotated, List, Optional, Literal, Dict
-from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StringConstraints, conint, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    FiniteFloat,
+    StringConstraints,
+    conint,
+    model_validator,
+)
 
 TintLevel = conint(ge=0, le=100)
 
@@ -17,7 +25,9 @@ class Group(BaseModel):
     """Group represents a collection of panels that can be controlled together."""
     id: str = Field(description="Group identifier (e.g., G-facade, G-1)")
     name: str = Field(description="Human-readable group name")
-    member_ids: List[str] = Field(default_factory=list, description="List of panel IDs in this group")
+    member_ids: List[str] = Field(
+        default_factory=list, description="List of panel IDs in this group"
+    )
 
 
 class CommandRequest(BaseModel):
@@ -43,12 +53,15 @@ class Snapshot(BaseModel):
 class AuditEntry(BaseModel):
     """Audit log entry recording a control action."""
     ts: float = Field(description="Unix timestamp when the action occurred")
-    actor: str = Field(description="Who/what initiated the action (e.g., 'api', 'user', 'schedule')")
+    actor: str = Field(
+        description="Who/what initiated the action (e.g., 'api', 'user', 'schedule')"
+    )
     target_type: str = Field(description="Type of target: 'panel' or 'group'")
     target_id: str = Field(description="ID of the panel or group that was targeted")
     level: int = Field(description="Tint level that was requested (0-100)")
     applied_to: List[str] = Field(description="Panel IDs that were actually updated")
     result: str = Field(description="Result message (e.g., 'panel updated', 'dwell time not met')")
+
 
 class HealthResponse(BaseModel):
     """Health check response."""
@@ -79,13 +92,17 @@ class HealthResponse(BaseModel):
 class GroupCreate(BaseModel):
     """Request to create a new group."""
     name: str = Field(description="Name for the new group")
-    member_ids: List[str] = Field(default_factory=list, description="Panel IDs to include in the group")
+    member_ids: List[str] = Field(
+        default_factory=list, description="Panel IDs to include in the group"
+    )
 
 
 class GroupUpdate(BaseModel):
     """Request to update an existing group."""
     name: Optional[str] = Field(default=None, description="New name for the group (optional)")
-    member_ids: Optional[List[str]] = Field(default=None, description="New list of panel IDs (optional)")
+    member_ids: Optional[List[str]] = Field(
+        default=None, description="New list of panel IDs (optional)"
+    )
 
 
 class DeleteGroupResponse(BaseModel):
@@ -96,6 +113,7 @@ class DeleteGroupResponse(BaseModel):
 class ErrorResponse(BaseModel):
     """Standard error response format."""
     detail: str = Field(description="Error message describing what went wrong")
+
 
 class SensorInfo(BaseModel):
     id: str
@@ -166,7 +184,12 @@ class SensorIngestEvent(BaseModel):
     )
     spectrum_wavelength_start: int = Field(default=380, ge=1)
     spectrum_wavelength_step: int = Field(default=1, ge=1)
-    source: Optional[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=256)]] = None
+    source: Optional[
+        Annotated[
+            str,
+            StringConstraints(strip_whitespace=True, min_length=1, max_length=256),
+        ]
+    ] = None
 
     @model_validator(mode="after")
     def validate_spectrum_metadata(self) -> "SensorIngestEvent":
@@ -195,9 +218,16 @@ class RoutineRequest(BaseModel):
     name: str = Field(description="Name of the routine")
     code: str = Field(description="Python code to execute")
     mode: Literal["once", "interval"] = Field(description="Execution mode")
-    interval_ms: Optional[int] = Field(default=None, description="Interval in milliseconds for interval mode")
-    run_at_ts: Optional[float] = Field(default=None, description="Unix timestamp to run the routine at")
-    indefinite: bool = Field(default=False, description="Whether an interval routine should run indefinitely")
+    interval_ms: Optional[int] = Field(
+        default=None, description="Interval in milliseconds for interval mode"
+    )
+    run_at_ts: Optional[float] = Field(
+        default=None, description="Unix timestamp to run the routine at"
+    )
+    indefinite: bool = Field(
+        default=False,
+        description="Whether an interval routine should run indefinitely",
+    )
 
 
 class RoutineStatusResponse(BaseModel):

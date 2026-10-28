@@ -1,0 +1,47 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(/**/.env)",
+      "Read(/**/.env.production)",
+      "Read(/svc/config/production/**)",
+      "Read(/svc/data/*.db*)",
+      "Read(/svc/data/audit.json)",
+      "Read(/svc/data/**/*.cap)",
+      "Read(/svc/.runtime/production/**)",
+      "Read(/svc/db-backups/**)",
+      "Read(/svc/sensor-agent-data/**)",
+      "Read(/scripts/sensors/backups/**)",
+      "Read(/scripts/sensors/modbus_logs/**)",
+      "Read(/docs/TintSpecifics.txt)",
+      "Read(/docs/TintSpecificAPIPages.pdf)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/session-context.mjs"],
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-git.mjs"],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

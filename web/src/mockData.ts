@@ -13,7 +13,7 @@ export const mockPanels: Panel[] = [
     { id: "P07", name: "Facade 7", group_id: "G-facade", level: 100, last_change_ts: Date.now() / 1000 - 450 },
     { id: "P08", name: "Facade 8", group_id: "G-facade", level: 50, last_change_ts: Date.now() / 1000 - 2700 },
     { id: "P09", name: "Facade 9", group_id: "G-facade", level: 0, last_change_ts: Date.now() / 1000 - 6000 },
-    
+
     // Room 2 - Wall panels (P10-P18)
     { id: "P10", name: "Facade 10", group_id: "G-facade", level: 30, last_change_ts: Date.now() / 1000 - 2100 },
     { id: "P11", name: "Facade 11", group_id: "G-facade", level: 0, last_change_ts: Date.now() / 1000 - 4800 },
@@ -24,7 +24,7 @@ export const mockPanels: Panel[] = [
     { id: "P16", name: "Facade 16", group_id: "G-facade", level: 20, last_change_ts: Date.now() / 1000 - 3000 },
     { id: "P17", name: "Facade 17", group_id: "G-facade", level: 0, last_change_ts: Date.now() / 1000 - 5100 },
     { id: "P18", name: "Facade 18", group_id: "G-facade", level: 45, last_change_ts: Date.now() / 1000 - 1500 },
-    
+
     // Skylights
     { id: "SK1", name: "Skylight 1", group_id: "G-skylights", level: 0, last_change_ts: Date.now() / 1000 - 7800 },
     { id: "SK2", name: "Skylight 2", group_id: "G-skylights", level: 25, last_change_ts: Date.now() / 1000 - 4200 },
@@ -54,12 +54,12 @@ export const mockApi = {
         await delay(200);
         return [...mockPanelState];
     },
-    
+
     async groups(): Promise<Group[]> {
         await delay(100);
         return [...mockGroups];
     },
-    
+
     async createGroup(name: string, memberIds: string[]): Promise<Group> {
         await delay(300);
         // Generate unique group ID
@@ -69,13 +69,13 @@ export const mockApi = {
             groupNum++;
         }
         const groupId = `G-${groupNum}`;
-        
+
         // Validate panel IDs
         const validPanelIds = memberIds.filter(id => mockPanelState.some(p => p.id === id));
         if (validPanelIds.length !== memberIds.length) {
             throw new Error("One or more panel IDs not found");
         }
-        
+
         const newGroup: Group = {
             id: groupId,
             name,
@@ -84,30 +84,30 @@ export const mockApi = {
         mockGroups.push(newGroup);
         return newGroup;
     },
-    
+
     async health(): Promise<{ status: string; environment: "development" }> {
         await delay(50);
         return { status: "ok", environment: "development" };
     },
-    
+
     async setPanelLevel(panelId: string, level: number): Promise<{ ok: boolean; applied_to: string[]; message: string }> {
         await delay(300);
         const panel = mockPanelState.find(p => p.id === panelId);
         if (!panel) {
             throw new Error("panel not found");
         }
-        
+
         // Simulate dwell time: if panel was changed less than 20 seconds ago, reject
         const timeSinceLastChange = Date.now() / 1000 - panel.last_change_ts;
         const MIN_DWELL_SECONDS = 20;
-        
+
         if (timeSinceLastChange < MIN_DWELL_SECONDS && panel.level !== level) {
             // Simulate 429 error for dwell time
             const error: any = new Error("429 dwell time not met");
             error.status = 429;
             throw error;
         }
-        
+
         panel.level = level;
         panel.last_change_ts = Date.now() / 1000;
         return {
@@ -116,7 +116,7 @@ export const mockApi = {
             message: `Panel ${panelId} set to ${level}%`
         };
     },
-    
+
     async setGroupLevel(groupId: string, level: number): Promise<{ ok: boolean; applied_to: string[]; message: string }> {
         await delay(400);
         const group = mockGroups.find(g => g.id === groupId);
@@ -186,4 +186,3 @@ export const mockApi = {
         );
     }
 };
-

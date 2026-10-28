@@ -1355,7 +1355,7 @@ export default function AppHMI() {
                     >
                         <div className="logs-modal-header">
                             <h2>
-                                Spectral Irradiance - {spectralModal.sensorId} 
+                                Spectral Irradiance - {spectralModal.sensorId}
                                 {spectralModal.fixedTs ? ` (${new Date(spectralModal.fixedTs * 1000).toLocaleString()})` : " (Live)"}
                             </h2>
                             <button
@@ -1378,4 +1378,3 @@ export default function AppHMI() {
         </>
     );
 }
-

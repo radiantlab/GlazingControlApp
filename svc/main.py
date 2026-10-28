@@ -19,16 +19,16 @@ from starlette.middleware.base import BaseHTTPMiddleware
 _SVC_DIR = Path(__file__).resolve().parent
 load_dotenv(dotenv_path=_SVC_DIR / ".env")
 
-from app.routes import router
-from app.config import IS_DEVELOPMENT, validate_runtime_configuration
-from app.db_backup import start_database_backup_worker_from_env
-from app.state import bootstrap_default_if_empty, initialize_database
-from app.sensors.manager import (
+from app.routes import router  # noqa: E402
+from app.config import IS_DEVELOPMENT, validate_runtime_configuration  # noqa: E402
+from app.db_backup import start_database_backup_worker_from_env  # noqa: E402
+from app.state import bootstrap_default_if_empty, initialize_database  # noqa: E402
+from app.sensors.manager import (  # noqa: E402
     start_sensor_workers,
     stop_sensor_workers,
     validate_sensor_configuration,
 )
-from app.routines.manager import resume_routines
+from app.routines.manager import resume_routines  # noqa: E402
 
 # Configure logging to show all INFO level logs from our modules
 logging.basicConfig(

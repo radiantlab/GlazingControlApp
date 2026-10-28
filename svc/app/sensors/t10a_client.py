@@ -270,7 +270,7 @@ class T10AClient(SensorClient):
             m = re.search(r"(?<![\d.])([+-]?0(?:\.0+)?)(?![\d.])", body)
             if m:
                 before = body[: m.start()].strip()
-                after = body[m.end() :].strip().lower()
+                after = body[m.end():].strip().lower()
                 has_label_prefix = not before or before.endswith(("=", ":"))
                 has_unit_suffix = after.startswith(("lx", "lux", "fcd"))
                 if has_label_prefix or has_unit_suffix or not after:
