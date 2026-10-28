@@ -1,0 +1,20 @@
+{
+    "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+    "files": {
+        "includes": ["src/**", "vite.config.ts"]
+    },
+    "formatter": {
+        "indentStyle": "space",
+        "indentWidth": 4,
+        "lineWidth": 100,
+        "lineEnding": "auto"
+    },
+    "assist": {
+        "enabled": false
+    },
+    "linter": {
+        "rules": {
+            "recommended": true
+        }
+    }
+}
