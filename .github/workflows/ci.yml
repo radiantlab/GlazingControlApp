@@ -79,8 +79,11 @@ jobs:
 
       # The suite uses Pester 3 syntax and launches powershell.exe, so it runs
       # under Windows PowerShell 5.1 with the Pester 3.4.0 that ships with it.
+      # Actions sets $ErrorActionPreference to Stop, which turns the stderr the
+      # tests capture with 2>&1 into exceptions; run them with the default.
       - name: Run Pester tests
         shell: powershell
         run: |
           Import-Module Pester -RequiredVersion 3.4.0
+          $ErrorActionPreference = 'Continue'
           Invoke-Pester -Path scripts/sensors/tests -EnableExit
