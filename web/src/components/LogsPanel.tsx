@@ -8,7 +8,7 @@ import {
 } from "../api";
 import { sortSensorsForDisplay } from "../utils/sensorDisplay";
 
-import { AuditLogEntry, SortField, SortDir } from "../types";
+import type { AuditLogEntry, SortField, SortDir } from "../types";
 
 const InfoIcon = () => (
     <svg

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api } from "./api";
-import { Panel, Group, AuditLogEntry } from "./types";
+import type { Panel, Group, AuditLogEntry } from "./types";
 import { mockApi } from "./mockData";
 import RoomGrid from "./components/RoomGrid";
 import RoomGridCompact from "./components/RoomGridCompact";
@@ -11,7 +11,7 @@ import { useToast } from "./utils/toast";
 import LogsPanel from "./components/LogsPanel";
 import { Link } from "react-router-dom";
 import LiveGraph from "./components/LiveGraph";
-import { type SensorInfo, type SensorReadingResponse } from "./api";
+import type { SensorInfo, SensorReadingResponse } from "./api";
 import {
     getDisplayMetricsForSensor,
     pruneVisibleSensorIds,

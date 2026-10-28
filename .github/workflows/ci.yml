@@ -55,6 +55,10 @@ jobs:
         working-directory: ./web
         run: npm ci
 
+      - name: Run frontend lint and format check
+        working-directory: ./web
+        run: npm run lint
+
       - name: Run frontend tests
         working-directory: ./web
         run: npm run test

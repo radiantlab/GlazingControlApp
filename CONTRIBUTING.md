@@ -40,7 +40,7 @@ Branch protection is enforced on `main` via GitHub **Ruleset 24736232**. Direct 
 | Gate / Rule | Enforced By | Details |
 | :--- | :--- | :--- |
 | **Backend Tests** | `backend-tests` job (`.github/workflows/ci.yml`) | Runs `uv run pytest tests/ -v` on Python (`svc/.python-version`) with dependencies frozen from `uv.lock`. |
-| **Frontend Checks** | `frontend-checks` job (`.github/workflows/ci.yml`) | Runs `npm run test` (Vitest), `npm run typecheck` (`tsc`), and `npm run build` on Node (`.nvmrc`). |
+| **Frontend Checks** | `frontend-checks` job (`.github/workflows/ci.yml`) | Runs `npm run lint` (Biome lint and format check), `npm run test` (Vitest), `npm run typecheck` (`tsc`), and `npm run build` on Node (`.nvmrc`). |
 | **PowerShell Tests** | `powershell-tests` job (`.github/workflows/ci.yml`) | Runs the Pester suite in `scripts/sensors/tests/` on `windows-latest` under Windows PowerShell 5.1 with Pester 3.4.0. |
 | **Docker & Version Checks** | `docker-builds` job (`.github/workflows/docker-builds.yml`) | Runs `scripts/check-runtime-versions.sh`, validates `docker compose config --quiet`, and builds the combined image and compose services. |
 | **Runtime Version Parity** | `scripts/check-runtime-versions.sh` (in `docker-builds`) | `Dockerfile` base images must match `svc/.python-version` and `.nvmrc`, and the uv image must match the uv version pinned in `.github/workflows/ci.yml`. |
@@ -70,6 +70,7 @@ uv run pytest tests/ -v
 ```bash
 cd web
 npm ci
+npm run lint      # Biome lint and format check; npm run format fixes formatting
 npm run test
 npm run typecheck
 npm run build

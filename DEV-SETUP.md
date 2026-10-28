@@ -213,6 +213,7 @@ cd svc
 uv run pytest tests
 
 cd ../web
+npm run lint
 npm test
 npm run typecheck
 npm run build

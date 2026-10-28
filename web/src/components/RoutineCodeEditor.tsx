@@ -181,11 +181,11 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
         setIsLaunching(true);
         setLaunchSuccess(false);
 
-        let runAtTs: number | undefined = undefined;
+        let runAtTs: number | undefined;
         if (runAtDate || runAtTime) {
             const tempRunAtDate = runAtDate || new Date().toISOString().split("T")[0];
             const tempRunAtTime = runAtTime || "00:00";
-            let targetDate = new Date(`${tempRunAtDate}T${tempRunAtTime}`);
+            const targetDate = new Date(`${tempRunAtDate}T${tempRunAtTime}`);
 
             // If only time was provided and it's already passed today, assume it's for tomorrow
             if (!runAtDate && runAtTime && targetDate.getTime() < Date.now()) {

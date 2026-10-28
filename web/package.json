@@ -16,6 +16,8 @@
         "watch:backend": "node ../scripts/watch.mjs backend",
         "watch:frontend": "node ../scripts/watch.mjs frontend",
         "watch:both": "node ../scripts/watch.mjs both",
+        "lint": "biome check",
+        "format": "biome format --write",
         "build": "vite build",
         "preview": "vite preview"
     },

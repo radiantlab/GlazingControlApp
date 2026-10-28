@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { api } from "./api";
-import { Panel, Group } from "./types";
+import type { Panel, Group } from "./types";
 
 import PanelGrid from "./components/PanelGrid";
 

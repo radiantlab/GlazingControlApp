@@ -1,4 +1,4 @@
-import { Panel, Group, AuditLogEntry, SortField, SortDir } from "./types";
+import type { Panel, Group, AuditLogEntry, SortField, SortDir } from "./types";
 
 /** Empty default: same-origin when served behind Docker/nginx; set VITE_API_BASE for local Vite dev. */
 export const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
@@ -17,7 +17,6 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
     // some endpoints return no body (eg 204) so guard
     const contentType = res.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
-        // @ts-ignore
         return (await res.text()) as T;
     }
     return (await res.json()) as T;
