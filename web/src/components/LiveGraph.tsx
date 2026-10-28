@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+    Area,
+    AreaChart,
+    CartesianGrid,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
 import { api, type SensorReadingResponse } from "../api";
 
 interface LiveGraphProps {
@@ -20,13 +28,25 @@ interface LiveGraphProps {
 // treat anything else as missing.
 function toFiniteNumber(value: unknown): number | undefined {
     const parsed =
-        typeof value === "number" ? value
-        : typeof value === "string" && value.trim() !== "" ? Number(value)
-        : Number.NaN;
+        typeof value === "number"
+            ? value
+            : typeof value === "string" && value.trim() !== ""
+              ? Number(value)
+              : Number.NaN;
     return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, variant = "card", yAxisLabel, valueFormatter, endTs }: LiveGraphProps) {
+function LiveGraph({
+    sensorId,
+    metric,
+    color = "#8884d8",
+    label,
+    height = 300,
+    variant = "card",
+    yAxisLabel,
+    valueFormatter,
+    endTs,
+}: LiveGraphProps) {
     const [data, setData] = useState<SensorReadingResponse[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -54,12 +74,16 @@ function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, v
 
     const formatTime = (ts: number) => {
         const d = new Date(ts * 1000);
-        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     };
 
     const placeholder = (message: string) => (
         <div
-            className={variant === "embedded" ? "live-graph-placeholder live-graph-placeholder-embedded" : "live-graph-placeholder"}
+            className={
+                variant === "embedded"
+                    ? "live-graph-placeholder live-graph-placeholder-embedded"
+                    : "live-graph-placeholder"
+            }
             style={{ height }}
         >
             {message}
@@ -80,7 +104,14 @@ function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, v
     }
 
     const chart = (
-        <div className={variant === "embedded" ? "live-graph-chart live-graph-chart-embedded" : "live-graph-chart"} style={{ height }}>
+        <div
+            className={
+                variant === "embedded"
+                    ? "live-graph-chart live-graph-chart-embedded"
+                    : "live-graph-chart"
+            }
+            style={{ height }}
+        >
             <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data} margin={{ top: 10, right: 20, left: 34, bottom: 26 }}>
                     <defs>
@@ -94,12 +125,13 @@ function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, v
                         dataKey="ts"
                         tickFormatter={formatTime}
                         stroke="#888"
-                        tick={{ fill: '#888' }}
+                        tick={{ fill: "#888" }}
                         minTickGap={50}
                         label={{
-                            value: endTs != null
-                                ? `Time (${new Date(endTs * 1000).toLocaleDateString()})`
-                                : "Time",
+                            value:
+                                endTs != null
+                                    ? `Time (${new Date(endTs * 1000).toLocaleDateString()})`
+                                    : "Time",
                             position: "insideBottom",
                             offset: -18,
                             fill: "#888",
@@ -107,7 +139,7 @@ function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, v
                     />
                     <YAxis
                         stroke="#888"
-                        tick={{ fill: '#888' }}
+                        tick={{ fill: "#888" }}
                         label={{
                             value: yAxisLabel || metric,
                             angle: -90,
@@ -117,9 +149,20 @@ function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, v
                         }}
                     />
                     <Tooltip
-                        contentStyle={{ backgroundColor: '#222', border: '1px solid #444', borderRadius: 4, color: '#fff' }}
-                        labelFormatter={(label) => { const ts = toFiniteNumber(label); return ts === undefined ? "" : new Date(ts * 1000).toLocaleString(); }}
-                        formatter={(value) => [formatTooltipValue(toFiniteNumber(value)), yAxisLabel || metric]}
+                        contentStyle={{
+                            backgroundColor: "#222",
+                            border: "1px solid #444",
+                            borderRadius: 4,
+                            color: "#fff",
+                        }}
+                        labelFormatter={(label) => {
+                            const ts = toFiniteNumber(label);
+                            return ts === undefined ? "" : new Date(ts * 1000).toLocaleString();
+                        }}
+                        formatter={(value) => [
+                            formatTooltipValue(toFiniteNumber(value)),
+                            yAxisLabel || metric,
+                        ]}
                     />
                     <Area
                         type="monotone"

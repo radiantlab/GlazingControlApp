@@ -44,7 +44,13 @@ export function useToast() {
     return context;
 }
 
-function ToastContainer({ toasts, removeToast }: { toasts: Toast[]; removeToast: (id: string) => void }) {
+function ToastContainer({
+    toasts,
+    removeToast,
+}: {
+    toasts: Toast[];
+    removeToast: (id: string) => void;
+}) {
     return (
         <div className="toast-container">
             {toasts.map((toast) => (
@@ -59,11 +65,19 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
         // Different durations based on toast type
         // Warnings and errors stay longer since they contain important information
         const duration =
-            toast.type === "success" ? 3000 :  // Quick feedback for success
-            toast.type === "info" ? 4000 :      // Standard duration
-            toast.type === "warning" ? 8000 :  // Longer for warnings (like dwell time)
-            toast.type === "error" ? 10000 :   // Longest for errors
-            4000;                               // Default fallback
+            toast.type === "success"
+                ? 3000
+                : // Quick feedback for success
+                  toast.type === "info"
+                  ? 4000
+                  : // Standard duration
+                    toast.type === "warning"
+                    ? 8000
+                    : // Longer for warnings (like dwell time)
+                      toast.type === "error"
+                      ? 10000
+                      : // Longest for errors
+                        4000; // Default fallback
 
         const timer = setTimeout(onClose, duration);
         return () => clearTimeout(timer);
@@ -78,7 +92,9 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
                 {toast.type === "info" && "ℹ"}
             </div>
             <div className="toast-message">{toast.message}</div>
-            <button className="toast-close" onClick={onClose} aria-label="Close">×</button>
+            <button className="toast-close" onClick={onClose} aria-label="Close">
+                ×
+            </button>
         </div>
     );
 }

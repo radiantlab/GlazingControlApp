@@ -2,9 +2,15 @@
 // Tracks active control sources and manages priority
 
 export type ControlSource =
-    | { type: 'manual'; panelId: string }
-    | { type: 'group'; groupId: string; panelIds: string[] }
-    | { type: 'routine'; routineId: string; routineName: string; panelIds: string[]; stepIndex?: number };
+    | { type: "manual"; panelId: string }
+    | { type: "group"; groupId: string; panelIds: string[] }
+    | {
+          type: "routine";
+          routineId: string;
+          routineName: string;
+          panelIds: string[];
+          stepIndex?: number;
+      };
 
 export type ControlState = {
     // Map panel ID to current control source
@@ -27,9 +33,12 @@ export class ControlManager {
     // Priority order: manual > group > routine
     private getPriority(source: ControlSource): number {
         switch (source.type) {
-            case 'manual': return 3; // Highest
-            case 'group': return 2;
-            case 'routine': return 1; // Lowest
+            case "manual":
+                return 3; // Highest
+            case "group":
+                return 2;
+            case "routine":
+                return 1; // Lowest
         }
     }
 
@@ -39,9 +48,9 @@ export class ControlManager {
         const priority = this.getPriority(source);
 
         let panelIds: string[] = [];
-        if (source.type === 'manual') {
+        if (source.type === "manual") {
             panelIds = [source.panelId];
-        } else if (source.type === 'group') {
+        } else if (source.type === "group") {
             panelIds = source.panelIds;
         } else {
             panelIds = source.panelIds;
@@ -60,13 +69,13 @@ export class ControlManager {
         }
 
         // Track active groups/routines
-        if (source.type === 'group') {
+        if (source.type === "group") {
             this.state.activeGroups.set(source.groupId, {
                 name: this.getGroupName(source.groupId) || source.groupId,
                 panelIds: source.panelIds,
                 startTime: Date.now(),
             });
-        } else if (source.type === 'routine') {
+        } else if (source.type === "routine") {
             this.state.activeRoutines.set(source.routineId, {
                 name: source.routineName,
                 panelIds: source.panelIds,
@@ -85,9 +94,9 @@ export class ControlManager {
     // Release control
     releaseControl(source: ControlSource): void {
         let panelIds: string[] = [];
-        if (source.type === 'manual') {
+        if (source.type === "manual") {
             panelIds = [source.panelId];
-        } else if (source.type === 'group') {
+        } else if (source.type === "group") {
             panelIds = source.panelIds;
             this.state.activeGroups.delete(source.groupId);
         } else {
@@ -132,18 +141,18 @@ export class ControlManager {
 
     private notifyListeners(): void {
         const state = this.getActiveControllers();
-        this.listeners.forEach(listener => listener(state));
+        this.listeners.forEach((listener) => listener(state));
     }
 
     private sourcesMatch(a: ControlSource, b: ControlSource): boolean {
         if (a.type !== b.type) return false;
-        if (a.type === 'manual' && b.type === 'manual') {
+        if (a.type === "manual" && b.type === "manual") {
             return a.panelId === b.panelId;
         }
-        if (a.type === 'group' && b.type === 'group') {
+        if (a.type === "group" && b.type === "group") {
             return a.groupId === b.groupId;
         }
-        if (a.type === 'routine' && b.type === 'routine') {
+        if (a.type === "routine" && b.type === "routine") {
             return a.routineId === b.routineId;
         }
         return false;

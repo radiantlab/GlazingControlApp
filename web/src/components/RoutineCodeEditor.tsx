@@ -109,14 +109,20 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
 
     // Global active routines state
     const [activeRoutines, setActiveRoutines] = useState<RoutineStatusResponse[]>([]);
-    const [focusedRoutineId, setFocusedRoutineId] = useState<string | null>(initialRoutineId || null);
+    const [focusedRoutineId, setFocusedRoutineId] = useState<string | null>(
+        initialRoutineId || null,
+    );
 
     const loadedRoutineIdRef = useRef<string | null>(null);
 
     useEffect(() => {
-        if (initialRoutineId && loadedRoutineIdRef.current !== initialRoutineId && activeRoutines.length > 0) {
+        if (
+            initialRoutineId &&
+            loadedRoutineIdRef.current !== initialRoutineId &&
+            activeRoutines.length > 0
+        ) {
             setFocusedRoutineId(initialRoutineId);
-            const found = activeRoutines.find(r => r.id === initialRoutineId);
+            const found = activeRoutines.find((r) => r.id === initialRoutineId);
             if (found) {
                 setCode(found.code || "");
                 setRoutineName(found.name || "");
@@ -135,7 +141,7 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
     const [isLaunching, setIsLaunching] = useState(false);
     const [launchSuccess, setLaunchSuccess] = useState(false);
 
-    const focusedRoutine = activeRoutines.find(r => r.id === focusedRoutineId);
+    const focusedRoutine = activeRoutines.find((r) => r.id === focusedRoutineId);
 
     // Polling loop
     useEffect(() => {
@@ -200,8 +206,8 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
                     mode,
                     interval_ms: mode === "interval" ? intervalMs : undefined,
                     run_at_ts: runAtTs,
-                    indefinite
-                })
+                    indefinite,
+                }),
             });
             if (res.ok) {
                 const data = await res.json();
@@ -216,27 +222,30 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
         }
     }, [code, routineName, mode, intervalMs, runAtDate, runAtTime, indefinite]);
 
-
     const handleStop = useCallback(async (id: string) => {
         try {
             await fetch(`${API_BASE}/routines/${id}/stop`, { method: "POST" });
             // Optimistic update
-            setActiveRoutines(prev => prev.map(r => r.id === id ? { ...r, status: "stopped" } : r));
+            setActiveRoutines((prev) =>
+                prev.map((r) => (r.id === id ? { ...r, status: "stopped" } : r)),
+            );
         } catch (err) {
             console.error("Failed to stop routine", err);
         }
     }, []);
 
-    const handleDeleteServerRoutine = useCallback(async (id: string) => {
-        try {
-            await fetch(`${API_BASE}/routines/${id}`, { method: "DELETE" });
-            setActiveRoutines(prev => prev.filter(r => r.id !== id));
-            if (focusedRoutineId === id) setFocusedRoutineId(null);
-        } catch (err) {
-            console.error("Failed to delete routine", err);
-        }
-    }, [focusedRoutineId]);
-
+    const handleDeleteServerRoutine = useCallback(
+        async (id: string) => {
+            try {
+                await fetch(`${API_BASE}/routines/${id}`, { method: "DELETE" });
+                setActiveRoutines((prev) => prev.filter((r) => r.id !== id));
+                if (focusedRoutineId === id) setFocusedRoutineId(null);
+            } catch (err) {
+                console.error("Failed to delete routine", err);
+            }
+        },
+        [focusedRoutineId],
+    );
 
     /* ---- save / load ---- */
     const handleSaveServer = useCallback(async () => {
@@ -245,7 +254,7 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
             await fetch(`${API_BASE}/saved-routines`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, code })
+                body: JSON.stringify({ name, code }),
             });
             // Update local state to reflect the server without needing to re-fetch
             const updated = [...savedRoutines.filter((r) => r.name !== name), { name, code }];
@@ -265,21 +274,26 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
                 setRoutineName(found.name);
             }
         },
-        [savedRoutines]
+        [savedRoutines],
     );
 
-    const handleDeleteServerSaved = useCallback(async (name: string) => {
-        if (!window.confirm(`Are you sure you want to delete the saved routine "${name}"?`)) {
-            return;
-        }
-        try {
-            await fetch(`${API_BASE}/saved-routines/${encodeURIComponent(name)}`, { method: "DELETE" });
-            const updated = savedRoutines.filter((r) => r.name !== name);
-            setSavedRoutines(updated);
-        } catch (err) {
-            console.error("Failed to delete saved routine from server", err);
-        }
-    }, [savedRoutines]);
+    const handleDeleteServerSaved = useCallback(
+        async (name: string) => {
+            if (!window.confirm(`Are you sure you want to delete the saved routine "${name}"?`)) {
+                return;
+            }
+            try {
+                await fetch(`${API_BASE}/saved-routines/${encodeURIComponent(name)}`, {
+                    method: "DELETE",
+                });
+                const updated = savedRoutines.filter((r) => r.name !== name);
+                setSavedRoutines(updated);
+            } catch (err) {
+                console.error("Failed to delete saved routine from server", err);
+            }
+        },
+        [savedRoutines],
+    );
 
     const handleInsertExample = (exampleCode: string) => {
         setCode(exampleCode);
@@ -289,67 +303,121 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
     return (
         <div className="routine-code-editor">
             {/* Active Routines List */}
-            {activeRoutines.filter(r => r.status === "running" || r.status === "scheduled").length > 0 && (
-                <div style={{ marginBottom: 16, border: '1px solid var(--hmi-border-color)', borderRadius: '6px', overflow: 'hidden' }}>
-                    <div style={{ background: 'var(--hmi-bg-panel)', padding: '8px 12px', fontWeight: 600, borderBottom: '1px solid var(--hmi-border-color)', fontSize: '13px' }}>
+            {activeRoutines.filter((r) => r.status === "running" || r.status === "scheduled")
+                .length > 0 && (
+                <div
+                    style={{
+                        marginBottom: 16,
+                        border: "1px solid var(--hmi-border-color)",
+                        borderRadius: "6px",
+                        overflow: "hidden",
+                    }}
+                >
+                    <div
+                        style={{
+                            background: "var(--hmi-bg-panel)",
+                            padding: "8px 12px",
+                            fontWeight: 600,
+                            borderBottom: "1px solid var(--hmi-border-color)",
+                            fontSize: "13px",
+                        }}
+                    >
                         Active & Scheduled Routines
                     </div>
                     <div>
-                        {activeRoutines.filter(r => r.status === "running" || r.status === "scheduled").map(r => (
-                            <div
-                                key={r.id}
-                                style={{
-                                    padding: '8px 12px',
-                                    borderBottom: '1px solid var(--hmi-border-color)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    background: r.id === focusedRoutineId ? 'var(--hmi-bg-panel-hover)' : 'transparent',
-                                    cursor: 'pointer'
-                                }}
-                                onClick={() => setFocusedRoutineId(r.id)}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span className={`routine-status-badge routine-status-${r.status}`} style={{ zoom: 0.85 }}>
-                                        ● {r.status}
-                                    </span>
-                                    <span style={{ fontWeight: 500, fontSize: '13px' }}>{r.name}</span>
-                                    <span style={{ fontSize: '12px', color: 'var(--hmi-text-muted)' }}>
-                                        ({r.mode})
-                                    </span>
-                                    {r.status === 'scheduled' && r.run_at_ts && (
-                                        <span style={{ fontSize: '12px', color: 'var(--txt-orange, #e67e22)' }}>
-                                            — at {new Date(r.run_at_ts * 1000).toLocaleString()}
-                                        </span>
-                                    )}
-                                </div>
-                                <div style={{ display: 'flex', gap: '6px' }}>
-                                    {(r.status === "running" || r.status === "scheduled") && (
-                                        <button
-                                            className="routine-stop-btn"
-                                            onClick={(e) => { e.stopPropagation(); handleStop(r.id); }}
-                                            style={{ padding: '2px 8px', fontSize: '11px' }}
-                                        >
-                                            Stop
-                                        </button>
-                                    )}
-                                    <button
-                                        className="side-panel-secondary-btn"
-                                        onClick={(e) => { e.stopPropagation(); handleDeleteServerRoutine(r.id); }}
-                                        style={{ padding: '2px 8px', fontSize: '11px' }}
+                        {activeRoutines
+                            .filter((r) => r.status === "running" || r.status === "scheduled")
+                            .map((r) => (
+                                <div
+                                    key={r.id}
+                                    style={{
+                                        padding: "8px 12px",
+                                        borderBottom: "1px solid var(--hmi-border-color)",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                        background:
+                                            r.id === focusedRoutineId
+                                                ? "var(--hmi-bg-panel-hover)"
+                                                : "transparent",
+                                        cursor: "pointer",
+                                    }}
+                                    onClick={() => setFocusedRoutineId(r.id)}
+                                >
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px",
+                                        }}
                                     >
-                                        ✕
-                                    </button>
+                                        <span
+                                            className={`routine-status-badge routine-status-${r.status}`}
+                                            style={{ zoom: 0.85 }}
+                                        >
+                                            ● {r.status}
+                                        </span>
+                                        <span style={{ fontWeight: 500, fontSize: "13px" }}>
+                                            {r.name}
+                                        </span>
+                                        <span
+                                            style={{
+                                                fontSize: "12px",
+                                                color: "var(--hmi-text-muted)",
+                                            }}
+                                        >
+                                            ({r.mode})
+                                        </span>
+                                        {r.status === "scheduled" && r.run_at_ts && (
+                                            <span
+                                                style={{
+                                                    fontSize: "12px",
+                                                    color: "var(--txt-orange, #e67e22)",
+                                                }}
+                                            >
+                                                — at {new Date(r.run_at_ts * 1000).toLocaleString()}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div style={{ display: "flex", gap: "6px" }}>
+                                        {(r.status === "running" || r.status === "scheduled") && (
+                                            <button
+                                                className="routine-stop-btn"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleStop(r.id);
+                                                }}
+                                                style={{ padding: "2px 8px", fontSize: "11px" }}
+                                            >
+                                                Stop
+                                            </button>
+                                        )}
+                                        <button
+                                            className="side-panel-secondary-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteServerRoutine(r.id);
+                                            }}
+                                            style={{ padding: "2px 8px", fontSize: "11px" }}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
                     </div>
                 </div>
             )}
 
             {/* name */}
-            <div className="form-group" style={{ position: 'relative' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="form-group" style={{ position: "relative" }}>
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                    }}
+                >
                     <label>Routine Name</label>
                     <Link to="/docs/routines" target="_blank" rel="noopener noreferrer">
                         <button
@@ -358,22 +426,35 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
                                 display: "flex",
                                 alignItems: "center",
                                 gap: "6px",
-                                background: "linear-gradient(135deg, rgba(30, 64, 175, 0.25) 0%, rgba(37, 99, 235, 0.2) 100%)",
+                                background:
+                                    "linear-gradient(135deg, rgba(30, 64, 175, 0.25) 0%, rgba(37, 99, 235, 0.2) 100%)",
                                 border: "1px solid rgba(59, 130, 246, 0.4)",
                                 color: "#93c5fd",
                                 fontSize: "12px",
                                 fontWeight: "600",
                                 padding: "4px 8px",
-                                boxShadow: "0 2px 6px rgba(0, 0, 0, 0.15)"
+                                boxShadow: "0 2px 6px rgba(0, 0, 0, 0.15)",
                             }}
                             title="View Routine Developer Documentation"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: "14px", height: "14px" }}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={2}
+                                stroke="currentColor"
+                                style={{ width: "14px", height: "14px" }}
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
+                                />
                             </svg>
                             Routine Docs
                         </button>
-                    </Link>                </div>
+                    </Link>{" "}
+                </div>
                 <input
                     type="text"
                     value={routineName}
@@ -449,7 +530,9 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
                                 type="number"
                                 className="routine-interval-input"
                                 value={intervalMs}
-                                onChange={(e) => setIntervalMs(Math.max(1000, Number(e.target.value)))}
+                                onChange={(e) =>
+                                    setIntervalMs(Math.max(1000, Number(e.target.value)))
+                                }
                                 min={1000}
                                 step={1000}
                             />
@@ -463,15 +546,29 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
                             />
                             Run indefinitely
                         </label>
-                        {!indefinite && (
-                            <span className="routine-max-hint">Max: 1 hour</span>
-                        )}
+                        {!indefinite && <span className="routine-max-hint">Max: 1 hour</span>}
                     </div>
                 )}
 
-                <div className="routine-schedule-config" style={{ marginTop: 8, marginBottom: 8, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <label style={{ fontSize: '13px', color: 'var(--hmi-text-muted)', fontWeight: 600 }}>
-                        Run At <span style={{ fontWeight: 'normal' }}>(Optional)</span>
+                <div
+                    className="routine-schedule-config"
+                    style={{
+                        marginTop: 8,
+                        marginBottom: 8,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        flexWrap: "wrap",
+                    }}
+                >
+                    <label
+                        style={{
+                            fontSize: "13px",
+                            color: "var(--hmi-text-muted)",
+                            fontWeight: 600,
+                        }}
+                    >
+                        Run At <span style={{ fontWeight: "normal" }}>(Optional)</span>
                     </label>
                     <input
                         type="date"
@@ -495,7 +592,7 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
                                 setRunAtTime("");
                             }}
                             className="side-panel-secondary-btn"
-                            style={{ padding: '4px 8px', fontSize: '12px' }}
+                            style={{ padding: "4px 8px", fontSize: "12px" }}
                         >
                             Clear
                         </button>
@@ -508,9 +605,20 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
                         onClick={handleLaunch}
                         disabled={!code.trim() || isLaunching}
                         type="button"
-                        style={launchSuccess ? { background: 'var(--hmi-success)', borderColor: 'var(--hmi-success)' } : undefined}
+                        style={
+                            launchSuccess
+                                ? {
+                                      background: "var(--hmi-success)",
+                                      borderColor: "var(--hmi-success)",
+                                  }
+                                : undefined
+                        }
                     >
-                        {isLaunching ? "Launching..." : launchSuccess ? "✓ Launched!" : "▶ Launch Routine"}
+                        {isLaunching
+                            ? "Launching..."
+                            : launchSuccess
+                              ? "✓ Launched!"
+                              : "▶ Launch Routine"}
                     </button>
                     <button
                         className="side-panel-secondary-btn"
@@ -531,15 +639,19 @@ export default function RoutineCodeEditor({ panels, groups, initialRoutineId }: 
                     </div>
                     <div className="routine-console-body">
                         {!focusedRoutine?.logs || focusedRoutine.logs.length === 0 ? (
-                            <div className="routine-console-empty">
-                                Waiting for output...
-                            </div>
+                            <div className="routine-console-empty">Waiting for output...</div>
                         ) : (
                             focusedRoutine.logs.map((line, i) => (
                                 <div
                                     key={i}
-                                    className={`routine-console-line ${line.startsWith("❌") || line.toLowerCase().includes("error") ? "error" : line.startsWith("✅") || line.includes("✓") ? "success" : ""
-                                        }`}
+                                    className={`routine-console-line ${
+                                        line.startsWith("❌") ||
+                                        line.toLowerCase().includes("error")
+                                            ? "error"
+                                            : line.startsWith("✅") || line.includes("✓")
+                                              ? "success"
+                                              : ""
+                                    }`}
                                 >
                                     {line}
                                 </div>

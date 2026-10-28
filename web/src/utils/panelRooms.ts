@@ -98,7 +98,7 @@ export function organizePanelsByRoom(panels: Panel[]): RoomPanels {
     const room2: Panel[] = [];
     const unknown: Panel[] = [];
 
-    panels.forEach(panel => {
+    panels.forEach((panel) => {
         const location = parsePanelLocation(panel);
         if (location?.room === "room1") {
             room1.push(panel);
@@ -112,7 +112,7 @@ export function organizePanelsByRoom(panels: Panel[]): RoomPanels {
         unknown.push(panel);
     });
 
-    unknown.sort(fallbackSort).forEach(panel => {
+    unknown.sort(fallbackSort).forEach((panel) => {
         if (room1.length <= room2.length) {
             room1.push(panel);
         } else {
