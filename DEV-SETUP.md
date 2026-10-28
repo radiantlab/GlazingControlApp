@@ -216,7 +216,13 @@ cd ../web
 npm test
 npm run typecheck
 npm run build
+
+cd ..
+Import-Module Pester -RequiredVersion 3.4.0
+Invoke-Pester -Path scripts/sensors/tests
 ```
+
+Run the Pester suite from Windows PowerShell 5.1, which ships Pester 3.4.0.
 
 The backend test setup uses a temporary database and cannot write to
 `svc/data/audit.db`.

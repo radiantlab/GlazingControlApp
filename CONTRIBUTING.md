@@ -41,6 +41,7 @@ Branch protection is enforced on `main` via GitHub **Ruleset 24736232**. Direct 
 | :--- | :--- | :--- |
 | **Backend Tests** | `backend-tests` job (`.github/workflows/ci.yml`) | Runs `uv run pytest tests/ -v` on Python (`svc/.python-version`) with dependencies frozen from `uv.lock`. |
 | **Frontend Checks** | `frontend-checks` job (`.github/workflows/ci.yml`) | Runs `npm run test` (Vitest), `npm run typecheck` (`tsc`), and `npm run build` on Node (`.nvmrc`). |
+| **PowerShell Tests** | `powershell-tests` job (`.github/workflows/ci.yml`) | Runs the Pester suite in `scripts/sensors/tests/` on `windows-latest` under Windows PowerShell 5.1 with Pester 3.4.0. |
 | **Docker & Version Checks** | `docker-builds` job (`.github/workflows/docker-builds.yml`) | Runs `scripts/check-runtime-versions.sh`, validates `docker compose config --quiet`, and builds the combined image and compose services. |
 | **Runtime Version Parity** | `scripts/check-runtime-versions.sh` (in `docker-builds`) | `Dockerfile` base images must match `svc/.python-version` and `.nvmrc`, and the uv image must match the uv version pinned in `.github/workflows/ci.yml`. |
 | **Python Dependency Pinning** | `backend-tests` | `uv.lock` is the only exact Python pin. Dependencies are synced with `uv sync --frozen`. |
@@ -74,7 +75,14 @@ npm run typecheck
 npm run build
 ```
 
-### 4. Runtime & Container Checks
+### 4. PowerShell Script Tests (Windows)
+Run from Windows PowerShell 5.1 (`powershell.exe`), not PowerShell 7. The suite uses the Pester 3.4.0 that ships with Windows.
+```powershell
+Import-Module Pester -RequiredVersion 3.4.0
+Invoke-Pester -Path scripts/sensors/tests
+```
+
+### 5. Runtime & Container Checks
 ```bash
 # Verify Dockerfile matches runtime versions
 ./scripts/check-runtime-versions.sh

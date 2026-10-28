@@ -207,5 +207,10 @@ Exit codes are:
 The Pester suite uses dry-run and temporary files; it never opens a COM port:
 
 ```powershell
+Import-Module Pester -RequiredVersion 3.4.0
 Invoke-Pester .\scripts\sensors\tests\SensorBackupScripts.Tests.ps1
 ```
+
+Run it from Windows PowerShell 5.1, which ships Pester 3.4.0. The suite uses
+Pester 3 syntax, which Pester 5 rejects. CI runs it in the `powershell-tests`
+job.

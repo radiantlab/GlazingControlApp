@@ -66,3 +66,17 @@ jobs:
       - name: Build frontend
         working-directory: ./web
         run: npm run build
+
+  powershell-tests:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # The suite uses Pester 3 syntax and launches powershell.exe, so it runs
+      # under Windows PowerShell 5.1 with the Pester 3.4.0 that ships with it.
+      - name: Run Pester tests
+        shell: powershell
+        run: |
+          Import-Module Pester -RequiredVersion 3.4.0
+          Invoke-Pester -Path scripts/sensors/tests -EnableExit
