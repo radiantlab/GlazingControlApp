@@ -48,10 +48,27 @@ describe("RoomGrid", () => {
 
     it("keeps the complete DIAL driver set in its physical rooms", () => {
         const dialPanels: Panel[] = [
-            "DR-1.1", "DR-1.2", "DR-1.3", "DR-1.4", "DR-1.5", "DR-1.6", "DR-1.7", "DR-1.8", "DR-1.9",
-            "DR-2.1", "DR-2.2", "DR-2.3", "DR-2.4", "DR-2.5", "DR-2.6", "DR-2.7", "DR-2.8", "DR-2.9",
-            "SK-1.1", "SK-1.2",
-        ].map(name => ({ id: `uuid-${name}`, name, level: 0, last_change_ts: 1000 }));
+            "DR-1.1",
+            "DR-1.2",
+            "DR-1.3",
+            "DR-1.4",
+            "DR-1.5",
+            "DR-1.6",
+            "DR-1.7",
+            "DR-1.8",
+            "DR-1.9",
+            "DR-2.1",
+            "DR-2.2",
+            "DR-2.3",
+            "DR-2.4",
+            "DR-2.5",
+            "DR-2.6",
+            "DR-2.7",
+            "DR-2.8",
+            "DR-2.9",
+            "SK-1.1",
+            "SK-1.2",
+        ].map((name) => ({ id: `uuid-${name}`, name, level: 0, last_change_ts: 1000 }));
 
         render(<RoomGrid panels={dialPanels} onSet={vi.fn()} />);
 
@@ -67,7 +84,13 @@ describe("RoomGrid", () => {
     });
 
     it("highlights panels in the selected group", () => {
-        render(<RoomGrid panels={panels} onSet={vi.fn()} highlightedPanelIds={new Set(["P10", "SK2"])} />);
+        render(
+            <RoomGrid
+                panels={panels}
+                onSet={vi.fn()}
+                highlightedPanelIds={new Set(["P10", "SK2"])}
+            />,
+        );
 
         expect(screen.getByTestId("panel-tile-P10")).toHaveClass("panel-tile-selected-group");
         expect(screen.getByTestId("panel-tile-SK2")).toHaveClass("panel-tile-selected-group");
@@ -82,7 +105,7 @@ describe("RoomGridCompact", () => {
                 panels={panels}
                 transitioning={new Set()}
                 highlightedPanelIds={new Set(["P01"])}
-            />
+            />,
         );
 
         const room1 = screen.getByLabelText("Room 1");
@@ -90,7 +113,11 @@ describe("RoomGridCompact", () => {
 
         expect(within(room1).getByText("P01")).toBeInTheDocument();
         expect(within(room2).getByText("P10")).toBeInTheDocument();
-        expect(screen.getByTestId("compact-panel-P01")).toHaveClass("room-compact-panel-selected-group");
-        expect(screen.getByTestId("compact-panel-P10")).not.toHaveClass("room-compact-panel-selected-group");
+        expect(screen.getByTestId("compact-panel-P01")).toHaveClass(
+            "room-compact-panel-selected-group",
+        );
+        expect(screen.getByTestId("compact-panel-P10")).not.toHaveClass(
+            "room-compact-panel-selected-group",
+        );
     });
 });

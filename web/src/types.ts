@@ -13,16 +13,15 @@ export type Group = {
 };
 
 export type AuditLogEntry = {
-    ts: number
-    actor: string
-    target_type: "panel" | "group"
-    target_id: string
-    level: number
-    applied_to: string[]
-    result: string
+    ts: number;
+    actor: string;
+    target_type: "panel" | "group";
+    target_id: string;
+    level: number;
+    applied_to: string[];
+    result: string;
 };
 
+export type SortField = "ts" | "actor" | "target_type" | "target_id" | "level";
 
-export type SortField = "ts" | "actor" | "target_type" | "target_id" | "level"
-
-export type SortDir = "asc" | "desc"
+export type SortDir = "asc" | "desc";

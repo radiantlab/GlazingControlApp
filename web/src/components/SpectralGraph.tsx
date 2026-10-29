@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+    Area,
+    AreaChart,
+    CartesianGrid,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
 import { api, type SensorSpectrumResponse } from "../api";
 
 interface SpectralGraphProps {
@@ -43,7 +51,15 @@ export default function SpectralGraph({ sensorId, fixedTs, height = 350 }: Spect
 
     if (loading && !data) {
         return (
-            <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--hmi-text-muted)" }}>
+            <div
+                style={{
+                    height,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--hmi-text-muted)",
+                }}
+            >
                 Loading spectral data...
             </div>
         );
@@ -51,7 +67,18 @@ export default function SpectralGraph({ sensorId, fixedTs, height = 350 }: Spect
 
     if (error) {
         return (
-            <div style={{ height, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--hmi-danger)", padding: 20, textAlign: "center" }}>
+            <div
+                style={{
+                    height,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--hmi-danger)",
+                    padding: 20,
+                    textAlign: "center",
+                }}
+            >
                 <div style={{ fontWeight: "bold", marginBottom: 8 }}>Failed to load spectrum</div>
                 <div style={{ fontSize: "13px", opacity: 0.8 }}>{error}</div>
             </div>
@@ -60,7 +87,15 @@ export default function SpectralGraph({ sensorId, fixedTs, height = 350 }: Spect
 
     if (!data || !data.values || !data.values.length) {
         return (
-            <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--hmi-text-muted)" }}>
+            <div
+                style={{
+                    height,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--hmi-text-muted)",
+                }}
+            >
                 No spectral data available
             </div>
         );
@@ -96,38 +131,42 @@ export default function SpectralGraph({ sensorId, fixedTs, height = 350 }: Spect
                             <stop offset="100%" stopColor="#800000" />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--hmi-border)" />
+                    <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="var(--hmi-border)"
+                    />
                     <XAxis
                         dataKey="wavelength"
                         stroke="var(--hmi-text-muted)"
-                        tick={{ fill: 'var(--hmi-text-muted)' }}
+                        tick={{ fill: "var(--hmi-text-muted)" }}
                         label={{
-                            value: 'Wavelength (nm)',
-                            position: 'bottom',
+                            value: "Wavelength (nm)",
+                            position: "bottom",
                             offset: 20,
-                            fill: 'var(--hmi-text-muted)',
-                            style: { fontSize: '13px' }
+                            fill: "var(--hmi-text-muted)",
+                            style: { fontSize: "13px" },
                         }}
                     />
                     <YAxis
                         stroke="var(--hmi-text-muted)"
-                        tick={{ fill: 'var(--hmi-text-muted)' }}
+                        tick={{ fill: "var(--hmi-text-muted)" }}
                         tickFormatter={formatValue}
                         label={{
-                            value: 'Spectral Irradiance',
+                            value: "Spectral Irradiance",
                             angle: -90,
-                            position: 'left',
+                            position: "left",
                             offset: 65,
-                            fill: 'var(--hmi-text-muted)',
-                            style: { fontSize: '13px', textAnchor: 'middle' }
+                            fill: "var(--hmi-text-muted)",
+                            style: { fontSize: "13px", textAnchor: "middle" },
                         }}
                     />
                     <Tooltip
                         contentStyle={{
-                            backgroundColor: 'var(--hmi-surface)',
-                            border: '1px solid var(--hmi-border)',
+                            backgroundColor: "var(--hmi-surface)",
+                            border: "1px solid var(--hmi-border)",
                             borderRadius: 4,
-                            color: 'var(--hmi-text)'
+                            color: "var(--hmi-text)",
                         }}
                         labelFormatter={(label) => `Wavelength: ${label} nm`}
                         formatter={(value: any) => [formatValue(Number(value)), "Irradiance"]}

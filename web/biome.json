@@ -1,0 +1,37 @@
+{
+    "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+    "files": {
+        "includes": ["src/**", "vite.config.ts"]
+    },
+    "formatter": {
+        "indentStyle": "space",
+        "indentWidth": 4,
+        "lineWidth": 100,
+        "lineEnding": "auto"
+    },
+    "assist": {
+        "enabled": false
+    },
+    "linter": {
+        "rules": {
+            "preset": "recommended",
+            "a11y": {
+                "noLabelWithoutControl": "warn",
+                "noStaticElementInteractions": "warn",
+                "noSvgWithoutTitle": "warn",
+                "useAriaPropsSupportedByRole": "warn",
+                "useButtonType": "warn",
+                "useKeyWithClickEvents": "warn",
+                "useSemanticElements": "warn"
+            },
+            "correctness": {
+                "useExhaustiveDependencies": "warn"
+            },
+            "suspicious": {
+                "noArrayIndexKey": "warn",
+                "noDuplicateProperties": "warn",
+                "useIterableCallbackReturn": "warn"
+            }
+        }
+    }
+}

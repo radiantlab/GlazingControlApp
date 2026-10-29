@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import type { Panel } from "../types";
 
 type Props = {
@@ -10,7 +10,7 @@ type Props = {
 export default function PanelGrid({ panels, onSet, busyId }: Props) {
     return (
         <div className="grid">
-            {panels.map(p => {
+            {panels.map((p) => {
                 const knobLeft = `${p.level}%`;
                 return (
                     <div key={p.id} className="card">
@@ -20,7 +20,14 @@ export default function PanelGrid({ panels, onSet, busyId }: Props) {
                         </div>
 
                         <div>
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)" }}>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    fontSize: 13,
+                                    color: "var(--muted)",
+                                }}
+                            >
                                 <span>tint</span>
                                 <strong style={{ color: "var(--text)" }}>{p.level}</strong>
                             </div>
@@ -28,7 +35,14 @@ export default function PanelGrid({ panels, onSet, busyId }: Props) {
                                 <span className="tbar-dot" style={{ left: knobLeft }} />
                             </div>
 
-                            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    gap: 8,
+                                    alignItems: "center",
+                                    marginTop: 8,
+                                }}
+                            >
                                 <input
                                     type="range"
                                     min={0}
@@ -36,15 +50,22 @@ export default function PanelGrid({ panels, onSet, busyId }: Props) {
                                     defaultValue={p.level}
                                     id={`range-${p.id}`}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                        const dot = (e.currentTarget.parentElement as HTMLElement).querySelector(".tbar-dot") as HTMLElement | null;
+                                        const dot = (
+                                            e.currentTarget.parentElement as HTMLElement
+                                        ).querySelector(".tbar-dot") as HTMLElement | null;
                                         if (dot) dot.style.left = `${e.currentTarget.value}%`;
                                     }}
                                 />
                                 <button
                                     onClick={async () => {
-                                        const el = document.getElementById(`range-${p.id}`) as HTMLInputElement | null;
+                                        const el = document.getElementById(
+                                            `range-${p.id}`,
+                                        ) as HTMLInputElement | null;
                                         const v = el ? Number(el.value) : p.level;
-                                        const clamped = Math.max(0, Math.min(100, Number.isNaN(v) ? p.level : v));
+                                        const clamped = Math.max(
+                                            0,
+                                            Math.min(100, Number.isNaN(v) ? p.level : v),
+                                        );
                                         await onSet(p.id, clamped);
                                     }}
                                     disabled={busyId === p.id}
@@ -54,15 +75,19 @@ export default function PanelGrid({ panels, onSet, busyId }: Props) {
                             </div>
 
                             <div className="chips">
-                                {[0, 25, 50, 75, 100].map(v => (
+                                {[0, 25, 50, 75, 100].map((v) => (
                                     <span
                                         key={v}
                                         className="chip"
                                         onClick={() => {
-                                            const el = document.getElementById(`range-${p.id}`) as HTMLInputElement | null;
+                                            const el = document.getElementById(
+                                                `range-${p.id}`,
+                                            ) as HTMLInputElement | null;
                                             if (el) {
                                                 el.value = String(v);
-                                                const dot = (el.parentElement as HTMLElement).querySelector(".tbar-dot") as HTMLElement | null;
+                                                const dot = (
+                                                    el.parentElement as HTMLElement
+                                                ).querySelector(".tbar-dot") as HTMLElement | null;
                                                 if (dot) dot.style.left = `${v}%`;
                                             }
                                         }}
@@ -73,7 +98,9 @@ export default function PanelGrid({ panels, onSet, busyId }: Props) {
                             </div>
 
                             <div style={{ marginTop: 8 }}>
-                                <small className="mono">last ts  {Math.round(p.last_change_ts)}</small>
+                                <small className="mono">
+                                    last ts {Math.round(p.last_change_ts)}
+                                </small>
                             </div>
                         </div>
                     </div>

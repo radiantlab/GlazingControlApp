@@ -153,7 +153,10 @@ function PanelTile({
                 <div className="panel-tile-name">{panel.name}</div>
                 <div className="panel-tile-header-right">
                     {badge && (
-                        <div className={`control-badge ${badge.className}`} title={`Controlled by: ${badge.label}`}>
+                        <div
+                            className={`control-badge ${badge.className}`}
+                            title={`Controlled by: ${badge.label}`}
+                        >
                             <span className="control-badge-icon">{badge.icon}</span>
                             <span className="control-badge-label">{badge.label}</span>
                         </div>
@@ -163,8 +166,14 @@ function PanelTile({
             </div>
 
             <div className="panel-tile-status">
-                <div className="panel-tile-level-display" style={{ backgroundColor: getTintColor(localLevel) }}>
-                    <span className="panel-tile-level-value" style={{ color: getTextColor(localLevel) }}>
+                <div
+                    className="panel-tile-level-display"
+                    style={{ backgroundColor: getTintColor(localLevel) }}
+                >
+                    <span
+                        className="panel-tile-level-value"
+                        style={{ color: getTextColor(localLevel) }}
+                    >
                         {localLevel}%
                     </span>
                     {isTransitioning && (
@@ -176,7 +185,9 @@ function PanelTile({
                 </div>
                 <div className="panel-tile-timestamp">
                     <span className="panel-tile-timestamp-label">Updated:</span>
-                    <span className="panel-tile-timestamp-value">{formatLastUpdated(panel.last_change_ts, currentTime)}</span>
+                    <span className="panel-tile-timestamp-value">
+                        {formatLastUpdated(panel.last_change_ts, currentTime)}
+                    </span>
                 </div>
             </div>
 
@@ -217,13 +228,15 @@ function PanelTile({
                 </div>
 
                 <div className="panel-tile-quick-controls">
-                    {[0, 25, 50, 75, 100].map(v => (
+                    {[0, 25, 50, 75, 100].map((v) => (
                         <button
                             key={v}
                             className="panel-tile-quick-btn"
                             disabled={isBusy}
                             onClick={() => {
-                                const el = document.getElementById(`range-${panel.id}`) as HTMLInputElement | null;
+                                const el = document.getElementById(
+                                    `range-${panel.id}`,
+                                ) as HTMLInputElement | null;
                                 if (el) el.value = String(v);
                                 setLocalLevel(v);
                             }}

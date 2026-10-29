@@ -1,50 +1,169 @@
-import {Panel, Group} from "./types"
-
+import type { Panel, Group } from "./types";
 
 // Mock panels data - 18 wall panels (P01-P18) and 2 skylights (SK1, SK2) = 20 total
 export const mockPanels: Panel[] = [
     // Room 1 - Wall panels (P01-P09)
-    { id: "P01", name: "Facade 1", group_id: "G-facade", level: 50, last_change_ts: Date.now() / 1000 - 3600 },
-    { id: "P02", name: "Facade 2", group_id: "G-facade", level: 55, last_change_ts: Date.now() / 1000 - 3300 },
-    { id: "P03", name: "Facade 3", group_id: "G-facade", level: 0, last_change_ts: Date.now() / 1000 - 7200 },
-    { id: "P04", name: "Facade 4", group_id: "G-facade", level: 25, last_change_ts: Date.now() / 1000 - 1800 },
-    { id: "P05", name: "Facade 5", group_id: "G-facade", level: 0, last_change_ts: Date.now() / 1000 - 5400 },
-    { id: "P06", name: "Facade 6", group_id: "G-facade", level: 75, last_change_ts: Date.now() / 1000 - 900 },
-    { id: "P07", name: "Facade 7", group_id: "G-facade", level: 100, last_change_ts: Date.now() / 1000 - 450 },
-    { id: "P08", name: "Facade 8", group_id: "G-facade", level: 50, last_change_ts: Date.now() / 1000 - 2700 },
-    { id: "P09", name: "Facade 9", group_id: "G-facade", level: 0, last_change_ts: Date.now() / 1000 - 6000 },
+    {
+        id: "P01",
+        name: "Facade 1",
+        group_id: "G-facade",
+        level: 50,
+        last_change_ts: Date.now() / 1000 - 3600,
+    },
+    {
+        id: "P02",
+        name: "Facade 2",
+        group_id: "G-facade",
+        level: 55,
+        last_change_ts: Date.now() / 1000 - 3300,
+    },
+    {
+        id: "P03",
+        name: "Facade 3",
+        group_id: "G-facade",
+        level: 0,
+        last_change_ts: Date.now() / 1000 - 7200,
+    },
+    {
+        id: "P04",
+        name: "Facade 4",
+        group_id: "G-facade",
+        level: 25,
+        last_change_ts: Date.now() / 1000 - 1800,
+    },
+    {
+        id: "P05",
+        name: "Facade 5",
+        group_id: "G-facade",
+        level: 0,
+        last_change_ts: Date.now() / 1000 - 5400,
+    },
+    {
+        id: "P06",
+        name: "Facade 6",
+        group_id: "G-facade",
+        level: 75,
+        last_change_ts: Date.now() / 1000 - 900,
+    },
+    {
+        id: "P07",
+        name: "Facade 7",
+        group_id: "G-facade",
+        level: 100,
+        last_change_ts: Date.now() / 1000 - 450,
+    },
+    {
+        id: "P08",
+        name: "Facade 8",
+        group_id: "G-facade",
+        level: 50,
+        last_change_ts: Date.now() / 1000 - 2700,
+    },
+    {
+        id: "P09",
+        name: "Facade 9",
+        group_id: "G-facade",
+        level: 0,
+        last_change_ts: Date.now() / 1000 - 6000,
+    },
 
     // Room 2 - Wall panels (P10-P18)
-    { id: "P10", name: "Facade 10", group_id: "G-facade", level: 30, last_change_ts: Date.now() / 1000 - 2100 },
-    { id: "P11", name: "Facade 11", group_id: "G-facade", level: 0, last_change_ts: Date.now() / 1000 - 4800 },
-    { id: "P12", name: "Facade 12", group_id: "G-facade", level: 60, last_change_ts: Date.now() / 1000 - 1200 },
-    { id: "P13", name: "Facade 13", group_id: "G-facade", level: 40, last_change_ts: Date.now() / 1000 - 2400 },
-    { id: "P14", name: "Facade 14", group_id: "G-facade", level: 0, last_change_ts: Date.now() / 1000 - 6600 },
-    { id: "P15", name: "Facade 15", group_id: "G-facade", level: 80, last_change_ts: Date.now() / 1000 - 600 },
-    { id: "P16", name: "Facade 16", group_id: "G-facade", level: 20, last_change_ts: Date.now() / 1000 - 3000 },
-    { id: "P17", name: "Facade 17", group_id: "G-facade", level: 0, last_change_ts: Date.now() / 1000 - 5100 },
-    { id: "P18", name: "Facade 18", group_id: "G-facade", level: 45, last_change_ts: Date.now() / 1000 - 1500 },
+    {
+        id: "P10",
+        name: "Facade 10",
+        group_id: "G-facade",
+        level: 30,
+        last_change_ts: Date.now() / 1000 - 2100,
+    },
+    {
+        id: "P11",
+        name: "Facade 11",
+        group_id: "G-facade",
+        level: 0,
+        last_change_ts: Date.now() / 1000 - 4800,
+    },
+    {
+        id: "P12",
+        name: "Facade 12",
+        group_id: "G-facade",
+        level: 60,
+        last_change_ts: Date.now() / 1000 - 1200,
+    },
+    {
+        id: "P13",
+        name: "Facade 13",
+        group_id: "G-facade",
+        level: 40,
+        last_change_ts: Date.now() / 1000 - 2400,
+    },
+    {
+        id: "P14",
+        name: "Facade 14",
+        group_id: "G-facade",
+        level: 0,
+        last_change_ts: Date.now() / 1000 - 6600,
+    },
+    {
+        id: "P15",
+        name: "Facade 15",
+        group_id: "G-facade",
+        level: 80,
+        last_change_ts: Date.now() / 1000 - 600,
+    },
+    {
+        id: "P16",
+        name: "Facade 16",
+        group_id: "G-facade",
+        level: 20,
+        last_change_ts: Date.now() / 1000 - 3000,
+    },
+    {
+        id: "P17",
+        name: "Facade 17",
+        group_id: "G-facade",
+        level: 0,
+        last_change_ts: Date.now() / 1000 - 5100,
+    },
+    {
+        id: "P18",
+        name: "Facade 18",
+        group_id: "G-facade",
+        level: 45,
+        last_change_ts: Date.now() / 1000 - 1500,
+    },
 
     // Skylights
-    { id: "SK1", name: "Skylight 1", group_id: "G-skylights", level: 0, last_change_ts: Date.now() / 1000 - 7800 },
-    { id: "SK2", name: "Skylight 2", group_id: "G-skylights", level: 25, last_change_ts: Date.now() / 1000 - 4200 },
+    {
+        id: "SK1",
+        name: "Skylight 1",
+        group_id: "G-skylights",
+        level: 0,
+        last_change_ts: Date.now() / 1000 - 7800,
+    },
+    {
+        id: "SK2",
+        name: "Skylight 2",
+        group_id: "G-skylights",
+        level: 25,
+        last_change_ts: Date.now() / 1000 - 4200,
+    },
 ];
 
 export const mockGroups: Group[] = [
     {
         id: "G-facade",
         name: "Facade",
-        member_ids: Array.from({ length: 18 }, (_, i) => `P${String(i + 1).padStart(2, '0')}`)
+        member_ids: Array.from({ length: 18 }, (_, i) => `P${String(i + 1).padStart(2, "0")}`),
     },
     {
         id: "G-skylights",
         name: "Skylights",
-        member_ids: ["SK1", "SK2"]
-    }
+        member_ids: ["SK1", "SK2"],
+    },
 ];
 
 // Simulate API delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Mock API that stores state locally
 let mockPanelState = [...mockPanels];
@@ -63,7 +182,7 @@ export const mockApi = {
     async createGroup(name: string, memberIds: string[]): Promise<Group> {
         await delay(300);
         // Generate unique group ID
-        const existingIds = new Set(mockGroups.map(g => g.id));
+        const existingIds = new Set(mockGroups.map((g) => g.id));
         let groupNum = 1;
         while (existingIds.has(`G-${groupNum}`)) {
             groupNum++;
@@ -71,7 +190,7 @@ export const mockApi = {
         const groupId = `G-${groupNum}`;
 
         // Validate panel IDs
-        const validPanelIds = memberIds.filter(id => mockPanelState.some(p => p.id === id));
+        const validPanelIds = memberIds.filter((id) => mockPanelState.some((p) => p.id === id));
         if (validPanelIds.length !== memberIds.length) {
             throw new Error("One or more panel IDs not found");
         }
@@ -79,7 +198,7 @@ export const mockApi = {
         const newGroup: Group = {
             id: groupId,
             name,
-            member_ids: validPanelIds
+            member_ids: validPanelIds,
         };
         mockGroups.push(newGroup);
         return newGroup;
@@ -90,9 +209,12 @@ export const mockApi = {
         return { status: "ok", environment: "development" };
     },
 
-    async setPanelLevel(panelId: string, level: number): Promise<{ ok: boolean; applied_to: string[]; message: string }> {
+    async setPanelLevel(
+        panelId: string,
+        level: number,
+    ): Promise<{ ok: boolean; applied_to: string[]; message: string }> {
         await delay(300);
-        const panel = mockPanelState.find(p => p.id === panelId);
+        const panel = mockPanelState.find((p) => p.id === panelId);
         if (!panel) {
             throw new Error("panel not found");
         }
@@ -113,13 +235,16 @@ export const mockApi = {
         return {
             ok: true,
             applied_to: [panelId],
-            message: `Panel ${panelId} set to ${level}%`
+            message: `Panel ${panelId} set to ${level}%`,
         };
     },
 
-    async setGroupLevel(groupId: string, level: number): Promise<{ ok: boolean; applied_to: string[]; message: string }> {
+    async setGroupLevel(
+        groupId: string,
+        level: number,
+    ): Promise<{ ok: boolean; applied_to: string[]; message: string }> {
         await delay(400);
-        const group = mockGroups.find(g => g.id === groupId);
+        const group = mockGroups.find((g) => g.id === groupId);
         if (!group) {
             throw new Error("group not found");
         }
@@ -127,8 +252,8 @@ export const mockApi = {
         const now = Date.now() / 1000;
         // Check dwell time for each panel
         const blockedPanels: string[] = [];
-        group.member_ids.forEach(id => {
-            const panel = mockPanelState.find(p => p.id === id);
+        group.member_ids.forEach((id) => {
+            const panel = mockPanelState.find((p) => p.id === id);
             if (panel) {
                 const timeSinceLastChange = now - panel.last_change_ts;
                 if (timeSinceLastChange < MIN_DWELL_SECONDS && panel.level !== level) {
@@ -137,15 +262,17 @@ export const mockApi = {
             }
         });
         if (blockedPanels.length > 0) {
-            const error: any = new Error(`429 dwell time not met for panels: ${blockedPanels.join(", ")}`);
+            const error: any = new Error(
+                `429 dwell time not met for panels: ${blockedPanels.join(", ")}`,
+            );
             error.status = 429;
             error.blocked_panels = blockedPanels;
             throw error;
         }
         // Apply changes
         const applied: string[] = [];
-        group.member_ids.forEach(id => {
-            const panel = mockPanelState.find(p => p.id === id);
+        group.member_ids.forEach((id) => {
+            const panel = mockPanelState.find((p) => p.id === id);
             if (panel) {
                 panel.level = level;
                 panel.last_change_ts = now;
@@ -155,19 +282,18 @@ export const mockApi = {
         return {
             ok: true,
             applied_to: applied,
-            message: `Group ${groupId} set to ${level}%`
+            message: `Group ${groupId} set to ${level}%`,
         };
     },
 
-
     async updateGroup(id: string, name?: string, memberIds?: string[]): Promise<Group> {
         await delay(300);
-        const g = mockGroups.find(gr => gr.id === id);
+        const g = mockGroups.find((gr) => gr.id === id);
         if (!g) throw new Error("group not found");
 
         if (name !== undefined) g.name = name;
         if (memberIds !== undefined) {
-            const valid = memberIds.filter(pid => mockPanelState.some(p => p.id === pid));
+            const valid = memberIds.filter((pid) => mockPanelState.some((p) => p.id === pid));
             g.member_ids = [...valid];
         }
         return { ...g };
@@ -175,14 +301,14 @@ export const mockApi = {
 
     async deleteGroup(id: string): Promise<void> {
         await delay(200);
-        const idx = mockGroups.findIndex(gr => gr.id === id);
+        const idx = mockGroups.findIndex((gr) => gr.id === id);
         if (idx === -1) throw new Error("group not found");
 
         const removed = mockGroups.splice(idx, 1)[0];
 
         // clear group_id from panels
-        mockPanelState = mockPanelState.map(p =>
-            p.group_id === removed.id ? { ...p, group_id: null } : p
+        mockPanelState = mockPanelState.map((p) =>
+            p.group_id === removed.id ? { ...p, group_id: null } : p,
         );
-    }
+    },
 };

@@ -24,7 +24,7 @@ export default function SidePanel({
     onGroupCreate,
     onGroupUpdate,
     onGroupDelete,
-    targetRoutineId
+    targetRoutineId,
 }: Props) {
     const sortedPanels = [...panels].sort((a, b) => a.name.localeCompare(b.name));
     const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
@@ -42,7 +42,7 @@ export default function SidePanel({
     const [isSavingGroup, setIsSavingGroup] = useState(false);
 
     const handlePanelToggle = (panelId: string) => {
-        setSelectedPanelIds(prev => {
+        setSelectedPanelIds((prev) => {
             const next = new Set(prev);
             if (next.has(panelId)) next.delete(panelId);
             else next.add(panelId);
@@ -75,7 +75,7 @@ export default function SidePanel({
     };
 
     const handleEditPanelToggle = (panelId: string) => {
-        setEditMemberIds(prev => {
+        setEditMemberIds((prev) => {
             const next = new Set(prev);
             if (next.has(panelId)) next.delete(panelId);
             else next.add(panelId);
@@ -91,11 +91,7 @@ export default function SidePanel({
 
         setIsSavingGroup(true);
         try {
-            await onGroupUpdate(
-                editingGroupId,
-                editGroupName.trim(),
-                Array.from(editMemberIds)
-            );
+            await onGroupUpdate(editingGroupId, editGroupName.trim(), Array.from(editMemberIds));
 
             setEditingGroupId(null);
             setEditGroupName("");
@@ -154,7 +150,7 @@ export default function SidePanel({
                                 <input
                                     type="text"
                                     value={newGroupName}
-                                    onChange={e => setNewGroupName(e.target.value)}
+                                    onChange={(e) => setNewGroupName(e.target.value)}
                                     placeholder="e.g., West Windows"
                                 />
                             </div>
@@ -162,7 +158,7 @@ export default function SidePanel({
                             <div className="form-group">
                                 <label>Select Windows ({selectedPanelIds.size} selected)</label>
                                 <div className="panel-selector">
-                                    {sortedPanels.map(panel => (
+                                    {sortedPanels.map((panel) => (
                                         <label key={panel.id} className="panel-checkbox">
                                             <input
                                                 type="checkbox"
@@ -192,7 +188,7 @@ export default function SidePanel({
 
                             <h3>Existing Groups</h3>
                             <div className="groups-list">
-                                {sortedGroups.map(group => {
+                                {sortedGroups.map((group) => {
                                     const isEditing = editingGroupId === group.id;
                                     return (
                                         <div key={group.id} className="group-item">
@@ -201,7 +197,9 @@ export default function SidePanel({
                                                     <input
                                                         type="text"
                                                         value={editGroupName}
-                                                        onChange={e => setEditGroupName(e.target.value)}
+                                                        onChange={(e) =>
+                                                            setEditGroupName(e.target.value)
+                                                        }
                                                         placeholder="Group name"
                                                     />
                                                 ) : (
@@ -215,13 +213,20 @@ export default function SidePanel({
                                                     <div className="form-group">
                                                         <label>Edit members</label>
                                                         <div className="panel-selector">
-                                                            {sortedPanels.map(panel => (
-                                                                <label key={panel.id} className="panel-checkbox">
+                                                            {sortedPanels.map((panel) => (
+                                                                <label
+                                                                    key={panel.id}
+                                                                    className="panel-checkbox"
+                                                                >
                                                                     <input
                                                                         type="checkbox"
-                                                                        checked={editMemberIds.has(panel.id)}
+                                                                        checked={editMemberIds.has(
+                                                                            panel.id,
+                                                                        )}
                                                                         onChange={() =>
-                                                                            handleEditPanelToggle(panel.id)
+                                                                            handleEditPanelToggle(
+                                                                                panel.id,
+                                                                            )
                                                                         }
                                                                     />
                                                                     <span>{panel.name}</span>
@@ -242,7 +247,9 @@ export default function SidePanel({
                                                                 isSavingGroup
                                                             }
                                                         >
-                                                            {isSavingGroup ? "Saving..." : "Save Changes"}
+                                                            {isSavingGroup
+                                                                ? "Saving..."
+                                                                : "Save Changes"}
                                                         </button>
                                                         <button
                                                             className="side-panel-secondary-btn"
@@ -262,7 +269,7 @@ export default function SidePanel({
                                                         style={{
                                                             display: "flex",
                                                             gap: 8,
-                                                            marginTop: 8
+                                                            marginTop: 8,
                                                         }}
                                                     >
                                                         <button
@@ -273,7 +280,9 @@ export default function SidePanel({
                                                         </button>
                                                         <button
                                                             className="side-panel-secondary-btn"
-                                                            onClick={() => handleDeleteGroup(group.id)}
+                                                            onClick={() =>
+                                                                handleDeleteGroup(group.id)
+                                                            }
                                                             disabled={isSavingGroup}
                                                         >
                                                             Delete
@@ -289,8 +298,15 @@ export default function SidePanel({
                     )}
 
                     {mode === "routines" && (
-                        <div className="side-panel-section" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-                            <RoutineCodeEditor panels={panels} groups={groups} initialRoutineId={targetRoutineId} />
+                        <div
+                            className="side-panel-section"
+                            style={{ height: "100%", display: "flex", flexDirection: "column" }}
+                        >
+                            <RoutineCodeEditor
+                                panels={panels}
+                                groups={groups}
+                                initialRoutineId={targetRoutineId}
+                            />
                         </div>
                     )}
                 </div>

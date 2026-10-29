@@ -1,11 +1,11 @@
-import { Panel, Group, AuditLogEntry, SortField, SortDir } from "./types";
+import type { Panel, Group, AuditLogEntry, SortField, SortDir } from "./types";
 
 /** Empty default: same-origin when served behind Docker/nginx; set VITE_API_BASE for local Vite dev. */
 export const API_BASE = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
 async function http<T>(path: string, options?: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
         headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
-        ...options
+        ...options,
     });
     if (!res.ok) {
         const text = await res.text();
@@ -17,46 +17,56 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
     // some endpoints return no body (eg 204) so guard
     const contentType = res.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
-        // @ts-ignore
         return (await res.text()) as T;
     }
     return (await res.json()) as T;
 }
 export const api = {
-    health: () => http<{
-        status: string;
-        environment: "development" | "production";
-        control_source: "simulated" | "physical";
-        sensor_source: "simulated" | "physical" | "mixed";
-        sensor_acquisition: "embedded" | "external";
-        sensor_status: "healthy" | "degraded";
-        sensor_errors: string[];
-    }>("/health"),
+    health: () =>
+        http<{
+            status: string;
+            environment: "development" | "production";
+            control_source: "simulated" | "physical";
+            sensor_source: "simulated" | "physical" | "mixed";
+            sensor_acquisition: "embedded" | "external";
+            sensor_status: "healthy" | "degraded";
+            sensor_errors: string[];
+        }>("/health"),
     panels: () => http<Panel[]>("/panels"),
     groups: () => http<Group[]>("/groups"),
     createGroup: (name: string, memberIds: string[]) =>
         http<Group>("/groups", {
             method: "POST",
-            body: JSON.stringify({ name, member_ids: memberIds })
+            body: JSON.stringify({ name, member_ids: memberIds }),
         }),
     updateGroup: (groupId: string, name: string, memberIds: string[]) =>
         http<Group>(`/groups/${groupId}`, {
             method: "PATCH",
-            body: JSON.stringify({ name, member_ids: memberIds })
+            body: JSON.stringify({ name, member_ids: memberIds }),
         }),
     deleteGroup: (groupId: string) =>
         http<unknown>(`/groups/${groupId}`, {
-            method: "DELETE"
+            method: "DELETE",
         }),
     setPanelLevel: (panelId: string, level: number, actor?: string) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
-            body: JSON.stringify({ target_type: "panel", target_id: panelId, level, ...(actor ? { actor } : {}) })
+            body: JSON.stringify({
+                target_type: "panel",
+                target_id: panelId,
+                level,
+                ...(actor ? { actor } : {}),
+            }),
         }),
     setGroupLevel: (groupId: string, level: number, actor?: string) =>
         http<{ ok: boolean; applied_to: string[]; message: string }>("/commands/set-level", {
             method: "POST",
-            body: JSON.stringify({ target_type: "group", target_id: groupId, level, ...(actor ? { actor } : {}) })
+            body: JSON.stringify({
+                target_type: "group",
+                target_id: groupId,
+                level,
+                ...(actor ? { actor } : {}),
+            }),
         }),
     auditLogs: (limit = 500) =>
         http<AuditLogEntry[]>(`/logs/audit?limit=${encodeURIComponent(limit)}`),
@@ -68,17 +78,17 @@ export const api = {
         targetFilter?: string,
         resultFilter?: string,
         sortField?: SortField,
-        sortDir?: SortDir
+        sortDir?: SortDir,
     ) => {
         const params = new URLSearchParams();
         params.append("limit", limit.toString());
         if (startDate) {
-            const [year, month, day] = startDate.split('-').map(Number);
+            const [year, month, day] = startDate.split("-").map(Number);
             const date = new Date(year, month - 1, day, 0, 0, 0, 0);
             params.append("start_date", Math.floor(date.getTime() / 1000).toString());
         }
         if (endDate) {
-            const [year, month, day] = endDate.split('-').map(Number);
+            const [year, month, day] = endDate.split("-").map(Number);
             const date = new Date(year, month - 1, day, 23, 59, 59, 999);
             const seconds = date.getTime() / 1000;
             params.append("end_date", seconds.toString());
@@ -96,7 +106,7 @@ export const api = {
         if (sortDir) params.append("sort_dir", sortDir);
 
         const res = await fetch(`${API_BASE}/logs/audit/export?${params.toString()}`, {
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
         });
         if (!res.ok) {
             const text = await res.text();
@@ -139,7 +149,7 @@ export const api = {
         params.append("sort_field", sortField);
         params.append("sort_dir", sortDir);
         if (sensorId) params.append("sensor_id", sensorId);
-        filters?.sensorIds?.forEach(id => params.append("sensor_ids", id));
+        filters?.sensorIds?.forEach((id) => params.append("sensor_ids", id));
         if (filters?.sensorKind) params.append("sensor_kind", filters.sensorKind);
         if (metric) params.append("metric", metric);
         if (tsFrom != null) params.append("ts_from", String(tsFrom));
@@ -161,14 +171,14 @@ export const api = {
         params.append("sort_field", sortField);
         params.append("sort_dir", sortDir);
         if (sensorId) params.append("sensor_id", sensorId);
-        filters?.sensorIds?.forEach(id => params.append("sensor_ids", id));
+        filters?.sensorIds?.forEach((id) => params.append("sensor_ids", id));
         if (filters?.sensorKind) params.append("sensor_kind", filters.sensorKind);
         if (metric) params.append("metric", metric);
         if (tsFrom != null) params.append("ts_from", String(tsFrom));
         if (tsTo != null) params.append("ts_to", String(tsTo));
 
         const res = await fetch(`${API_BASE}/logs/sensors/export?${params.toString()}`, {
-            headers: { "Content-Type": "application/json" }
+            headers: { "Content-Type": "application/json" },
         });
         if (!res.ok) {
             const text = await res.text();
@@ -200,17 +210,21 @@ export const api = {
             method: "PATCH",
             body: JSON.stringify({
                 custom_label: customLabel,
-                device_custom_label: deviceCustomLabel
-            })
+                device_custom_label: deviceCustomLabel,
+            }),
         }),
     getLatestMetrics: () => http<SensorReadingResponse[]>("/metrics/latest"),
     getMetricHistory: (sensorId: string, metric: string, tsFrom: number, tsTo: number) =>
-        http<SensorReadingResponse[]>(`/metrics/history?sensor_id=${encodeURIComponent(sensorId)}&metric=${encodeURIComponent(metric)}&ts_from=${tsFrom}&ts_to=${tsTo}`),
+        http<SensorReadingResponse[]>(
+            `/metrics/history?sensor_id=${encodeURIComponent(sensorId)}&metric=${encodeURIComponent(metric)}&ts_from=${tsFrom}&ts_to=${tsTo}`,
+        ),
     getRoutines: () => http<RoutineStatusResponse[]>("/routines"),
     getLatestSpectrum: (sensorId: string) =>
         http<SensorSpectrumResponse>(`/sensors/${encodeURIComponent(sensorId)}/spectrum/latest`),
     getHistoricalSpectrum: (sensorId: string, ts: number) =>
-        http<SensorSpectrumResponse>(`/sensors/${encodeURIComponent(sensorId)}/spectrum/historical?ts=${ts}`),
+        http<SensorSpectrumResponse>(
+            `/sensors/${encodeURIComponent(sensorId)}/spectrum/historical?ts=${ts}`,
+        ),
 };
 
 export type RoutineStatus = "idle" | "scheduled" | "running" | "error" | "done" | "stopped";

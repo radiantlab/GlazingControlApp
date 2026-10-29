@@ -2,9 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import PanelGrid from "./PanelGrid";
 
-const panels = [
-    { id: "P01", name: "Facade 1", level: 25, last_change_ts: 1000 },
-];
+const panels = [{ id: "P01", name: "Facade 1", level: 25, last_change_ts: 1000 }];
 
 describe("PanelGrid", () => {
     it("applies the slider value for a panel", async () => {

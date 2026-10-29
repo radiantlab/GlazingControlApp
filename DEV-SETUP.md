@@ -239,10 +239,32 @@ Health must report `environment: production`, `control_source: physical`, and
 simulated readings. For per-sensor acceptance checks, use
 [`docs/on_site_sensor_checklist.md`](./docs/on_site_sensor_checklist.md).
 
+
+```powershell
+cd svc
+uv run pytest tests
+
+cd ../web
+npm run lint
+npm test
+npm run typecheck
+npm run build
+
+cd ..
+Import-Module Pester -RequiredVersion 3.4.0
+Invoke-Pester -Path scripts/sensors/tests
+```
+
+Run the Pester suite from Windows PowerShell 5.1, which ships Pester 3.4.0.
+
+The backend test setup uses a temporary database and cannot write to
+`svc/data/audit.db`.
+
 ## Tests and hooks
 
 See [Exact Local Commands](./CONTRIBUTING.md#exact-local-commands). The backend
 tests use a temporary database and cannot write to `svc/data/audit.db`.
+
 
 ## Troubleshooting
 

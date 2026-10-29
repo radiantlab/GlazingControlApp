@@ -21,15 +21,17 @@ describe("api", () => {
     });
 
     it("requests JSON health data", async () => {
-        fetchMock.mockResolvedValue(jsonResponse({
-            status: "ok",
-            environment: "development",
-            control_source: "simulated",
-            sensor_source: "simulated",
-            sensor_acquisition: "embedded",
-            sensor_status: "healthy",
-            sensor_errors: [],
-        }));
+        fetchMock.mockResolvedValue(
+            jsonResponse({
+                status: "ok",
+                environment: "development",
+                control_source: "simulated",
+                sensor_source: "simulated",
+                sensor_acquisition: "embedded",
+                sensor_status: "healthy",
+                sensor_errors: [],
+            }),
+        );
 
         await expect(api.health()).resolves.toEqual({
             status: "ok",
@@ -91,17 +93,10 @@ describe("api", () => {
     it("builds grouped sensor log query parameters", async () => {
         fetchMock.mockResolvedValue(jsonResponse([]));
 
-        await api.getSensorLogs(
-            100,
-            0,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            "ts",
-            "desc",
-            { sensorIds: ["SPECTRAVAL-1", "SPECTRAVAL-2"], sensorKind: "jeti_spectraval" },
-        );
+        await api.getSensorLogs(100, 0, undefined, undefined, undefined, undefined, "ts", "desc", {
+            sensorIds: ["SPECTRAVAL-1", "SPECTRAVAL-2"],
+            sensorKind: "jeti_spectraval",
+        });
 
         const [path] = fetchMock.mock.calls[0];
         expect(path).toBe(

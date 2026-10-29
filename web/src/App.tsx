@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { api} from "./api";
-import {Panel, Group} from "./types"
+import type React from "react";
+import { useEffect, useState } from "react";
+import { api } from "./api";
+import type { Panel, Group } from "./types";
 
 import PanelGrid from "./components/PanelGrid";
 
@@ -21,7 +22,7 @@ export default function App() {
     }
 
     useEffect(() => {
-        refresh().catch(err => setHealth(`error  ${String(err)}`));
+        refresh().catch((err) => setHealth(`error  ${String(err)}`));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -69,14 +70,20 @@ export default function App() {
                 <div className="section">
                     <h2>Group control</h2>
                     <div className="toolbar">
-                        <label htmlFor="group-select" className="pill">group</label>
+                        <label htmlFor="group-select" className="pill">
+                            group
+                        </label>
                         <select
                             id="group-select"
                             value={groupId}
-                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setGroupId(e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                setGroupId(e.target.value)
+                            }
                         >
-                            {groups.map(g => (
-                                <option key={g.id} value={g.id}>{g.name}  {g.id}</option>
+                            {groups.map((g) => (
+                                <option key={g.id} value={g.id}>
+                                    {g.name} {g.id}
+                                </option>
                             ))}
                         </select>
 
@@ -85,15 +92,19 @@ export default function App() {
                             min={0}
                             max={100}
                             value={groupLevel}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGroupLevel(Number(e.target.value))}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                setGroupLevel(Number(e.target.value))
+                            }
                         />
                         <button onClick={setGroup} disabled={!groupId || busy === groupId}>
                             {busy === groupId ? "Setting..." : "Tint Group"}
                         </button>
 
                         <div className="chips">
-                            {[0, 25, 50, 75, 100].map(v => (
-                                <span key={v} className="chip" onClick={() => setGroupLevel(v)}>{v}</span>
+                            {[0, 25, 50, 75, 100].map((v) => (
+                                <span key={v} className="chip" onClick={() => setGroupLevel(v)}>
+                                    {v}
+                                </span>
                             ))}
                         </div>
                     </div>
