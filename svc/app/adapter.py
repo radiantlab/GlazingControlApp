@@ -44,6 +44,7 @@ class HalioAdapter:
         self.site_id = HALIO_SITE_ID
         # The v3 API on the controller's admin port is unauthenticated and
         # LAN-only; the key is sent only for controllers that still want one.
+        # See docs/adr/0005-halio-v3-is-unauthenticated-and-lan-only.md.
         self.headers = {"Content-Type": "application/json"}
         if HALIO_API_KEY:
             self.headers["X-API-Key"] = HALIO_API_KEY

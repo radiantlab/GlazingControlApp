@@ -31,33 +31,25 @@ This app provides researchers and facility managers with a local-first system to
   <em>Real-time sensor monitoring, visibility toggles, and live/historical spectral irradiance graphs.</em>
 </div>
 
-For a clean machine setup, use [`DEV-SETUP.md`](./DEV-SETUP.md). The backend runs on Python 3.14; the frontend uses Node.js 24 and npm. EKO site deployments now use the C-BOX Ethernet Modbus TCP interface (`host` plus TCP `port` 502) and no longer use USB-to-RS485 or a COM port for EKO.
+EKO site deployments now use the C-BOX Ethernet Modbus TCP interface (`host` plus TCP `port` 502) and no longer use USB-to-RS485 or a COM port for EKO.
 
 ## How to Try It
 
-**Prerequisites:**
-- [Node.js](https://nodejs.org/) 24 (`.nvmrc`; CI and the Dockerfile use the same version)
-- Python 3.14 (`svc/.python-version`; uv installs it if missing)
-- [uv](https://docs.astral.sh/uv/)
-- [Docker](https://www.docker.com/) or [Podman Desktop](https://podman-desktop.io/), only for the container path
+Everything for setting up and running the app, in development or production, is in [`DEV-SETUP.md`](./DEV-SETUP.md). The quickest start is native development with Python 3.14, [uv](https://docs.astral.sh/uv/), and Node.js 24:
 
-**Getting Started:**
+```bash
+git clone https://github.com/radiantlab/GlazingControlApp
+cd GlazingControlApp
+cp svc/.env.example svc/.env
+(cd svc && uv sync && uv run python main.py)   # API on http://127.0.0.1:8000
+(cd web && npm ci && npm run dev)              # HMI on http://localhost:5173, in a second terminal
+```
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/radiantlab/GlazingControlApp
-   cd GlazingControlApp
-   ```
-
-2. **Run the app.** [`DEV-SETUP.md`](./DEV-SETUP.md) has the full procedure. In short:
-   - Development: copy `svc/.env.example` to `svc/.env`, start the backend with `cd svc && uv sync && uv run python main.py` (API on `http://127.0.0.1:8000`), then the frontend with `cd web && npm ci && npm run dev` (HMI on `http://localhost:5173`).
-   - Container: `podman compose -f docker-compose.development.yml up --build` serves the API and the built HMI together on `http://localhost:8000`.
-
-3. **Watch for errors (optional):** `npm run watch` from the repository root runs `tsc --noEmit --watch` for the frontend and re-runs `uv run pytest -q` in `svc` whenever a backend Python or TOML file changes. It starts no servers. Pass `backend`, `frontend`, or `both` to pick a side (`npm run watch -- backend`); from inside `svc` or `web` it defaults to that side.
+**Watch for errors (optional):** `npm run watch` from the repository root runs `tsc --noEmit --watch` for the frontend and re-runs `uv run pytest -q` in `svc` whenever a backend Python or TOML file changes. It starts no servers. Pass `backend`, `frontend`, or `both` to pick a side (`npm run watch -- backend`); from inside `svc` or `web` it defaults to that side.
 
 The API reference (Swagger UI) is at `/api/docs` on a running backend, for example `http://127.0.0.1:8000/api/docs`.
 
-*Note: For production sensor deployment and site-specific facility notes, see the [production setup documentation](docs/production_sensor_setup.md).*
+*Note: To run production, see [Production in `DEV-SETUP.md`](./DEV-SETUP.md#production); for sensor wiring and site notes, see [`docs/production_sensor_setup.md`](docs/production_sensor_setup.md).*
 
 ## Documentation
 

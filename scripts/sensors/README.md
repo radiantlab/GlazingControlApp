@@ -34,11 +34,10 @@ marked it reads every device, which is the legacy all-external mode
 marked external, do not run the agent: it would fall back to reading every
 device, including the ones the container already polls.
 
-Create `svc/.env.production` from `svc/.env.production.example`. When any
-device is marked external, set `SVC_SENSOR_INGEST_TOKEN` to one long random
-value; the container and native agent both load it, and the container refuses
-to start without it while an enabled device is marked external. Then inventory
-ports without opening them:
+Set up `svc/.env.production` as in
+[`DEV-SETUP.md`](../../DEV-SETUP.md#2-create-svcenvproduction). The service
+and the agent both load it, so they share `SVC_SENSOR_INGEST_TOKEN`. Then
+inventory ports without opening them:
 
 ```powershell
 .\scripts\sensors\Start-SensorAgent.ps1 -Command list-ports

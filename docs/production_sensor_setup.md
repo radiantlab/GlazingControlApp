@@ -67,7 +67,9 @@ Bring or confirm access to:
 - `T-A20`, `T-A21`, and `AC-A412` if the T-10A heads are being used in multi-point mode
 - straight CAT5 patch cables for T-10A head/adaptor runs
 - Ethernet access from the local PC/network to the EKO `C-BOX`
-- the C-BOX IP address, `192.168.40.50` on the trailer network
+- the C-BOX IP address, `192.168.40.50`, on a trailer network the production
+  machine is connected to (it is connected to both the Halio and regular
+  networks; see [CONTEXT.md](../CONTEXT.md))
 - confirmation that the C-BOX web UI is reachable from the site computer
 - JETI Windows drivers and either:
   - LiVal, which will write the capture file mounted through `SVC_JETI_CAPTURE_PATH`, or
@@ -82,51 +84,20 @@ Production sensor configuration is mounted read-only at:
 Create it from `svc/config/production.example/sensors_config.json` and store it
 in the external directory selected by `SVC_PRODUCTION_CONFIG_DIR`.
 
-### Recommended production startup
+### Starting production
 
-Create `svc/.env.production` from `svc/.env.production.example`. The older
-`svc/.env` is a local/legacy file and is not sufficient for production compose:
-production requires four absolute host paths, all mounted with
-`create_host_path: false`, so each must already exist:
+To create `svc/.env.production`, start the service (natively or with
+Compose), and start the Sensor Agent, follow
+[Production in `DEV-SETUP.md`](../DEV-SETUP.md#production).
 
-- `SVC_PRODUCTION_DATA_DIR`: the directory containing the existing `audit.db`
-- `SVC_PRODUCTION_CONFIG_DIR`: the directory containing `sensors_config.json`
-- `SVC_DB_BACKUP_DIR`: the database backup directory
-- `SVC_JETI_CAPTURE_PATH`: the active LiVal capture file (a file, not a folder)
-
-`SVC_SENSOR_INGEST_TOKEN` is required whenever an enabled device is marked
-`"acquisition": "external"`, because the Sensor Agent then posts to
-`POST /sensors/ingest`. The API refuses to start without it in that case.
-Generate a long random token and keep it out of source control. With no
-external devices it can stay empty.
-
-```powershell
-podman compose --env-file svc/.env.production up -d --build
-```
-
-`docker compose` takes the same arguments. Neither Podman nor Docker gives the
-Linux container Windows COM access. If any device is marked external, run the
-Sensor Agent natively on the Windows host:
-
-```powershell
-.\scripts\sensors\Start-SensorAgent.ps1 -Command list-ports
-.\scripts\sensors\Start-SensorAgent.ps1 -Command once
-.\scripts\sensors\Start-SensorAgent.ps1 -Command continuous
-```
-
-Install [uv](https://docs.astral.sh/uv/) first. See
-[Continuous production acquisition](../scripts/sensors/README.md#continuous-production-acquisition)
-for when the agent needs internet, which account the scheduled task must use,
-and how to update.
-
-The agent loads `svc/.env.production`, so it gets the same
-`SVC_SENSOR_INGEST_TOKEN` as the container, and it defaults its config to
-`SVC_PRODUCTION_CONFIG_DIR/sensors_config.json` (override with
-`SENSOR_AGENT_CONFIG`). There is no separate agent config file. When any device
-is marked external, the agent reads only the marked devices.
-
-The `once` command is the enrollment smoke test. Use `continuous` as the Task
-Scheduler startup action after every external device succeeds.
+The Linux container cannot open Windows COM ports, so devices marked
+`"acquisition": "external"` are read by the native Sensor Agent, which posts
+to `POST /sensors/ingest` with `SVC_SENSOR_INGEST_TOKEN`. The agent has no
+separate config file: it reads the same `sensors_config.json` as the service
+(override with `SENSOR_AGENT_CONFIG`) and, when any device is marked external,
+reads only those devices. Run `once` after enrolling each device below; use
+`continuous` as the Task Scheduler action only after every external device
+succeeds.
 
 ### Stable COM enrollment
 

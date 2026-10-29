@@ -338,6 +338,7 @@ export default function SensorDocs() {
                         Network & Hardware Setup:
                     </h3>
                     <ol style={{ lineHeight: "1.6", paddingLeft: "20px", margin: "0 0 20px 0" }}>
+
                         <li style={{ marginBottom: "8px" }}>
                             Verify the EKO sensors are wired into the C-BOX and powered.
                         </li>
@@ -353,6 +354,7 @@ export default function SensorDocs() {
                             <strong>Modbus TCP Access</strong> is enabled (allow access from any IP
                             address).
                         </li>
+
                     </ol>
 
                     <h3
