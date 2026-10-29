@@ -12,16 +12,10 @@ audit logging.
 
 Legacy `SVC_MODE`, `sim`, and `real` environment values are rejected.
 
-## Local development
+## Running
 
-```powershell
-Copy-Item .env.example .env
-uv sync
-uv run python main.py
-```
-
-Development reads `config/development` and writes only to
-`.runtime/development`.
+All setup and run steps, for development and production, are in
+[`DEV-SETUP.md`](../DEV-SETUP.md#ways-to-run).
 
 ## Configuration
 
@@ -50,11 +44,10 @@ should point here rather than restate defaults.
 | `SVC_DEVELOPMENT_USE_PHYSICAL_JETI` | `false` | Ignored |
 | `SVC_DEVELOPMENT_USE_PHYSICAL_EKO` | `false` | Ignored |
 | `HALIO_API_URL` | Unused | Required, Halio v3 base URL (`http://<controller>:8083/api/v3`) |
-| `HALIO_SITE_ID` | Unused | Required |
-| `HALIO_API_KEY` | Unused | Optional; the v3 API does not use it |
+| `HALIO_SITE_ID` | Unused | Required, the Halio site the service controls |
 
 `SVC_HOST` defaults to loopback, so a native `uv run python main.py` is not
-reachable from other machines on the trailer network unless you set
+reachable from other machines unless you set
 `SVC_HOST=0.0.0.0`. Both Compose files set it.
 
 `CORS_ORIGINS` is a comma-separated list appended to the built-in origins
@@ -74,18 +67,27 @@ Physical-device testing in development is opt-in:
 
 Health reports `sensor_source: mixed` when any override is enabled.
 
-### Halio authentication
+### Halio connection
 
-The Halio v3 API at `http://<controller>:8083/api/v3` is unauthenticated and
-reachable only on the trailer LAN. The legacy key-based API on port 8084 is no
-longer served by the controller. Production requires `HALIO_API_URL` and
-`HALIO_SITE_ID`. `HALIO_API_KEY` is optional: the adapter sends it as
-`X-API-Key` only when it is set.
+Production needs exactly two Halio values:
+
+- `HALIO_API_URL`: the v3 API on the controller's admin console port,
+  including the prefix, `http://<controller>:8083/api/v3`. Port 8084 no longer
+  answers.
+- `HALIO_SITE_ID`: the Halio site whose windows and groups the service
+  controls. Every request goes to `<HALIO_API_URL>/sites/<HALIO_SITE_ID>/...`.
+  It is not a credential, but it is site-specific, so keep it in the ignored
+  environment file.
+
+Both values come from `LOCAL-DEVELOPMENT.md` in the private internal
+documentation; see [Before you start](../DEV-SETUP.md#before-you-start). The
+API is reachable only on the [Halio network](../CONTEXT.md).
 
 ### Compose host paths
 
 `docker-compose.yml` reads these from `svc/.env.production` to build its bind
-mounts. The application never reads them.
+mounts. The application never reads them, except `SVC_DB_BACKUP_DIR`, which a
+native run uses directly as its backup directory.
 
 | Variable | Purpose |
 |---|---|

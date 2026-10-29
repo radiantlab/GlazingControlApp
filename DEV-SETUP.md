@@ -1,179 +1,172 @@
-# Development and production setup
+# Setup and running
 
-The service has two explicit environments:
+This is the one place for setting up and running the app. There are two
+environments, selected by the required `SVC_ENVIRONMENT`:
 
 - `development` uses simulated panels and sensors by default.
-- `production` uses Halio and physical sensors and never falls back to simulated data.
+- `production` controls the live Halio panels, reads physical sensors, and
+  never falls back to simulated data.
 
-`SVC_ENVIRONMENT` is required. The former `SVC_MODE=sim|real` contract is not
-accepted.
+The former `SVC_MODE=sim|real` contract is rejected. Every variable and its
+default is listed in [`svc/README.md`](./svc/README.md#configuration).
 
-## Prerequisites
+## Before you start
 
 - Python 3.14 (`svc/.python-version`; `uv sync` installs it if missing)
 - [uv](https://docs.astral.sh/uv/)
 - Node.js 24 and npm (`.nvmrc`)
-- Docker or Podman for container deployments
+- Docker, only for the Compose method. Podman reads the same Compose files and
+  takes the same arguments; replace `docker` with `podman` in the commands
+  below. Settling on one runtime is tracked in
+  [#86](https://github.com/radiantlab/GlazingControlApp/issues/86).
 
-## Local development
+Production also needs:
 
-### Pre-commit setup
+- **Site values from the internal docs.** Request access to the private
+  `radiantlab/DIAL-Internal-Documentation` repository from the project
+  partner, then open
+  [`LOCAL-DEVELOPMENT.md`](https://github.com/radiantlab/DIAL-Internal-Documentation/blob/main/LOCAL-DEVELOPMENT.md).
+  Copy `HALIO_API_URL`, `HALIO_SITE_ID`, and any other site-specific values
+  from there into `svc/.env.production` (step 2 below), never into this
+  repository. Development needs none of them.
+- **The Halio network.** Production runs only on a machine connected to the
+  [Halio network](./CONTEXT.md), the trailer LAN the controller is on. The
+  trailer's production machine is also on the
+  [regular network](./CONTEXT.md), which reaches the EKO C-BOX. The Halio
+  network has no internet, so run `npm ci`, `uv sync`, and image builds
+  before connecting to it.
 
-Install the `pre-commit` package as a standalone development tool using uv:
+## Ways to run
 
-```powershell
-uv tool install pre-commit
+Run commands from the repository root unless a step says otherwise.
+
+| Method | Development | Production |
+|---|---|---|
+| Native (uv + npm) | [Native development](#native-development): HMI on `http://localhost:5173`, API on `http://127.0.0.1:8000` | [Start natively](#start-natively): HMI and API on `http://localhost:8000` |
+| Compose | [Development with Compose](#development-with-compose): HMI and API on `http://localhost:8000` | [Start with Compose](#start-with-compose): HMI and API on `http://localhost:8000` |
+
+Development uses `svc/.env`. Production uses `svc/.env.production`, natively
+and with Compose. Keep both files side by side; both are git-ignored.
+
+## Development
+
+### Native development
+
+```bash
+cp svc/.env.example svc/.env               # Linux/macOS
 ```
 
-From the repository root, run the one-time setup for each new clone:
-
 ```powershell
-pre-commit install
+Copy-Item svc/.env.example svc/.env        # Windows PowerShell
 ```
 
-This installs the Git hook configured by `.pre-commit-config.yaml`. Hooks then
-run automatically on staged files when committing. The first run needs internet
-access to download the hook repositories and install their dependencies.
+Start the backend, then the Vite dev server in a second terminal. Vite
+reloads the HMI on save and calls the API at `VITE_API_BASE`
+(`web/.env.development`).
 
-Validate the configuration and optionally check all tracked files:
-
-```powershell
-pre-commit validate-config
-pre-commit run --all-files
-```
-
-The hooks check trailing whitespace, final newlines, YAML syntax, potential
-secrets, and Python style with Flake8 (99-character lines, set in `.flake8`).
-Whitespace hooks can modify files; review their changes and stage the intended
-fixes before retrying a commit. An all-files run passes on a clean `main`, so a
-failure points to your change. These hooks do not replace the backend tests or
-frontend checks below.
-
-If `pre-commit` is not found after installation, run `uv tool update-shell` and
-restart the terminal.
-
-### Start the application
-
-From the repository root:
-
-```powershell
-Copy-Item svc/.env.example svc/.env
+```bash
 cd svc
 uv sync
 uv run python main.py
 ```
 
-In another terminal:
-
-```powershell
+```bash
 cd web
 npm ci
 npm run dev
 ```
 
-The backend uses:
+The backend reads `svc/config/development` and writes only to
+`svc/.runtime/development` (database `audit.db`), never to the
+production-compatible `svc/data`.
 
-- Configuration: `svc/config/development`
-- Runtime data: `svc/.runtime/development`
-- Database: `svc/.runtime/development/audit.db`
+To test one physical device while staying in development, set its override in
+`svc/.env` or the shell. Leave all three false otherwise.
 
-These paths do not touch the production-compatible `svc/data` directory.
-
-To test a physical device while remaining in development, set only the
-required override:
-
-```powershell
-$env:SVC_DEVELOPMENT_USE_PHYSICAL_T10A = "true"
-$env:SVC_DEVELOPMENT_USE_PHYSICAL_JETI = "true"
-$env:SVC_DEVELOPMENT_USE_PHYSICAL_EKO = "true"
+```bash
+SVC_DEVELOPMENT_USE_PHYSICAL_T10A=true
+SVC_DEVELOPMENT_USE_PHYSICAL_JETI=true
+SVC_DEVELOPMENT_USE_PHYSICAL_EKO=true
 ```
 
-Normal development should leave all three values false.
+### Development with Compose
 
-## Containerized development
-
-Use the dedicated development definition:
-
-```powershell
-podman compose -f docker-compose.development.yml up --build
+```bash
+docker compose -f docker-compose.development.yml up --build
 ```
 
-It uses the `glazing-development-data` named volume. It does not bind
-`./svc/data`.
+The image builds the HMI and serves it with the API on
+`http://localhost:8000`. Compose sets every service variable, so no `.env`
+file is needed; the physical-device overrides above pass through from the
+shell. Data lives in the `glazing-development-data` named volume, not
+`./svc/data`. There is no hot reload: rerun with `--build` after code changes.
+Stop with `docker compose -f docker-compose.development.yml down`.
 
-## Production data safety
+## Production
 
-The historical Compose definition bound host `./svc/data` to container
-`/app/svc/data`. Therefore the existing host `svc/data/audit.db` may contain
-production history and must not be moved or deleted.
+Steps 1 to 3 are the same for both ways to start.
 
-Production continues to open:
+### 1. Create the production configuration
 
-```text
-/app/svc/data/audit.db
+```bash
+cp -r svc/config/production.example svc/config/production
 ```
 
-The upgraded deployment requires the absolute existing host directory through
-`SVC_PRODUCTION_DATA_DIR`; it will not silently use a development directory.
+`svc/config/production` is git-ignored. For Compose, you can keep it anywhere
+outside version control and point `SVC_PRODUCTION_CONFIG_DIR` at it. Edit
+`sensors_config.json` for the site hardware using
+[`docs/production_sensor_setup.md`](./docs/production_sensor_setup.md). The
+service validates the whole sensor configuration before creating or changing
+its database.
 
-### 1. Retire the old environment file
+- Devices the Linux container cannot open (T-10A, JETI `serial_scpi`) are
+  marked `"acquisition": "external"` and need the [Sensor Agent](#5-start-the-sensor-agent).
+- A JETI file entry reads `input_path` (template: `specbos-lival.capture`),
+  resolved under `SVC_SENSOR_INPUT_DIR`. Compose mounts the file named by
+  `SVC_JETI_CAPTURE_PATH` there; a native run defaults the directory to
+  `SVC_DATA_DIR`. The legacy `output_path` key is used only by the Sensor
+  Agent.
 
-The Halio v3 API needs no API key; production needs only the Halio URL and site
-ID. Do not reuse an older `svc/.env` as the new production environment file.
+### 2. Create `svc/.env.production`
 
-### 2. Create external production configuration
-
-Copy `svc/config/production.example` to a site-owned directory outside version
-control and update `sensors_config.json`.
-
-A JETI file entry reads its capture through `input_path`. Relative values
-resolve under `SVC_SENSOR_INPUT_DIR` (`/app/svc/sensor-input` in Compose), where
-Compose mounts the file named by `SVC_JETI_CAPTURE_PATH`. The template already
-contains:
-
-```json
-{
-  "input_path": "specbos-lival.capture"
-}
+```bash
+cp svc/.env.production.example svc/.env.production
 ```
 
-The legacy `output_path` key resolves under the production data directory and
-is used only by the native Sensor Agent.
+Do not reuse an older `svc/.env` as the production file. Fill in the values
+from [`LOCAL-DEVELOPMENT.md`](#before-you-start) and the template's comments:
 
-Devices the Linux container cannot open (T-10A, JETI `serial_scpi`) carry
-`"acquisition": "external"` and are read by the native Windows Sensor Agent.
-See [docs/production_sensor_setup.md](./docs/production_sensor_setup.md).
+| Variable | Native | Compose |
+|---|---|---|
+| `HALIO_API_URL`, `HALIO_SITE_ID` | Required | Required |
+| `SVC_DB_BACKUP_DIR` | Absolute backup directory | Same; must already exist |
+| `SVC_SENSOR_INGEST_TOKEN` | Long random value when any device is external | Same |
+| `SVC_DATA_DIR` | Directory holding `audit.db` (default `.runtime/production`) | Not used |
+| `SVC_HOST` | `0.0.0.0` to reach the HMI from other machines | Not used |
+| `SVC_PRODUCTION_DATA_DIR` | Not used | Existing absolute directory holding `audit.db` |
+| `SVC_PRODUCTION_CONFIG_DIR` | Not used | Absolute production config directory |
+| `SVC_JETI_CAPTURE_PATH` | Not used | Absolute path of the LiVal capture file |
 
-The application validates the entire production sensor configuration before
-creating or changing its database.
+The API refuses to start without `SVC_SENSOR_INGEST_TOKEN` while an enabled
+device is external. Compose bind mounts use `create_host_path: false`, so the
+data directory, config directory, backup directory, and capture file must
+already exist; the preflight in step 3 creates the backup directory.
 
-### 3. Create the production environment file
+`svc/main.py` always loads `svc/.env` but never overrides a variable that is
+already set, so with `--env-file .env.production` every production value wins.
+A variable missing from `svc/.env.production` falls back to its development
+value, so keep every line from the template.
 
-Copy `svc/.env.production.example` to the ignored
-`svc/.env.production` and set:
+### 3. Back up existing production data
 
-- `SVC_PRODUCTION_DATA_DIR` to the absolute directory containing the existing `audit.db`.
-- `SVC_PRODUCTION_CONFIG_DIR` to the external production configuration directory.
-- `SVC_DB_BACKUP_DIR` to an absolute backup directory.
-- `SVC_JETI_CAPTURE_PATH` to the absolute path of the active LiVal capture
-  file (a file, not a directory). Compose mounts it read-only.
-- `SVC_SENSOR_INGEST_TOKEN` to a long random value if any device in
-  `sensors_config.json` is marked `"acquisition": "external"`. The Sensor Agent
-  uses the same value. The API refuses to start without it while an enabled
-  device is marked external.
-- `HALIO_API_URL` and `HALIO_SITE_ID`. `HALIO_API_URL` is the v3 API served
-  by the controller's admin console port, including the `/api/v3` prefix, for
-  example `http://192.168.2.200:8083/api/v3`. The v3 API is unauthenticated and
-  reachable only on the trailer LAN, so no API key is needed. The legacy
-  `:8084/api` endpoint no longer accepts connections.
+Skip this for a new installation. The historical Compose file bound host
+`./svc/data` to `/app/svc/data`, so an existing host `svc/data/audit.db` may
+hold production history: never move or delete it, and point
+`SVC_PRODUCTION_DATA_DIR` (Compose) or `SVC_DATA_DIR` (native) at its
+directory. Production opens `/app/svc/data/audit.db` in the container and
+never falls back to a development directory.
 
-Every Compose bind mount uses `create_host_path: false`. The data directory,
-configuration directory, and capture file must already exist. The preflight in
-step 4 creates only the backup directory.
-
-### 4. Verify and back up the existing database
-
-Stop the old application, then run from the repository root:
+Stop the old application, then run:
 
 ```powershell
 uv run --project svc python scripts/production_preflight.py `
@@ -181,19 +174,58 @@ uv run --project svc python scripts/production_preflight.py `
   --backup-dir "C:\absolute\path\to\backups"
 ```
 
-The command refuses a missing `audit.db`, runs SQLite integrity checks, prints
-table counts, creates the backup directory if needed, and writes an
+It refuses a missing `audit.db`, runs SQLite integrity checks, prints table
+counts, creates the backup directory if needed, and writes an
 integrity-checked backup.
 
-### 5. Start production
+### 4. Start production
 
-```powershell
-podman compose --env-file svc/.env.production up -d --build
+#### Start natively
+
+From the repository root, build the HMI, then start the backend with the
+production file. The backend serves the HMI on port 8000.
+
+```bash
+cd web
+npm ci
+npm run build
+cd ../svc
+uv sync
+uv run --env-file .env.production python main.py
 ```
 
-`docker compose` takes the same arguments.
+Without `--env-file .env.production`, `uv run python main.py` starts
+development instead. The "Compose" rows of the table are ignored natively, so
+the same file works for both methods.
 
-Verify:
+#### Start with Compose
+
+```bash
+docker compose --env-file svc/.env.production up -d --build
+```
+
+Follow the logs with `docker logs -f glazing-control-app`. Stop with
+`docker compose --env-file svc/.env.production down`.
+
+### 5. Start the Sensor Agent
+
+Only if a device is marked `"acquisition": "external"`. On the Windows host:
+
+```powershell
+.\scripts\sensors\Start-SensorAgent.ps1 -Command list-ports
+.\scripts\sensors\Start-SensorAgent.ps1 -Command once
+.\scripts\sensors\Start-SensorAgent.ps1 -Command continuous
+```
+
+`list-ports` lists ports without opening them, for enrolling `port_identity`.
+`once` is the smoke test. Schedule `continuous` in Task Scheduler as described
+in
+[Continuous production acquisition](./scripts/sensors/README.md#continuous-production-acquisition),
+which covers the Windows account to use and when internet is needed. The
+agent loads `svc/.env.production`, so it shares the ingest token and config
+directory with the service.
+
+### 6. Verify
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/health
@@ -202,35 +234,38 @@ Invoke-RestMethod http://127.0.0.1:8000/metrics/latest
 ```
 
 Health must report `environment: production`, `control_source: physical`, and
-`sensor_source: physical`. Disconnected configured hardware is exposed through
-`sensor_status: degraded` and `sensor_errors`; it never causes simulated
-production readings.
+`sensor_source: physical`. Disconnected configured hardware shows as
+`sensor_status: degraded` with `sensor_errors`; production never substitutes
+simulated readings. For per-sensor acceptance checks, use
+[`docs/on_site_sensor_checklist.md`](./docs/on_site_sensor_checklist.md).
 
-## Tests
+## Tests and hooks
 
-```powershell
-cd svc
-uv run pytest tests
-
-cd ../web
-npm test
-npm run typecheck
-npm run build
-```
-
-The backend test setup uses a temporary database and cannot write to
-`svc/data/audit.db`.
+See [Exact Local Commands](./CONTRIBUTING.md#exact-local-commands). The backend
+tests use a temporary database and cannot write to `svc/data/audit.db`.
 
 ## Troubleshooting
 
-- Missing `SVC_ENVIRONMENT`: use the development example or production Compose definition.
-- `SVC_MODE is no longer supported`: remove the old variable rather than mapping it silently.
-- Production refuses startup: correct the reported Halio or sensor configuration error.
-- `/health` is `ok` but the HMI shows 0 panels and no groups: the app cannot
-  reach Halio (`/health` does not probe it). Check `podman logs
-  glazing-control-app` for `app.adapter` errors and confirm `HALIO_API_URL`
-  points at `http://<controller>:8083/api/v3`. A quick check from the host:
-  `curl http://<controller>:8083/api/v3/sites/<site-id>/groups` should return
+- **Missing `SVC_ENVIRONMENT`:** no environment file was found. Create
+  `svc/.env` from `svc/.env.example`, or for production pass
+  `--env-file .env.production`.
+- **Native production shows `environment: development` or simulated panels:**
+  it was started without `--env-file .env.production`.
+- **Native production uses a development path or setting:** that variable is
+  missing from `svc/.env.production`; add it from the template.
+- **`SVC_MODE is no longer supported`:** remove the old variable.
+- **Production refuses to start:** fix the reported Halio or sensor
+  configuration error.
+- **`/health` is `ok` but the HMI shows 0 panels and no groups:** the app
+  cannot reach Halio (`/health` does not probe it). Look for `app.adapter`
+  errors in the logs, and confirm `HALIO_API_URL` and `HALIO_SITE_ID` match
+  `LOCAL-DEVELOPMENT.md`. From a machine on the Halio network,
+  `curl <HALIO_API_URL>/sites/<HALIO_SITE_ID>/groups` should return
   `"success":true`.
-- Empty production database: stop immediately and verify `SVC_PRODUCTION_DATA_DIR`; do not continue with a newly created directory.
-- Physical sensor unavailable after valid startup: check the cable, the Sensor Agent and its `port_identity` for COM devices, `SVC_JETI_CAPTURE_PATH`, the C-BOX IP, and Modbus TCP port 502. Production does not substitute simulated readings.
+- **Empty production database:** stop immediately and check
+  `SVC_PRODUCTION_DATA_DIR` (or `SVC_DATA_DIR`); do not continue with a newly
+  created directory.
+- **A physical sensor is unavailable after startup:** check the cable, the
+  Sensor Agent and its `port_identity` for COM devices,
+  `SVC_JETI_CAPTURE_PATH`, the C-BOX IP, and Modbus TCP port 502. See
+  [If Something Fails](./docs/on_site_sensor_checklist.md#if-something-fails).
