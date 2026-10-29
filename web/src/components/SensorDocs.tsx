@@ -203,8 +203,8 @@ export default function SensorDocs() {
                         <div style={{ backgroundColor: "var(--hmi-panel-bg)", padding: "16px", borderRadius: "8px", border: "1px solid var(--hmi-border)" }}>
                             <h4 style={{ color: "var(--hmi-text-bright)", margin: "0 0 8px 0", fontSize: "14px" }}>Start Backend in Production</h4>
                             <pre style={{ backgroundColor: "#0d1117", padding: "10px", borderRadius: "6px", color: "#c9d1d9", fontSize: "11px", margin: 0, overflowX: "auto" }}>
-{`# From the repository root (docker compose works the same):
-podman compose --env-file svc/.env.production up -d --build
+{`# From the repository root:
+docker compose --env-file svc/.env.production up -d --build
 
 # Only if a device is marked "acquisition": "external":
 .\\scripts\\sensors\\Start-SensorAgent.ps1 -Command continuous`}

@@ -15,10 +15,11 @@ default is listed in [`svc/README.md`](./svc/README.md#configuration).
 - Python 3.14 (`svc/.python-version`; `uv sync` installs it if missing)
 - [uv](https://docs.astral.sh/uv/)
 - Node.js 24 and npm (`.nvmrc`)
-- Docker, only for the Compose method. Podman reads the same Compose files and
-  takes the same arguments; replace `docker` with `podman` in the commands
-  below. Settling on one runtime is tracked in
-  [#86](https://github.com/radiantlab/GlazingControlApp/issues/86).
+- Docker, only for the Compose method. It is the only supported container
+  runtime
+  ([ADR 0007](./docs/adr/0007-docker-is-the-only-supported-container-runtime.md)).
+  Podman reads the same Compose files and mirrors the commands below, but it
+  is not documented or supported.
 
 Production also needs:
 

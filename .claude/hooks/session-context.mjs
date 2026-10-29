@@ -7,8 +7,8 @@
  *
  * Adapted from adulbrich/eecs-capstone (.claude/hooks/session-context.mjs),
  * MIT License, Copyright (c) 2026 Alex Ulbrich. The compose probe is left
- * out: production Compose here fails without its required variables, and the
- * trailer may run Podman, so the answer would often be wrong.
+ * out: production Compose here fails without its required variables, so the
+ * answer would often be wrong.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";

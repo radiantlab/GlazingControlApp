@@ -226,7 +226,7 @@ or with a scheduled task.
 
 To restore:
 
-1. Stop the container: `podman compose --env-file svc/.env.production down`.
+1. Stop the container: `docker compose --env-file svc/.env.production down`.
 2. Copy the current `audit.db` in `SVC_PRODUCTION_DATA_DIR` aside. If an
    `audit.db-journal` file sits next to it (left by a crash), move it aside too
    so SQLite does not replay it onto the restored database.
@@ -235,7 +235,7 @@ To restore:
    refuses to start without an existing `audit.db`.
 4. Optionally verify the restored file with `scripts/production_preflight.py`
    (see `DEV-SETUP.md`).
-5. Start the container: `podman compose --env-file svc/.env.production up -d`.
+5. Start the container: `docker compose --env-file svc/.env.production up -d`.
 
 ### HMI mock fallback
 
