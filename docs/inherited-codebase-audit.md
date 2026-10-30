@@ -65,9 +65,9 @@ Gaps:
 - Routines have no tests.
 - No linter runs in CI for the frontend or Python, and neither Pester suite
   runs in CI. PR #91 (issue #59) adds Biome and the sensor Pester suite.
-- `CONTRIBUTING.md` says the ruleset requires 0 approvals, "raised to 1 when
-  the student team joins". The student team has joined. **TODO(team):**
-  confirm the ruleset's current setting and update `CONTRIBUTING.md`.
+- `CONTRIBUTING.md` said the ruleset required 0 approvals, "raised to 1 when
+  the student team joins". The ruleset requires 1 approving review (checked
+  2026-10-29), and `CONTRIBUTING.md` now says so.
 
 ## 3. Dependencies and Their Age
 
