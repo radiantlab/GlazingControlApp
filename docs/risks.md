@@ -30,7 +30,7 @@ Approvals, accounts, and reviews the work waits on, with who asked and when.
 | Prerequisite | Needed for | Asked by | Asked of | Date asked | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | Agreement on the production target (the trailer PC, see the deployment section of `docs/design.md`) | Repo Checkpoint 1 milestone | **TODO(team)** | Project partner | **TODO(team)** | **TODO(team)** |
-| Docker Desktop licence covers the trailer's use | RFC-0007, Option A | Dominic Maluski | **TODO(team)** | **TODO(team)** | Open |
+| Docker Desktop licence covers the trailer's use | ADR 0007 | Dominic Maluski | **TODO(team)** | **TODO(team)** | Open |
 | Permission to install remote-access software (Tailscale) on the trailer PC | Requirements item 6 | **TODO(team)** | Project partner | Not asked yet | Not asked |
 | On-site visit to verify backups, sensors, and Halio control | Risks 1 to 4 | **TODO(team)** | Project partner | **TODO(team)** | **TODO(team)** |
 | Add `powershell-tests` as a required check in ruleset 24736232 | #59 | Calvin Grabowski | Repository admin | 2026-10-28 (PR #91) | Waits on #91 merging |

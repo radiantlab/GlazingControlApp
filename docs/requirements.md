@@ -29,14 +29,14 @@ criterion and point at the work-plan item below that delivers them.
 | ID | Requirement | Status | Acceptance |
 | :--- | :--- | :--- | :--- |
 | F1 | List every panel and group with its current tint. In production, panels and groups come from Halio ([ADR 0001](adr/0001-halio-is-the-source-of-truth-for-panels.md)). | Done | `test_basic.py::test_list_panels_groups`; `test_production.py::test_list_panels_from_captured_trailer_responses` |
-| F2 | Set a panel or a group to a tint level from 0 to 100, refusing a second change to the same panel within the dwell time (`SVC_MIN_DWELL_SECONDS`, default 20). | Done | `test_basic.py::test_set_and_dwell`, `test_basic.py::test_group_tinting`; `api.test.ts` "sends panel commands with the expected payload" |
+| F2 | Set a panel or a group to a tint level from 0 to 100, refusing a second change to the same panel within the dwell time (`SVC_MIN_DWELL_SECONDS`, default 20). | Done for panels; production group commands skip the dwell check ([design](design.md#deferred-decisions-and-open-technical-questions)) | `test_basic.py::test_set_and_dwell`, `test_basic.py::test_group_tinting`; `api.test.ts` "sends panel commands with the expected payload" |
 | F3 | Record every tint command in the audit log with time, actor, target, level, and result. | Done | `test_sqlite.py::TestAuditLogOperations` |
 | F4 | Keep the last commanded tint of each panel across service restarts. | Done | `test_basic.py::test_panel_state_persistence` |
 | F5 | Create, edit, and delete groups in development; production groups are managed on the Halio controller. | Done | `test_groups_api.py::test_group_crud_round_trip` |
 | F6 | Read every configured instrument and store its readings in `audit.db`: the EKO C-BOX and JETI LiVal capture in the container, T-10A and serial JETI through the Windows Sensor Agent ([ADR 0002](adr/0002-the-container-owns-network-sensors-and-the-agent-owns-com-ports.md)). | Done in code; not verified on the trailer (item 1) | `test_sensor_manager.py`, `test_eko_cbox_modbus_tcp_client.py`, `test_jeti_spectraval_watcher.py`, `test_t10a_client.py` |
 | F7 | Accept sensor batches from the Sensor Agent only with the ingest token, and store each observation exactly once even when a batch is retried. | Done | `test_sensor_ingest.py::test_ingestion_is_atomic_and_idempotent`, `test_endpoint_uses_constant_time_token_check`, `test_unknown_sensor_rejects_entire_batch` |
 | F8 | Show live and historical readings, including spectra, in the HMI, and export audit and sensor logs as CSV. | Done | `test_sensor_spectrum.py`; `test_sqlite.py::test_fetch_sensor_log_entries_filters_and_sorts`; `api.test.ts` "builds sensor log query parameters in the request URL" |
-| F9 | Run user-written study routines once or on an interval, and stop them from the HMI. | Done, untested (risk 7) | A routine started from the HMI runs, logs, and stops on request; a routine that raises is marked failed and does not stop the service. |
+| F9 | Run user-written study routines once or on an interval, and stop them from the HMI. | Done, untested (risk 6) | A routine started from the HMI runs, logs, and stops on request; a routine that raises is marked failed and does not stop the service. |
 | F10 | Back up `audit.db` at startup and on a schedule, and restore a backup. | Backup done; restore not verified on the trailer (item 1) | `test_db_backup.py::test_backup_database_once_creates_consistent_sqlite_copy`. Restore: a trailer backup restored to a scratch location opens and holds the expected readings. |
 | F11 | Report each instrument as connected, stale, or failed, and record dropouts as failures with start and end times. | Partial: errors and agent staleness only (item 2) | `test_sensor_manager.py::test_sensor_health_reports_and_clears_polling_errors`. Remaining: unplugging an instrument in the simulator shows it as failed within one polling interval, and a dropout row with start and end times is stored. |
 | F12 | Apply tint across the full 0 to 100 range on the real glazing, and surface every failed Halio request in the HMI and the audit log. | Open (item 3) | On the trailer, levels 0, 25, 50, 75, and 100 each produce a distinct reported tint; a test with Halio unreachable shows the command as failed, not accepted. |
@@ -69,11 +69,6 @@ Limits the project did not choose and must work within:
   calibration and accuracy are preserved.
 - **Hardware access is occasional.** Work on the trailer needs an on-site visit
   with the partner; development uses the panel and sensor simulators.
-- **The HTTP API is a fixed contract.** The HMI and existing study routines
-  depend on it; changing routes, schemas, or status codes needs a separate,
-  agreed decision ([AGENTS.md](../AGENTS.md)).
-- **Data handling.** Credentials, network details, and raw sensor data stay out
-  of the repository and out of unapproved AI tools ([AGENTS.md](../AGENTS.md)).
 - **Team.** Four students for the 2026–27 academic year, after which the system
   passes to the next team, so setup and decisions must live in the repository.
 
@@ -121,6 +116,7 @@ Measured by the end of fall 2026 unless noted.
 Goals for fall 2026, in priority order. Tick an item when it is done and
 verified, and link the PR or issue that closed it. The risk register refers to
 these as "requirements item N".
+
 ### Priorities
 
 - **P1, protect research data.** Without reliable records, nothing else matters.
@@ -219,7 +215,7 @@ Open question: remote desktop to the trailer PC, or access to the HMI only?
 
 Current maintenance issues:
 
-- [ ] #86 Standardize on Docker as the single container runtime.
+- [x] #86 Standardize on Docker as the single container runtime.
 - [ ] #76 Clean up the Docker build.
 - [ ] #59 Add ruff, Biome, and Pester checks to CI.
 - [ ] #92 Fix Biome lint warnings in `web/`.

@@ -2,7 +2,10 @@
 
 These instructions apply to AI-assisted work throughout this repository. Read
 [`CONTRIBUTING.md`](./CONTRIBUTING.md) and [`DEV-SETUP.md`](./DEV-SETUP.md)
-for contribution and setup steps.
+for contribution and setup steps. Before changing related code, read
+[`docs/requirements.md`](./docs/requirements.md) for what the system must do
+and its constraints, [`docs/design.md`](./docs/design.md) for how it works
+today, and [`docs/risks.md`](./docs/risks.md) for the ranked risks.
 
 ## Project Context
 

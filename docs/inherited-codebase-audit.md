@@ -150,8 +150,8 @@ In priority order, from `docs/requirements.md`:
 | Finding | Recorded in |
 | :--- | :--- |
 | Halio is LAN-only and unauthenticated; the trailer PC runs Windows; Linux containers cannot open COM ports | Constraints in `docs/requirements.md`; ADRs 0002 and 0005 |
-| Production and development data never mix | ADR 0004; `AGENTS.md` |
+| Production and development data never mix | ADR 0004; non-functional requirement N3 in `docs/requirements.md` |
 | Run Pester under Windows PowerShell 5.1 with Pester 3.4.0 | `CONTRIBUTING.md` |
-| Keep or replace the container runtime | RFC-0007 |
+| Keep or replace the container runtime | ADR 0007; deployment section of `docs/design.md` |
 | Sensor metric names and units | RFC-0006 |
 | Ranked risks and owners | `docs/risks.md` |
