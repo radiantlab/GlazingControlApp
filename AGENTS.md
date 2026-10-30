@@ -10,7 +10,7 @@ for contribution and setup steps.
   research trailer; improve the existing system rather than replacing it
   without evidence.
 - The stack is a Python 3.14 (`svc/.python-version`) FastAPI service,
-  React/TypeScript web client (Node 24, `.nvmrc`), SQLite, and Docker/Podman.
+  React/TypeScript web client (Node 24, `.nvmrc`), SQLite, and Docker.
   The trailer computer runs Windows.
 - The system is local-first and must keep core functions available when
   instruments are missing or unreachable; report instrument status and failures

@@ -17,7 +17,7 @@ live `SVC_DATA_DIR`.
 
 Production uses two cooperating processes:
 
-- Podman (or Docker if installed later) runs the API/UI with
+- Docker Compose runs the API/UI with
   `SVC_SENSOR_ACQUISITION=embedded` and is the only process that writes
   `audit.db`. The container itself polls the EKO C-BOX over Modbus TCP and
   reads the LiVal capture file that Compose mounts from `SVC_JETI_CAPTURE_PATH`.

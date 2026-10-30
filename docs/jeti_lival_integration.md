@@ -176,7 +176,7 @@ to a file that can already be integrated more directly.
 After enabling an option:
 
 1. Confirm the source capture size and modification time advance.
-2. Confirm the container log (`podman logs glazing-control-app`) shows no JETI
+2. Confirm the container log (`docker logs glazing-control-app`) shows no JETI
    watcher errors.
 3. Confirm `GET /health` reports no `SPECBOS-1` entry in `sensor_errors`.
 4. Confirm `GET /metrics/latest` contains fresh `SPECBOS-1` metrics.
