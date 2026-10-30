@@ -10,11 +10,11 @@
 | Superseded By | (TBD) |
 
 ## Problem and Context
-The current DIAL Control Center application contains two environments: development and production. The development environment can be run on the local machine from anywhere, and does not require a WiFi connection to any networks connected to sensors. To simulate real-life sensor data, the development environment generates mock-data in real time. 
+The current DIAL Control Center application contains two environments: development and production. The development environment can be run on the local machine from anywhere, and does not require a WiFi connection to any networks connected to sensors. To simulate real-life sensor data, the development environment generates mock-data in real time.
 
 The production environment, on the other hand, can only be run while actively connected to the DIAL control center's mobile trailer WiFi network. Connecting to the trailer's WiFi network allows for the app to monitor real sensor data, as well as directly control electrochromic glazing of the trailer's window from their machine.
 
-A consensus needs to be reached on the deployment and configuration of a remote-access connection method to the DIAL control trailer network. This will enable the team to be able to run the prod environment of the application remotely, removing the current requirement to be physically present within the trailer. Additionally, it is important to be able to test changes made to the app under real-life conditions, including with real sensor data & error codes. 
+A consensus needs to be reached on the deployment and configuration of a remote-access connection method to the DIAL control trailer network. This will enable the team to be able to run the prod environment of the application remotely, removing the current requirement to be physically present within the trailer. Additionally, it is important to be able to test changes made to the app under real-life conditions, including with real sensor data & error codes.
 
 If no consensus is reached on remote-access, the team may gradually implement features that look fine on the development environment, but don't handle edge cases or real-life conditions in the prod environment. This is especially important, as the prod environment is the end-goal of the entire project.
 
@@ -26,7 +26,7 @@ Tailscale is a semi open-source GUI tool that is easily downloadable for all pla
 
 ### Option B: [Team-Managed Wireguard VPN]
 
-Wireguard is a free and open-source VPN tool that is available on all platforms used by our team, including Windows, Mac, and Linux. It can also be used to create P2P mesh networks. No account is required to be created for Wireguard. The Wireguard software & protocol requires much more manual customization, including keys & endpoint configuration, and firewall rules. As a result, implementing Wireguard gives much more control over remote-access, but also requires much more setup-overhead as well as an active maintainer with deeper networking knowledge. The implementation of Wireguard is conditioned on our project partner desiring higher network customization options, as well as having someone to actively maintain the Wireguard network infrastructure. 
+Wireguard is a free and open-source VPN tool that is available on all platforms used by our team, including Windows, Mac, and Linux. It can also be used to create P2P mesh networks. No account is required to be created for Wireguard. The Wireguard software & protocol requires much more manual customization, including keys & endpoint configuration, and firewall rules. As a result, implementing Wireguard gives much more control over remote-access, but also requires much more setup-overhead as well as an active maintainer with deeper networking knowledge. The implementation of Wireguard is conditioned on our project partner desiring higher network customization options, as well as having someone to actively maintain the Wireguard network infrastructure.
 
 ### Option C: [Do Nothing]
 
@@ -35,9 +35,9 @@ Access to the production enviornment remains as on-site access only. Teammates w
 ## Analysis
 
 ### Security:
-The option of doing nothing arguably brings the highest level of security, as the trailer computer and sensor data are kept on their local network. 
+The option of doing nothing arguably brings the highest level of security, as the trailer computer and sensor data are kept on their local network.
 
-Both Tailscale and Wireguard are considered as highly-secure options, and largely respected in the cybersecurity community. 
+Both Tailscale and Wireguard are considered as highly-secure options, and largely respected in the cybersecurity community.
 
 Firstly, the Wireguard protocol is regarded as one of the most secure modern VPN protocols [1]. A review of the Wireguard protocol from IEEE concluded "WireGuard offers substantial improvements in terms of speed and reliability, attributed to its use of state-of-the-art cryptographic protocols" [2], and "WireGuard as a potent solution that balances security with performance" [2]. Notably, Tailscale also implements Wireguard as its underlying protocol for remote-connection.
 
@@ -57,11 +57,11 @@ All options are free. For Tailscale, the only potential cost would come from nee
 Because of Wireguard's higher customization, at least one person on our team will be required to set up and actively maintain the Wireguard configuration. This would likely be unnecessary with a Tailscale implementation, and would likely only require a one-time set up.
 
 ## Recommendation and Verification Plan
-Overall, I recommend using Tailscale for remote-connection to the DIAL control center. 
+Overall, I recommend using Tailscale for remote-connection to the DIAL control center.
 
 It is one of our project partner's goals to implement a remote-connection method to access the production environment. Therefore, choosing to do nothing is not recommended, and would also make it much more difficult to test code changes in real-world conditions.
 
-Compared to Wireguard, the setup and maintanence requirements of Tailscale are also far simpler, by automatically implementing key management, NAT traversal, IP allocation, and much more. Having to manually manage these requirements through a Wireguard VPN would require at least one dedicated person on the team, who must also have extensive knowledge in security and networking. 
+Compared to Wireguard, the setup and maintanence requirements of Tailscale are also far simpler, by automatically implementing key management, NAT traversal, IP allocation, and much more. Having to manually manage these requirements through a Wireguard VPN would require at least one dedicated person on the team, who must also have extensive knowledge in security and networking.
 
 Additionally, having to manually manage security configurations is arguably less secure than having Tailscale implement it for us. Remote-connection through Wireguard would require research on different security & networking concepts, that could potentially be implemented incorrectly.
 
