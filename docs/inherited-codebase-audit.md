@@ -65,9 +65,9 @@ Gaps:
 - Routines have no tests.
 - No linter runs in CI for the frontend or Python, and neither Pester suite
   runs in CI. PR #91 (issue #59) adds Biome and the sensor Pester suite.
-- `CONTRIBUTING.md` says the ruleset requires 0 approvals, "raised to 1 when
-  the student team joins". The student team has joined. **TODO(team):**
-  confirm the ruleset's current setting and update `CONTRIBUTING.md`.
+- `CONTRIBUTING.md` said the ruleset required 0 approvals, "raised to 1 when
+  the student team joins". The ruleset requires 1 approving review (checked
+  2026-10-29), and `CONTRIBUTING.md` now says so.
 
 ## 3. Dependencies and Their Age
 
@@ -150,8 +150,8 @@ In priority order, from `docs/requirements.md`:
 | Finding | Recorded in |
 | :--- | :--- |
 | Halio is LAN-only and unauthenticated; the trailer PC runs Windows; Linux containers cannot open COM ports | Constraints in `docs/requirements.md`; ADRs 0002 and 0005 |
-| Production and development data never mix | ADR 0004; `AGENTS.md` |
+| Production and development data never mix | ADR 0004; non-functional requirement N3 in `docs/requirements.md` |
 | Run Pester under Windows PowerShell 5.1 with Pester 3.4.0 | `CONTRIBUTING.md` |
-| Keep or replace the container runtime | RFC-0007 |
+| Keep or replace the container runtime | ADR 0007; deployment section of `docs/design.md` |
 | Sensor metric names and units | RFC-0006 |
 | Ranked risks and owners | `docs/risks.md` |

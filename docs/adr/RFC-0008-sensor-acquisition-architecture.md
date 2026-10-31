@@ -6,11 +6,11 @@
 - **Decision Date:** (fill when decided)
 - **Deciders:** (who agreed to the outcome)
 - **Superseded By:** —
-- **Decision type:** 
+- **Decision type:**
 
 ## Problem and Context
 The Dial Control Center has been outfitted electrochromic glass that can be adjusted to simulate different lighting conditions to collect data on sunlights affect in architectural design. Researchers use multiple instruments to collect the data used in there experiments and capture data like illuminance and solar radiation.
-The previous Capstone team that worked on this project built the control application for the researchers using FastAPI, React and SQLite. Our Capstone team’s goal this year is to improve system reliability to enable researchers to be able to run the DIAL lab unattended for extended periods of time. 
+The previous Capstone team that worked on this project built the control application for the researchers using FastAPI, React and SQLite. Our Capstone team’s goal this year is to improve system reliability to enable researchers to be able to run the DIAL lab unattended for extended periods of time.
 
 Currently the sensors collect data in with an Embedded acquisition inside the FastAPI application for EKO network measurements and JETI file ingestion. Data is also collected using a separate Windows Sensor Agent for instruments requiring COM ports. Since some sensors run inside the same process as FastAPI, a serious failure could potentially affect other parts of the application. Separating sensor acquisition into its own service could help prevent this, but it would also make the system more complicated to manage and maintain.
 
@@ -18,7 +18,7 @@ Our main concern with collecting sensor data inside of the FastAPI is that it is
 
 ## Options Considered:
 **Option A**
-One of our Capstone’s teams options are to either do nothing. The first option is to leave the current DIAL architecture. That would mean FastAPI would continue to collect the embedded sensor data from the instruments using the com ports. The windows sensor agent would allow us to collect data from instruments using the Com ports.  This option doesn’t require us to add any more development time or complexity to the system allowing us to tackle other issues. We would also be avoiding introducing new issues and bugs while adding in a new system. The cons would be that we would be limited in our ability to record data reliably and have other limitations. With the current system, Docker could be reporting the application is healthy even when /health response indicates a sensor is not recording. This issue would make it harder for researchers to catch problems while the lab is running. While being the simplest, it may  not allow our team to achieve out goals. 
+One of our Capstone’s teams options are to either do nothing. The first option is to leave the current DIAL architecture. That would mean FastAPI would continue to collect the embedded sensor data from the instruments using the com ports. The windows sensor agent would allow us to collect data from instruments using the Com ports.  This option doesn’t require us to add any more development time or complexity to the system allowing us to tackle other issues. We would also be avoiding introducing new issues and bugs while adding in a new system. The cons would be that we would be limited in our ability to record data reliably and have other limitations. With the current system, Docker could be reporting the application is healthy even when /health response indicates a sensor is not recording. This issue would make it harder for researchers to catch problems while the lab is running. While being the simplest, it may  not allow our team to achieve out goals.
 
 **Option B**
 Our second option is to keep the dials exsiting architecture but improve the reliablility and monitoring. In this scenario FastAPI would continue to collect the EKO measurements and reading JETI data. We would improve the sensor health monitoring, error handeling and automatic recovery. With this option we would have a less complex system that would be easier to maintain with an existing codebase. The downsides of this path are that the embedded sensors still runs in the FastAPI, and a serious error could lead to a failure of the whole application.

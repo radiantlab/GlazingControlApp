@@ -18,7 +18,7 @@ All code changes follow a strict pipeline:
    - `refactor/` — code restructuring without behavior changes
 3. **Commits**: Follow Conventional Commits format for commit subjects (e.g. `feat(sensors): add T-10A auto-discovery`, `fix(routes): enforce dwell time on group tint`).
 4. **Pull Request**: Open a PR against `main`. All CI status check gates must pass.
-5. **Review & Merge**: 0 approvals now; raised to 1 when the student team joins. Merged to `main` exclusively via **squash merge** (no merge commits, no rebase merges).
+5. **Review & Merge**: At least 1 approving review from another team member. Merged to `main` exclusively via **squash merge** (no merge commits, no rebase merges).
 
 ## Definition of Done
 
@@ -44,7 +44,7 @@ Branch protection is enforced on `main` via GitHub **Ruleset 24736232**. Direct 
 | **Docker & Version Checks** | `docker-builds` job (`.github/workflows/docker-builds.yml`) | Runs `scripts/check-runtime-versions.sh`, validates `docker compose config --quiet`, and builds the combined image and compose services. |
 | **Runtime Version Parity** | `scripts/check-runtime-versions.sh` (in `docker-builds`) | `Dockerfile` base images must match `svc/.python-version` and `.nvmrc`, and the uv image must match the uv version pinned in `.github/workflows/ci.yml`. |
 | **Python Dependency Pinning** | `backend-tests` | `uv.lock` is the only exact Python pin. Dependencies are synced with `uv sync --frozen`. |
-| **Approving Reviews** | Ruleset 24736232 | 0 approvals now; raised to 1 when the student team joins. |
+| **Approving Reviews** | Ruleset 24736232 | At least 1 approving review. |
 | **Merge Method** | Ruleset 24736232 | Squash merge only. |
 
 ## Exact Local Commands
@@ -96,6 +96,15 @@ docker compose config --quiet
 docker build -t glazing-control-app:local .
 ```
 
+### 5. PowerShell Tests (Windows)
+Run these when you change anything under `scripts/`. They use Windows
+PowerShell 5.1 with the Pester 3.4.0 that ships with Windows, and do not run in
+CI yet (#59, #96). Neither suite opens a COM port or starts the stack.
+```powershell
+Invoke-Pester -Path scripts/tests            # lifecycle script
+Invoke-Pester -Path scripts/sensors/tests    # sensor backup scripts
+```
+
 ## Runtime Versions and Dependency Management
 
 - **Python Pinning**: `svc/uv.lock` is the only exact Python pin. `pyproject.toml` defines abstract dependencies. Never edit `uv.lock` by hand; update dependencies using `uv add` or `uv lock --upgrade`.
@@ -107,7 +116,7 @@ docker build -t glazing-control-app:local .
 Each team member owns one piece of accepted work per sprint.
 
 - Claim an issue on the repo (or create one that reflects what your change addresses).
-- Pull requests must be reviewed by at least one other team member. This is a team norm today; Ruleset 24736232 will enforce it once the approval requirement is raised to 1.
+- Pull requests must be approved by at least one other team member; Ruleset 24736232 enforces this.
 
 ## Secrets and Data
 

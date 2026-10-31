@@ -1,6 +1,6 @@
 # DIAL Control Center: system design
 
-Implementation baseline: `4fe1011`, reviewed against code on 2026-10-29.
+Implementation baseline: `cc20ba6`, reviewed against code on 2026-10-29.
 This describes the current system; proposed work and unresolved behavior are
 identified below. It does not establish acceptance of any RFC.
 
@@ -154,6 +154,21 @@ durable storage; UI control-priority maps are browser memory, not shared locks.
 
 ## Deployment and recovery
 
+### Production target
+
+The walking skeleton runs in week 10 of fall 2026 on the Windows trailer PC,
+as the combined image under [production Compose](../docker-compose.yml) with
+Docker ([ADR 0007](adr/0007-docker-is-the-only-supported-container-runtime.md)).
+It serves the HMI and API on port 8000 to browsers on the Halio network,
+commands the Halio controller, and records at least one instrument's readings
+in the production `audit.db`. The trailer PC moved from Podman to Docker in
+#86. The project partner owns the trailer PC and its accounts and
+infrastructure, and agreed this target on 2026-10-22. The HMI is reachable
+only from networks in the trailer, so it has no public URL; the evidence of a deployment is an issue reporting the
+on-site run, with the commit deployed and the `/health` response.
+
+### Runtime shape
+
 The [Dockerfile](../Dockerfile) builds the React/Vite assets with Node 24 and
 packages them with Python 3.14/FastAPI. One Uvicorn process serves both static
 assets and APIs on port 8000; there is no separate web server or database server.
@@ -188,7 +203,7 @@ backup retention and a verified restore procedure remain open operational work.
 | Reliable failure display and command safety | `/health` checks sensors, not Halio. The adapter can return empty lists or zero tint after failed reads; command failures may be reported as dwell errors. Production group commands currently bypass a local dwell check. Which failure representation and interlock should be agreed without breaking the API? Verify against controller behavior. |
 | Freshness, clocks, and control ownership | External freshness uses receipt time, so delivery of old backlog can appear fresh. Timestamp collisions discard whole observations. Browser manual/group/routine priority does not arbitrate across clients. Define acceptable data age, clock handling, and conflicting-command behavior before concurrent studies. The HMI's explicitly marked mock fallback also needs operator review. |
 | Metric vocabulary and migrations | [RFC-0006](adr/rfc-0006-uniform-modular-sensor-data-model.md) proposes a catalog, driver registry, and schema versioning; all remain proposed. Agree units and migration compatibility before adding new stored metrics; measure SQLite growth/query/backup performance before choosing another store or retention policy. |
-| Container runtime and remote authorization | [RFC-0007](adr/RFC-0007-docker-vs-podman-as-container-runtime.md) and [RFC-0008](adr/rfc-0008-remote-connection-configuration.md) remain proposed. Docker/Compose files exist; neither one mandated runtime nor Tailscale is an accepted deployment decision. Confirm partner requirements for access, routine execution, maintenance, and network isolation before enabling remote control. |
+| Remote access and authorization | Docker is the only supported container runtime ([ADR 0007](adr/0007-docker-is-the-only-supported-container-runtime.md)), and the trailer PC runs it (#86). [RFC-0008](adr/rfc-0008-remote-connection-configuration.md) (Tailscale) remains proposed and is not an accepted deployment decision. Confirm partner requirements for access, routine execution, maintenance, and network isolation before enabling remote control. |
 
 ### Proposed spike and review
 
