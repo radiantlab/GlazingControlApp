@@ -1,6 +1,8 @@
 $scriptsRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $commonScript = Join-Path $scriptsRoot "ControlCenter.Common.ps1"
 $invokeScript = Join-Path $scriptsRoot "Invoke-ControlCenter.ps1"
+$launcherScript = Join-Path $scriptsRoot "Open-ControlCenter.ps1"
+$cmdLauncher = Join-Path $scriptsRoot "Start-ControlCenter.cmd"
 
 # The entry script runs under Latest; ControlCenter.Common.ps1 sets no mode of
 # its own, so the tests set the same one.
@@ -31,19 +33,31 @@ function New-NativeResult {
 function Invoke-ControlCenterProcess {
     param(
         [string]$Arguments,
-        [string]$PathDirectory
+        [string]$PathDirectory,
+        [string]$ScriptPath = $invokeScript,
+        [string]$StandardInput
     )
 
-    # Runs the entry script in a child shell with only $PathDirectory on PATH,
-    # so `exit` codes can be checked without a real Docker.
+    # Runs an entry script in a child shell with only $PathDirectory on PATH,
+    # so `exit` codes can be checked without a real Docker. $StandardInput,
+    # when given, answers Read-Host, which -NonInteractive would refuse.
+    $nonInteractive = "-NonInteractive "
+    if ($PSBoundParameters.ContainsKey("StandardInput")) {
+        $nonInteractive = ""
+    }
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = (Get-Process -Id $PID).Path
-    $startInfo.Arguments = "-NoProfile -NonInteractive -File `"$invokeScript`" $Arguments"
+    $startInfo.Arguments = "-NoProfile $nonInteractive-File `"$ScriptPath`" $Arguments"
     $startInfo.UseShellExecute = $false
     $startInfo.RedirectStandardError = $true
     $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardInput = $true
     $startInfo.EnvironmentVariables["PATH"] = $PathDirectory
     $process = [System.Diagnostics.Process]::Start($startInfo)
+    if ($PSBoundParameters.ContainsKey("StandardInput")) {
+        $process.StandardInput.Write($StandardInput)
+    }
+    $process.StandardInput.Close()
     $stderr = $process.StandardError.ReadToEnd()
     $stdout = $process.StandardOutput.ReadToEnd()
     $process.WaitForExit()
@@ -135,7 +149,7 @@ function New-TestMounts {
 }
 
 Describe "Control Center script syntax" {
-    foreach ($scriptPath in @($commonScript, $invokeScript)) {
+    foreach ($scriptPath in @($commonScript, $invokeScript, $launcherScript)) {
         It "parses $([System.IO.Path]::GetFileName($scriptPath))" {
             $tokens = $null
             $errors = $null
@@ -148,19 +162,30 @@ Describe "Control Center script syntax" {
         }
     }
 
-    It "uses no `$PSScriptRoot in Invoke-ControlCenter.ps1 parameter defaults" {
-        # Windows PowerShell 5.1 leaves it empty there under -File.
-        $tokens = $null
-        $errors = $null
-        $ast = [System.Management.Automation.Language.Parser]::ParseFile(
-            $invokeScript,
-            [ref]$tokens,
-            [ref]$errors
-        )
-        $defaults = @($ast.ParamBlock.Parameters | Where-Object { $null -ne $_.DefaultValue } |
-            ForEach-Object { $_.DefaultValue.Extent.Text })
+    foreach ($scriptPath in @($invokeScript, $launcherScript)) {
+        It "uses no `$PSScriptRoot in $([System.IO.Path]::GetFileName($scriptPath)) parameter defaults" {
+            # Windows PowerShell 5.1 leaves it empty there under -File.
+            $tokens = $null
+            $errors = $null
+            $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+                $scriptPath,
+                [ref]$tokens,
+                [ref]$errors
+            )
+            $defaults = @($ast.ParamBlock.Parameters | Where-Object { $null -ne $_.DefaultValue } |
+                ForEach-Object { $_.DefaultValue.Extent.Text })
 
-        ($defaults -join "`n") | Should Not Match "PSScriptRoot"
+            ($defaults -join "`n") | Should Not Match "PSScriptRoot"
+        }
+    }
+
+    It "runs Open-ControlCenter.ps1 from Start-ControlCenter.cmd with CRLF line endings" {
+        $bytes = [System.IO.File]::ReadAllBytes($cmdLauncher)
+        $text = [System.Text.Encoding]::ASCII.GetString($bytes)
+
+        $text | Should Match 'powershell\.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Open-ControlCenter\.ps1"'
+        # cmd.exe misreads some lines of a batch file saved with bare LF.
+        ($text -replace "`r`n", "") | Should Not Match "`n"
     }
 }
 
@@ -752,5 +777,117 @@ Describe "Test-ControlCenterPortOpen" {
         $listener.Stop()
 
         Test-ControlCenterPortOpen -Port $port | Should Be $false
+    }
+}
+
+Describe "Open-ControlCenter.ps1 exit codes" {
+    It "keeps the window open with the next step when Docker is not installed" {
+        $emptyPath = Join-Path $TestDrive "launcher-empty-path"
+        New-Item -ItemType Directory -Path $emptyPath -Force | Out-Null
+
+        $run = Invoke-ControlCenterProcess -ScriptPath $launcherScript -PathDirectory $emptyPath `
+            -StandardInput "`n"
+
+        $run.ExitCode | Should Be 1
+        $run.Stderr | Should Match "Docker is not installed"
+        $run.Stdout | Should Match "Open Docker Desktop from the Start menu"
+    }
+}
+
+# As above, each It sits in its own Context so -ParameterFilter mocks do not
+# leak into the next test.
+Describe "Invoke-ControlCenterLauncher" {
+    . $commonScript
+
+    $launch = {
+        Invoke-ControlCenterLauncher -LifecycleScript "Invoke-ControlCenter.ps1" `
+            -RepositoryRoot "repo" -EnvFile "env.production"
+    }
+
+    Context "opens the HMI after a successful start" {
+        It "opens the HMI at the configured port and closes without waiting for Enter" {
+            Mock Invoke-ControlCenterScript { 0 }
+            Mock Resolve-ControlCenterDocker { "docker" }
+            Mock Get-ControlCenterApp {
+                $app = New-TestApp
+                $app.Port = 8080
+                $app
+            }
+            Mock Open-ControlCenterBrowser {}
+            Mock Wait-ControlCenterClose {}
+            Mock Wait-ControlCenterEnter {}
+            Mock Write-Host {}
+
+            $exitCode = & $launch
+
+            $exitCode | Should Be 0
+            Assert-MockCalled Invoke-ControlCenterScript -Times 1 -Exactly -ParameterFilter {
+                $ScriptPath -eq "Invoke-ControlCenter.ps1" -and
+                ($Arguments -join " ") -eq "-Action Start -EnvFile env.production"
+            }
+            Assert-MockCalled Open-ControlCenterBrowser -Times 1 -Exactly -ParameterFilter {
+                $Url -eq "http://localhost:8080/"
+            }
+            Assert-MockCalled Wait-ControlCenterClose -Times 1 -Exactly
+            Assert-MockCalled Wait-ControlCenterEnter -Times 0 -Exactly
+        }
+    }
+
+    foreach ($code in 1..5) {
+        Context "keeps the window open for exit $code" {
+            It "prints the next step for exit $code, waits for Enter, and does not open the HMI" {
+                $expected = Get-ControlCenterNextStep -ExitCode $code
+                Mock Invoke-ControlCenterScript { $code }
+                Mock Open-ControlCenterHmi {}
+                Mock Wait-ControlCenterClose {}
+                Mock Wait-ControlCenterEnter {}
+                Mock Write-Host {}
+
+                $exitCode = & $launch
+
+                $exitCode | Should Be $code
+                Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                    $Object -eq $expected
+                }
+                Assert-MockCalled Wait-ControlCenterEnter -Times 1 -Exactly
+                Assert-MockCalled Open-ControlCenterHmi -Times 0 -Exactly
+                Assert-MockCalled Wait-ControlCenterClose -Times 0 -Exactly
+            }
+        }
+    }
+
+    Context "keeps the window open when the HMI cannot be opened" {
+        It "exits 5 and waits for Enter when the browser fails to open" {
+            Mock Invoke-ControlCenterScript { 0 }
+            Mock Open-ControlCenterHmi { throw "no default browser" }
+            Mock Wait-ControlCenterClose {}
+            Mock Wait-ControlCenterEnter {}
+            Mock Write-Host {}
+
+            $exitCode = & $launch
+
+            $exitCode | Should Be 5
+            Assert-MockCalled Wait-ControlCenterEnter -Times 1 -Exactly
+            Assert-MockCalled Wait-ControlCenterClose -Times 0 -Exactly
+        }
+    }
+
+    Context "keeps the window open when the lifecycle script cannot run" {
+        It "exits 5 and waits for Enter when starting the child shell throws" {
+            Mock Invoke-ControlCenterScript { throw "cannot start powershell" }
+            Mock Wait-ControlCenterEnter {}
+            Mock Write-Host {}
+
+            $exitCode = & $launch
+
+            $exitCode | Should Be 5
+            Assert-MockCalled Wait-ControlCenterEnter -Times 1 -Exactly
+        }
+    }
+
+    Context "names the exit code it does not know" {
+        It "gives a generic next step for an unknown exit code" {
+            Get-ControlCenterNextStep -ExitCode 42 | Should Match "exit code 42"
+        }
     }
 }

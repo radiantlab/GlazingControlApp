@@ -187,7 +187,7 @@ Operators start the system from one icon on the trailer PC. Tracked in epic
       merged; the issue is still open.
 - [ ] #96 Point operator docs and CI at the lifecycle script.
 - [ ] #95 Fix `Start-SensorAgent.ps1` under Task Scheduler.
-- [ ] Double-click wrapper and desktop shortcut.
+- [ ] #108 Double-click launcher and desktop shortcut.
 - [ ] The Sensor Agent starts with the system when an external device is
       configured.
 - [ ] One-page operator guide.

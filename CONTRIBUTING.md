@@ -101,7 +101,7 @@ Run these when you change anything under `scripts/`. They use Windows
 PowerShell 5.1 with the Pester 3.4.0 that ships with Windows, and do not run in
 CI yet (#59, #96). Neither suite opens a COM port or starts the stack.
 ```powershell
-Invoke-Pester -Path scripts/tests            # lifecycle script
+Invoke-Pester -Path scripts/tests            # lifecycle script and launcher
 Invoke-Pester -Path scripts/sensors/tests    # sensor backup scripts
 ```
 

@@ -1,7 +1,7 @@
-# Shared logic for Invoke-ControlCenter.ps1, kept separate so Pester can test
-# it without a container engine. Every external command goes through
-# Invoke-ControlCenterNative, and every host check through a small function,
-# so tests can mock them.
+# Shared logic for Invoke-ControlCenter.ps1 and Open-ControlCenter.ps1, kept
+# separate so Pester can test it without a container engine. Every external
+# command goes through Invoke-ControlCenterNative, and every host check through
+# a small function, so tests can mock them.
 #
 # No Set-StrictMode here: this file is dot-sourced into the caller's scope, so
 # a mode set here would replace the caller's `Set-StrictMode -Version Latest`.
@@ -635,4 +635,139 @@ function Get-ControlCenterStatus {
     $health = Wait-ControlCenterHealth -Project $Project -App $app `
         -TimeoutSeconds 0 -RestartCount $container.RestartCount
     Write-ControlCenterHealth -Health $health -Port $app.Port
+}
+
+# Double-click launcher (Open-ControlCenter.ps1, #108). It runs
+# Invoke-ControlCenter.ps1 in a child shell, opens the HMI when Start succeeds,
+# and otherwise keeps the window open with a next step for the exit code.
+
+# Seconds the window stays open after a successful start, so a degraded-sensor
+# warning can be read before it closes.
+$script:ControlCenterCloseDelaySeconds = 10
+
+$script:ControlCenterNextSteps = @{
+    1 = ("Docker is not running or not installed. Open Docker Desktop from the " +
+        "Start menu, wait for 'Engine running', then double-click again.")
+    2 = 'A setting or file is wrong (see above). Fix it, or ask the system maintainer.'
+    3 = 'The app did not start. The messages above show why.'
+    4 = ('The app did not answer in time. Double-click again, and if this ' +
+        'repeats, ask the system maintainer.')
+    5 = 'Unexpected error in the start script. Ask the system maintainer.'
+}
+
+function Get-ControlCenterNextStep {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$ExitCode
+    )
+
+    if ($script:ControlCenterNextSteps.ContainsKey($ExitCode)) {
+        return $script:ControlCenterNextSteps[$ExitCode]
+    }
+    # PowerShell itself failing to start the script, for example.
+    return ("The start script failed with exit code $ExitCode. Ask the " +
+        'system maintainer.')
+}
+
+function Invoke-ControlCenterScript {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptPath,
+
+        [string[]]$Arguments = @()
+    )
+
+    # A child shell, so the script's `exit` ends only that shell. Out-Host
+    # sends its output to the console instead of this function's result.
+    $shell = (Get-Process -Id $PID).Path
+    & $shell -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @Arguments | Out-Host
+    return $LASTEXITCODE
+}
+
+function Open-ControlCenterBrowser {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Url
+    )
+
+    Start-Process $Url
+}
+
+function Wait-ControlCenterEnter {
+    [void](Read-Host 'Press Enter to close this window')
+}
+
+function Wait-ControlCenterClose {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$Seconds
+    )
+
+    Write-Host "This window closes in $Seconds seconds."
+    Start-Sleep -Seconds $Seconds
+}
+
+function Open-ControlCenterHmi {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$EnvFile
+    )
+
+    # Start has just succeeded, so Docker and the env file are known to work.
+    # The port comes from Compose, as it does for Start.
+    $docker = Resolve-ControlCenterDocker
+    $project = New-ControlCenterProject -DockerPath $docker `
+        -RepositoryRoot $RepositoryRoot -EnvFile $EnvFile
+    $app = Get-ControlCenterApp -Project $project
+    $url = "http://localhost:$($app.Port)/"
+    Write-Host "Opening the HMI at $url"
+    Open-ControlCenterBrowser -Url $url
+}
+
+function Invoke-ControlCenterLauncher {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$LifecycleScript,
+
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$EnvFile
+    )
+
+    try {
+        $exitCode = Invoke-ControlCenterScript -ScriptPath $LifecycleScript `
+            -Arguments @('-Action', 'Start', '-EnvFile', $EnvFile)
+        if ($exitCode -eq 0) {
+            try {
+                Open-ControlCenterHmi -RepositoryRoot $RepositoryRoot -EnvFile $EnvFile
+            }
+            catch {
+                [Console]::Error.WriteLine(
+                    'The app is running, but the HMI could not be opened: ' +
+                    $_.Exception.Message
+                )
+                $exitCode = $script:ControlCenterUnexpectedExitCode
+            }
+        }
+    }
+    catch {
+        # Any failure here must still leave the window open with a reason.
+        [Console]::Error.WriteLine($_.Exception.Message)
+        $exitCode = $script:ControlCenterUnexpectedExitCode
+    }
+
+    if ($exitCode -eq 0) {
+        Wait-ControlCenterClose -Seconds $script:ControlCenterCloseDelaySeconds
+        return 0
+    }
+
+    Write-Host ''
+    Write-Host (Get-ControlCenterNextStep -ExitCode $exitCode)
+    Wait-ControlCenterEnter
+    return $exitCode
 }
