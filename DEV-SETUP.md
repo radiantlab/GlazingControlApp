@@ -211,9 +211,10 @@ Follow the logs with `docker logs -f glazing-control-app`. Stop with
 #### Start with the desktop shortcut
 
 On the Windows host, `scripts\Start-ControlCenter.cmd` starts production with
-Compose and opens the HMI. It runs `scripts\Invoke-ControlCenter.ps1 -Action
-Start`, which checks Docker, `svc\.env.production`, the mount paths, and
-`audit.db` before it starts anything, then waits for `/health`.
+Compose and opens the HMI. It does the same Start as
+`scripts\Invoke-ControlCenter.ps1 -Action Start`: it checks Docker,
+`svc\.env.production`, the mount paths, and `audit.db` before it starts
+anything, then waits for `/health`.
 
 To make the shortcut once, right-click `scripts\Start-ControlCenter.cmd` in
 File Explorer, choose **Send to > Desktop (create shortcut)**, and rename the

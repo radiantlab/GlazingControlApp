@@ -1,6 +1,7 @@
 $scriptsRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $commonScript = Join-Path $scriptsRoot "ControlCenter.Common.ps1"
 $invokeScript = Join-Path $scriptsRoot "Invoke-ControlCenter.ps1"
+$launcherCommon = Join-Path $scriptsRoot "ControlCenter.Launcher.ps1"
 $launcherScript = Join-Path $scriptsRoot "Open-ControlCenter.ps1"
 $cmdLauncher = Join-Path $scriptsRoot "Start-ControlCenter.cmd"
 
@@ -149,7 +150,7 @@ function New-TestMounts {
 }
 
 Describe "Control Center script syntax" {
-    foreach ($scriptPath in @($commonScript, $invokeScript, $launcherScript)) {
+    foreach ($scriptPath in @($commonScript, $invokeScript, $launcherCommon, $launcherScript)) {
         It "parses $([System.IO.Path]::GetFileName($scriptPath))" {
             $tokens = $null
             $errors = $null
@@ -183,7 +184,9 @@ Describe "Control Center script syntax" {
         $bytes = [System.IO.File]::ReadAllBytes($cmdLauncher)
         $text = [System.Text.Encoding]::ASCII.GetString($bytes)
 
-        $text | Should Match 'powershell\.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Open-ControlCenter\.ps1"'
+        $expected = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File ' +
+            '"%~dp0Open-ControlCenter.ps1"'
+        $text | Should Match ([regex]::Escape($expected))
         # cmd.exe misreads some lines of a batch file saved with bare LF.
         ($text -replace "`r`n", "") | Should Not Match "`n"
     }
@@ -798,21 +801,31 @@ Describe "Open-ControlCenter.ps1 exit codes" {
 # leak into the next test.
 Describe "Invoke-ControlCenterLauncher" {
     . $commonScript
+    . $launcherCommon
 
     $launch = {
-        Invoke-ControlCenterLauncher -LifecycleScript "Invoke-ControlCenter.ps1" `
-            -RepositoryRoot "repo" -EnvFile "env.production"
+        Invoke-ControlCenterLauncher -RepositoryRoot "repo" -EnvFile "env.production"
     }
 
+    # Literal text, so a wrong entry in the next-step table fails a test.
+    $nextSteps = @{
+        1 = "Open Docker Desktop from the Start menu"
+        2 = "A setting or file is wrong"
+        3 = "The app did not start"
+        4 = "The app did not answer in time"
+        5 = "Unexpected error in the start script"
+    }
+    $kinds = @{ 1 = "Engine"; 2 = "Configuration"; 3 = "Compose"; 4 = "HealthTimeout" }
+
     Context "opens the HMI after a successful start" {
-        It "opens the HMI at the configured port and closes without waiting for Enter" {
-            Mock Invoke-ControlCenterScript { 0 }
+        It "reads the config once, opens the HMI at its port, and does not wait for Enter" {
             Mock Resolve-ControlCenterDocker { "docker" }
             Mock Get-ControlCenterApp {
                 $app = New-TestApp
                 $app.Port = 8080
                 $app
             }
+            Mock Start-ControlCenterApp {}
             Mock Open-ControlCenterBrowser {}
             Mock Wait-ControlCenterClose {}
             Mock Wait-ControlCenterEnter {}
@@ -821,9 +834,9 @@ Describe "Invoke-ControlCenterLauncher" {
             $exitCode = & $launch
 
             $exitCode | Should Be 0
-            Assert-MockCalled Invoke-ControlCenterScript -Times 1 -Exactly -ParameterFilter {
-                $ScriptPath -eq "Invoke-ControlCenter.ps1" -and
-                ($Arguments -join " ") -eq "-Action Start -EnvFile env.production"
+            Assert-MockCalled Get-ControlCenterApp -Times 1 -Exactly
+            Assert-MockCalled Start-ControlCenterApp -Times 1 -Exactly -ParameterFilter {
+                $App.Port -eq 8080 -and $TimeoutSeconds -eq 30 -and -not $Build
             }
             Assert-MockCalled Open-ControlCenterBrowser -Times 1 -Exactly -ParameterFilter {
                 $Url -eq "http://localhost:8080/"
@@ -833,12 +846,17 @@ Describe "Invoke-ControlCenterLauncher" {
         }
     }
 
-    foreach ($code in 1..5) {
+    foreach ($code in 1..4) {
         Context "keeps the window open for exit $code" {
             It "prints the next step for exit $code, waits for Enter, and does not open the HMI" {
-                $expected = Get-ControlCenterNextStep -ExitCode $code
-                Mock Invoke-ControlCenterScript { $code }
-                Mock Open-ControlCenterHmi {}
+                $kind = $kinds[$code]
+                $expected = $nextSteps[$code]
+                Mock Resolve-ControlCenterDocker { "docker" }
+                Mock Get-ControlCenterApp { New-TestApp }
+                Mock Start-ControlCenterApp {
+                    throw (New-ControlCenterError -Kind $kind -Message "start failed")
+                }
+                Mock Open-ControlCenterBrowser {}
                 Mock Wait-ControlCenterClose {}
                 Mock Wait-ControlCenterEnter {}
                 Mock Write-Host {}
@@ -847,19 +865,60 @@ Describe "Invoke-ControlCenterLauncher" {
 
                 $exitCode | Should Be $code
                 Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
-                    $Object -eq $expected
+                    "$Object" -match [regex]::Escape($expected)
                 }
                 Assert-MockCalled Wait-ControlCenterEnter -Times 1 -Exactly
-                Assert-MockCalled Open-ControlCenterHmi -Times 0 -Exactly
+                Assert-MockCalled Open-ControlCenterBrowser -Times 0 -Exactly
                 Assert-MockCalled Wait-ControlCenterClose -Times 0 -Exactly
             }
         }
     }
 
-    Context "keeps the window open when the HMI cannot be opened" {
-        It "exits 5 and waits for Enter when the browser fails to open" {
-            Mock Invoke-ControlCenterScript { 0 }
-            Mock Open-ControlCenterHmi { throw "no default browser" }
+    Context "stops before reading config when Docker is not running" {
+        It "exits 1 without reading the config or starting anything" {
+            Mock Resolve-ControlCenterDocker {
+                throw (New-ControlCenterError -Kind Engine -Message "not running")
+            }
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Start-ControlCenterApp {}
+            Mock Wait-ControlCenterEnter {}
+            Mock Write-Host {}
+
+            $exitCode = & $launch
+
+            $exitCode | Should Be 1
+            Assert-MockCalled Get-ControlCenterApp -Times 0 -Exactly
+            Assert-MockCalled Start-ControlCenterApp -Times 0 -Exactly
+        }
+    }
+
+    Context "keeps the window open for an unexpected error" {
+        It "exits 5 with the unexpected-error next step when Start throws a plain error" {
+            $expected = $nextSteps[5]
+            Mock Resolve-ControlCenterDocker { "docker" }
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Start-ControlCenterApp { throw "a bug" }
+            Mock Open-ControlCenterBrowser {}
+            Mock Wait-ControlCenterEnter {}
+            Mock Write-Host {}
+
+            $exitCode = & $launch
+
+            $exitCode | Should Be 5
+            Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                "$Object" -match [regex]::Escape($expected)
+            }
+            Assert-MockCalled Wait-ControlCenterEnter -Times 1 -Exactly
+            Assert-MockCalled Open-ControlCenterBrowser -Times 0 -Exactly
+        }
+    }
+
+    Context "keeps the window open when the browser cannot be opened" {
+        It "exits 5, says the app is running with its URL, and does not blame Start" {
+            Mock Resolve-ControlCenterDocker { "docker" }
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Start-ControlCenterApp {}
+            Mock Open-ControlCenterBrowser { throw "no default browser" }
             Mock Wait-ControlCenterClose {}
             Mock Wait-ControlCenterEnter {}
             Mock Write-Host {}
@@ -867,26 +926,26 @@ Describe "Invoke-ControlCenterLauncher" {
             $exitCode = & $launch
 
             $exitCode | Should Be 5
+            Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                "$Object" -eq "The app is running. Open http://localhost:8000/ in a web browser."
+            }
+            Assert-MockCalled Write-Host -Times 0 -Exactly -ParameterFilter {
+                "$Object" -match [regex]::Escape($nextSteps[5])
+            }
             Assert-MockCalled Wait-ControlCenterEnter -Times 1 -Exactly
             Assert-MockCalled Wait-ControlCenterClose -Times 0 -Exactly
         }
     }
 
-    Context "keeps the window open when the lifecycle script cannot run" {
-        It "exits 5 and waits for Enter when starting the child shell throws" {
-            Mock Invoke-ControlCenterScript { throw "cannot start powershell" }
-            Mock Wait-ControlCenterEnter {}
-            Mock Write-Host {}
-
-            $exitCode = & $launch
-
-            $exitCode | Should Be 5
-            Assert-MockCalled Wait-ControlCenterEnter -Times 1 -Exactly
+    Context "gives every documented exit code a next step" {
+        It "has the literal next step for each of exits 1 to 5" {
+            foreach ($code in 1..5) {
+                $expected = [regex]::Escape($nextSteps[$code])
+                Get-ControlCenterNextStep -ExitCode $code | Should Match $expected
+            }
         }
-    }
 
-    Context "names the exit code it does not know" {
-        It "gives a generic next step for an unknown exit code" {
+        It "names an exit code it does not know" {
             Get-ControlCenterNextStep -ExitCode 42 | Should Match "exit code 42"
         }
     }

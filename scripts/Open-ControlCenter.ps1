@@ -7,13 +7,13 @@ launcher.
 
 .DESCRIPTION
 Run by Start-ControlCenter.cmd, which a desktop shortcut points to (see
-DEV-SETUP.md). Runs Invoke-ControlCenter.ps1 -Action Start. On success it opens
-the HMI in the default browser and closes after a few seconds. On failure it
-keeps the window open with the script's message and a next step, until Enter
-is pressed.
+DEV-SETUP.md). Runs the same Start as Invoke-ControlCenter.ps1 -Action Start,
+with its default timeout. On success it opens the HMI in the default browser
+and closes after a few seconds. On failure it keeps the window open with the
+reason and a next step, until Enter is pressed.
 
-Exits with the code from Invoke-ControlCenter.ps1, or 5 when the HMI could not
-be opened or this script failed.
+Exits with the same codes as Invoke-ControlCenter.ps1, and 5 also when the app
+started but the browser could not be opened.
 #>
 
 [CmdletBinding()]
@@ -33,10 +33,9 @@ if (-not $EnvFile) {
 }
 
 . (Join-Path $PSScriptRoot 'ControlCenter.Common.ps1')
+. (Join-Path $PSScriptRoot 'ControlCenter.Launcher.ps1')
 
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $envPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EnvFile)
 
-exit (Invoke-ControlCenterLauncher `
-        -LifecycleScript (Join-Path $PSScriptRoot 'Invoke-ControlCenter.ps1') `
-        -RepositoryRoot $repositoryRoot -EnvFile $envPath)
+exit (Invoke-ControlCenterLauncher -RepositoryRoot $repositoryRoot -EnvFile $envPath)
