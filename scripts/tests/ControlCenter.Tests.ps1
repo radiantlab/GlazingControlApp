@@ -793,7 +793,7 @@ Describe "Open-ControlCenter.ps1 exit codes" {
 
         $run.ExitCode | Should Be 1
         $run.Stderr | Should Match "Docker is not installed"
-        $run.Stdout | Should Match "Open Docker Desktop from the Start menu"
+        $run.Stdout | Should Match "If Docker Desktop is installed, open it from the Start menu"
     }
 }
 
@@ -809,7 +809,7 @@ Describe "Invoke-ControlCenterLauncher" {
 
     # Literal text, so a wrong entry in the next-step table fails a test.
     $nextSteps = @{
-        1 = "Open Docker Desktop from the Start menu"
+        1 = "If Docker Desktop is installed, open it from the Start menu"
         2 = "A setting or file is wrong"
         3 = "The app did not start"
         4 = "The app did not answer in time"

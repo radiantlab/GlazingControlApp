@@ -15,8 +15,8 @@ $script:ControlCenterCloseDelaySeconds = 10
 
 $script:ControlCenterNextSteps = @{
     $script:ControlCenterExitCodes.Engine = (
-        "Docker is not running or not installed. Open Docker Desktop from the " +
-        "Start menu, wait for 'Engine running', then double-click again."
+        "If Docker Desktop is installed, open it from the Start menu, wait " +
+        "for 'Engine running', then double-click again."
     )
     $script:ControlCenterExitCodes.Configuration = (
         'A setting or file is wrong (see above). Fix it, or ask the system ' +
