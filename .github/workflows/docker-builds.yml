@@ -40,3 +40,52 @@ jobs:
 
       - name: Build compose services
         run: docker compose build
+
+      - name: Start development application
+        run: docker compose -f docker-compose.development.yml up --detach --build
+
+      - name: Smoke test development API
+        run: |
+          python - <<'PY'
+          import json
+          import time
+          from urllib.error import HTTPError, URLError
+          from urllib.request import urlopen
+
+          url = "http://127.0.0.1:8000/health"
+          deadline = time.monotonic() + 120
+          last_error = "the service did not become ready"
+
+          while time.monotonic() < deadline:
+              try:
+                  with urlopen(url, timeout=5) as response:
+                      status_code = response.status
+                      payload = json.loads(response.read())
+
+                  if status_code != 200:
+                      last_error = f"expected HTTP 200, received HTTP {status_code}"
+                  elif not isinstance(payload, dict):
+                      last_error = "expected a JSON object response"
+                  elif payload.get("environment") != "development":
+                      last_error = (
+                          "expected environment=development, received "
+                          f"{payload.get('environment')!r}"
+                      )
+                  else:
+                      print(json.dumps(payload, indent=2, sort_keys=True))
+                      break
+              except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+                  last_error = str(exc)
+
+              time.sleep(2)
+          else:
+              raise SystemExit(f"Development API smoke test failed: {last_error}")
+          PY
+
+      - name: Print development Compose logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.development.yml logs --no-color
+
+      - name: Stop development application
+        if: always()
+        run: docker compose -f docker-compose.development.yml down --volumes --remove-orphans
