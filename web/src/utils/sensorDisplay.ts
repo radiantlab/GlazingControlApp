@@ -17,7 +17,7 @@ export function getFreshMetricsForSensor(
     nowSeconds = Date.now() / 1000,
 ): SensorReadingResponse[] {
     const cutoff = nowSeconds - sensorFreshnessWindowSeconds(sensor);
-    return latestMetrics.filter(metric => metric.sensor_id === sensor.id && metric.ts >= cutoff);
+    return latestMetrics.filter((metric) => metric.sensor_id === sensor.id && metric.ts >= cutoff);
 }
 
 /**
@@ -30,9 +30,8 @@ export function getDisplayMetricsForSensor(
     nowSeconds = Date.now() / 1000,
 ): { metrics: SensorReadingResponse[]; stale: boolean } {
     const fresh = getFreshMetricsForSensor(sensor, latestMetrics, nowSeconds);
-    const metrics = fresh.length > 0
-        ? fresh
-        : latestMetrics.filter(metric => metric.sensor_id === sensor.id);
+    const metrics =
+        fresh.length > 0 ? fresh : latestMetrics.filter((metric) => metric.sensor_id === sensor.id);
     return { metrics, stale: fresh.length === 0 };
 }
 
@@ -49,18 +48,21 @@ export function connectedSensors(
     latestMetrics: SensorReadingResponse[],
     nowSeconds = Date.now() / 1000,
 ): SensorInfo[] {
-    return sensors.filter(sensor => isSensorConnected(sensor, latestMetrics, nowSeconds));
+    return sensors.filter((sensor) => isSensorConnected(sensor, latestMetrics, nowSeconds));
 }
 
-export function pruneVisibleSensorIds(visibleSensorIds: string[], allowedSensorIds: string[]): string[] {
+export function pruneVisibleSensorIds(
+    visibleSensorIds: string[],
+    allowedSensorIds: string[],
+): string[] {
     const visibleSet = new Set(visibleSensorIds);
-    return allowedSensorIds.filter(id => visibleSet.has(id));
+    return allowedSensorIds.filter((id) => visibleSet.has(id));
 }
 
 function t10aOrder(sensor: SensorInfo): [number, number, string] {
     const raw = `${sensor.id} ${sensor.label}`.toLowerCase();
-    const parsed = raw.match(/t-?10a?\s*#?\s*(\d+).*?h(?:ead)?\s*(\d+)/i)
-        || raw.match(/t10a(\d+)-h(\d+)/i);
+    const parsed =
+        raw.match(/t-?10a?\s*#?\s*(\d+).*?h(?:ead)?\s*(\d+)/i) || raw.match(/t10a(\d+)-h(\d+)/i);
     if (!parsed) return [999, 999, sensor.label || sensor.id];
     return [Number(parsed[1]), Number(parsed[2]), sensor.label || sensor.id];
 }
