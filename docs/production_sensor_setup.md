@@ -348,7 +348,7 @@ After wiring and config:
 1. Start the API container in the `production` environment:
 
 ```powershell
-podman compose --env-file svc/.env.production up -d --build
+docker compose --env-file svc/.env.production up -d --build
 ```
 
 2. Confirm the service sees all configured sensors and reports their health:

@@ -2,7 +2,10 @@
 
 These instructions apply to AI-assisted work throughout this repository. Read
 [`CONTRIBUTING.md`](./CONTRIBUTING.md) and [`DEV-SETUP.md`](./DEV-SETUP.md)
-for contribution and setup steps.
+for contribution and setup steps. Before changing related code, read
+[`docs/requirements.md`](./docs/requirements.md) for what the system must do
+and its constraints, [`docs/design.md`](./docs/design.md) for how it works
+today, and [`docs/risks.md`](./docs/risks.md) for the ranked risks.
 
 ## Project Context
 
@@ -10,7 +13,7 @@ for contribution and setup steps.
   research trailer; improve the existing system rather than replacing it
   without evidence.
 - The stack is a Python 3.14 (`svc/.python-version`) FastAPI service,
-  React/TypeScript web client (Node 24, `.nvmrc`), SQLite, and Docker/Podman.
+  React/TypeScript web client (Node 24, `.nvmrc`), SQLite, and Docker.
   The trailer computer runs Windows.
 - The system is local-first and must keep core functions available when
   instruments are missing or unreachable; report instrument status and failures

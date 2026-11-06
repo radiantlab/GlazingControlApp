@@ -86,7 +86,7 @@ This project was originally built by Team 76 for the OSU Radiant Lab.
 - **Tyler Vincent** - [vincenty@oregonstate.edu](mailto:vincenty@oregonstate.edu)
 
 **Feedback & Contributions:**
-Please open an issue on GitHub or reach out to the team directly via email. For internal team communication, refer to Discord channel Team 76.
+Please open an issue on GitHub or reach out to the team directly via email.
 
 ---
 <div align="center">

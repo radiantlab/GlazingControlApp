@@ -1,7 +1,7 @@
 """Native-host physical sensor collection with durable API delivery.
 
-The production web service can run inside a Linux Podman VM, but Windows COM
-ports cannot be opened reliably from that VM.  This module keeps physical I/O
+The production web service runs in a Linux container inside a WSL 2 VM, and
+Windows COM ports cannot be opened reliably from that VM.  This module keeps physical I/O
 on the Windows host and forwards idempotent observations to the service.
 
 It intentionally never imports :mod:`app.state` and never opens ``audit.db``.

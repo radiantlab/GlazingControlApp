@@ -436,8 +436,8 @@ export default function SensorDocs() {
                                     overflowX: "auto",
                                 }}
                             >
-                                {`# From the repository root (docker compose works the same):
-podman compose --env-file svc/.env.production up -d --build
+                                {`# From the repository root:
+docker compose --env-file svc/.env.production up -d --build
 
 # Only if a device is marked "acquisition": "external":
 .\\scripts\\sensors\\Start-SensorAgent.ps1 -Command continuous`}
