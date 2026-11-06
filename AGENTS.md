@@ -88,12 +88,18 @@ today, and [`docs/risks.md`](./docs/risks.md) for the ranked risks.
   - Hooks: from the repository root, run `pre-commit run --all-files`.
   - Backend tests: from `svc`, run `uv run pytest tests/ -v`.
   - Frontend tests: from `web`, run `npm ci` when dependencies are absent,
-    then `npm run test`, `npm run typecheck`, and `npm run build`.
+    then `npm run lint`, `npm run test`, `npm run typecheck`, and
+    `npm run build`. `npm run lint` runs Biome; `npm run format` fixes
+    formatting.
+  - Sensor PowerShell scripts: from the repository root in Windows PowerShell
+    5.1, run `Import-Module Pester -RequiredVersion 3.4.0`, then
+    `Invoke-Pester -Path scripts/sensors/tests`.
   - Runtime, Dockerfile, or Compose changes: run
     `./scripts/check-runtime-versions.sh` and the container checks.
 - CI is defined in `.github/workflows/ci.yml` (`backend-tests`,
-  `frontend-checks`) and `.github/workflows/docker-builds.yml`
-  (`docker-builds`); keep local validation consistent with those jobs.
+  `frontend-checks`, `powershell-tests`) and
+  `.github/workflows/docker-builds.yml` (`docker-builds`); keep local
+  validation consistent with those jobs.
 - The docs are long. Search them with `grep` or `rg` for the term you need
   and read only the matching sections, rather than reading whole files.
 - Add or update tests for changed behavior, including relevant failure cases.
