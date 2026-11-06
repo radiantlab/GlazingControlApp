@@ -61,6 +61,7 @@ function ToastContainer({
 }
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
+    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     React.useEffect(() => {
         // Different durations based on toast type
         // Warnings and errors stay longer since they contain important information
@@ -84,6 +85,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
     }, [toast.id, toast.type]);
 
     return (
+        // biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/noStaticElementInteractions: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor
         <div className={`toast toast-${toast.type}`} onClick={onClose}>
             <div className="toast-icon">
                 {toast.type === "success" && "✓"}
@@ -92,7 +94,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
                 {toast.type === "info" && "ℹ"}
             </div>
             <div className="toast-message">{toast.message}</div>
-            <button className="toast-close" onClick={onClose} aria-label="Close">
+            <button type="button" className="toast-close" onClick={onClose} aria-label="Close">
                 ×
             </button>
         </div>

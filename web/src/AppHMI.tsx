@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import type { Panel, Group, AuditLogEntry } from "./types";
 import { mockApi } from "./mockData";
@@ -291,7 +291,7 @@ export default function AppHMI() {
 
             setHealth(`${h.status} • ${h.environment}`);
             setUsingMock(false);
-        } catch (err) {
+        } catch {
             // Fall back to mock data if API is unavailable
             try {
                 const [p, g, h] = await Promise.all([
@@ -319,6 +319,7 @@ export default function AppHMI() {
         }
     }
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     useEffect(() => {
         refresh();
         // Auto-refresh every 5 seconds to keep status current
@@ -333,6 +334,7 @@ export default function AppHMI() {
         };
     }, []);
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     useEffect(() => {
         if (!sensorIdsForControls.length) {
             setVisibleSensorIds([]);
@@ -352,9 +354,6 @@ export default function AppHMI() {
             // Check for control conflicts
             const existingControl = controlManager.getControlSource(panelId);
             if (existingControl && existingControl.type !== "manual") {
-                const priority = existingControl.type === "routine" ? 1 : 2;
-                const manualPriority = 3; // Manual always wins
-
                 // Take manual control (overrides everything)
                 const source: ControlSource = { type: "manual", panelId };
                 controlManager.takeControl(source, true);
@@ -389,7 +388,7 @@ export default function AppHMI() {
         } catch (e) {
             // Refresh even on error to ensure UI shows actual panel state
             await refresh();
-            if ((e as any)?.status === 429) {
+            if ((e as { status?: number })?.status === 429) {
                 showToast("Panel is busy, please wait before sending another command.", "warning");
             } else {
                 showToast(`Error: ${String(e)}`, "error");
@@ -651,6 +650,7 @@ export default function AppHMI() {
                         </div>
 
                         <button
+                            type="button"
                             className="hmi-clear-all-btn"
                             onClick={clearAll}
                             disabled={busy === "clear-all" || panels.length === 0}
@@ -660,6 +660,7 @@ export default function AppHMI() {
                         </button>
 
                         <button
+                            type="button"
                             className="hmi-manage-btn"
                             onClick={async () => {
                                 setLogsPanelOpen(true);
@@ -672,6 +673,7 @@ export default function AppHMI() {
                         </button>
 
                         <button
+                            type="button"
                             className="hmi-manage-btn"
                             onClick={() => {
                                 setSidePanelMode("groups");
@@ -683,6 +685,7 @@ export default function AppHMI() {
                         </button>
 
                         <button
+                            type="button"
                             className="hmi-manage-btn"
                             onClick={() => {
                                 setSidePanelMode("routines");
@@ -699,12 +702,14 @@ export default function AppHMI() {
                         >
                             <Link to="/docs" style={{ textDecoration: "none" }}>
                                 <button
+                                    type="button"
                                     className="hmi-manage-btn"
                                     title="View Docs"
                                     style={{ display: "flex", alignItems: "center", gap: "6px" }}
                                 >
                                     Docs
                                     <svg
+                                        aria-hidden="true"
                                         xmlns="http://www.w3.org/2000/svg"
                                         fill="none"
                                         viewBox="0 0 24 24"
@@ -727,6 +732,7 @@ export default function AppHMI() {
                                     onClick={() => setDocsDropdownOpen(false)}
                                 >
                                     <svg
+                                        aria-hidden="true"
                                         xmlns="http://www.w3.org/2000/svg"
                                         fill="none"
                                         viewBox="0 0 24 24"
@@ -749,6 +755,7 @@ export default function AppHMI() {
                                     onClick={() => setDocsDropdownOpen(false)}
                                 >
                                     <svg
+                                        aria-hidden="true"
                                         xmlns="http://www.w3.org/2000/svg"
                                         fill="none"
                                         viewBox="0 0 24 24"
@@ -771,6 +778,7 @@ export default function AppHMI() {
                                     onClick={() => setDocsDropdownOpen(false)}
                                 >
                                     <svg
+                                        aria-hidden="true"
                                         xmlns="http://www.w3.org/2000/svg"
                                         fill="none"
                                         viewBox="0 0 24 24"
@@ -794,12 +802,14 @@ export default function AppHMI() {
             <main className={`hmi-main ${sidePanelOpen ? "with-side-panel" : ""}`}>
                 <div className="hmi-main-tabs">
                     <button
+                        type="button"
                         className={`hmi-main-tab ${mainTab === "control" ? "active" : ""}`}
                         onClick={() => setMainTab("control")}
                     >
                         Control
                     </button>
                     <button
+                        type="button"
                         className={`hmi-main-tab ${mainTab === "sensors" ? "active" : ""}`}
                         onClick={() => setMainTab("sensors")}
                     >
@@ -818,6 +828,7 @@ export default function AppHMI() {
                     >
                         <Link to="/docs/sensors" target="_blank" rel="noopener noreferrer">
                             <button
+                                type="button"
                                 className="hmi-manage-btn"
                                 style={{
                                     display: "flex",
@@ -834,6 +845,7 @@ export default function AppHMI() {
                                 title="View Sensor Connection & Setup Quickstart Guide"
                             >
                                 <svg
+                                    aria-hidden="true"
                                     xmlns="http://www.w3.org/2000/svg"
                                     fill="none"
                                     viewBox="0 0 24 24"
@@ -918,6 +930,7 @@ export default function AppHMI() {
                                 />
 
                                 <button
+                                    type="button"
                                     className="hmi-manage-btn"
                                     onClick={() => groupId && setGroup(groupId, groupLevel)}
                                     disabled={!groupId || busy === groupId}
@@ -962,7 +975,12 @@ export default function AppHMI() {
                             </div>
                         </div>
                         <div className="sensor-visibility-body">
-                            <div className="sensor-visibility-list" aria-label="Visible sensors">
+                            {/* biome-ignore lint/a11y/useSemanticElements: <fieldset> default styling would change the layout; role=group gives the same semantics */}
+                            <div
+                                className="sensor-visibility-list"
+                                role="group"
+                                aria-label="Visible sensors"
+                            >
                                 {sensorListForControls.map((sensor) => {
                                     const active = visibleSensorIds.includes(sensor.id);
                                     const sensorKindLabel =
@@ -1031,6 +1049,7 @@ export default function AppHMI() {
                             </div>
                             <div className="sensor-visibility-actions">
                                 <button
+                                    type="button"
                                     className="sensor-visibility-action"
                                     onClick={() => {
                                         sensorVisibilityUserSet.current = true;
@@ -1040,6 +1059,7 @@ export default function AppHMI() {
                                     All
                                 </button>
                                 <button
+                                    type="button"
                                     className="sensor-visibility-action"
                                     onClick={() => {
                                         sensorVisibilityUserSet.current = true;
@@ -1061,7 +1081,9 @@ export default function AppHMI() {
                             latestMetrics,
                         );
                         const metricMap = new Map<string, SensorReadingResponse>();
-                        sensorMetrics.forEach((m) => metricMap.set(m.metric, m));
+                        sensorMetrics.forEach((m) => {
+                            metricMap.set(m.metric, m);
+                        });
                         const metricNames = Array.from(metricMap.keys());
                         const orderedMetricNames = orderMetrics(sensor.kind, metricNames);
                         const availableGraphMetrics = graphMetricOptions(sensor.kind, metricNames);
@@ -1274,6 +1296,7 @@ export default function AppHMI() {
                                                             }}
                                                         >
                                                             <svg
+                                                                aria-hidden="true"
                                                                 xmlns="http://www.w3.org/2000/svg"
                                                                 fill="none"
                                                                 viewBox="0 0 24 24"
@@ -1322,6 +1345,7 @@ export default function AppHMI() {
                                                     </span>
                                                     {sensor.kind === "jeti_spectraval" && (
                                                         <button
+                                                            type="button"
                                                             className="hmi-manage-btn"
                                                             onClick={() =>
                                                                 setSpectralModal({
@@ -1570,6 +1594,7 @@ export default function AppHMI() {
                                                         }}
                                                     >
                                                         <svg
+                                                            aria-hidden="true"
                                                             xmlns="http://www.w3.org/2000/svg"
                                                             fill="none"
                                                             viewBox="0 0 24 24"
@@ -1623,6 +1648,7 @@ export default function AppHMI() {
                                                 )}
                                                 {sensor.kind === "jeti_spectraval" && (
                                                     <button
+                                                        type="button"
                                                         className="hmi-manage-btn"
                                                         onClick={() =>
                                                             setSpectralModal({
@@ -1711,6 +1737,7 @@ export default function AppHMI() {
                                     <div className="sensor-graph-panel">
                                         {availableGraphMetrics.length > 1 && (
                                             <div className="sensor-graph-controls">
+                                                {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
                                                 <label className="hmi-status-label">
                                                     Graph metric
                                                 </label>
@@ -1825,11 +1852,13 @@ export default function AppHMI() {
 
             {spectralModal && (
                 <>
+                    {/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor */}
                     <div
                         className="side-panel-overlay"
                         onClick={() => setSpectralModal(null)}
                         style={{ zIndex: 1200 }}
                     />
+                    {/* biome-ignore lint/a11y/useKeyWithClickEvents: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor */}
                     <div
                         className="logs-modal"
                         role="dialog"
@@ -1850,11 +1879,13 @@ export default function AppHMI() {
                                     : " (Live)"}
                             </h2>
                             <button
+                                type="button"
                                 className="logs-modal-close"
                                 onClick={() => setSpectralModal(null)}
                                 aria-label="Close spectrum"
                             >
                                 <svg
+                                    aria-hidden="true"
                                     xmlns="http://www.w3.org/2000/svg"
                                     fill="none"
                                     viewBox="0 0 24 24"

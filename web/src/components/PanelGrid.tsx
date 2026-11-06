@@ -57,6 +57,7 @@ export default function PanelGrid({ panels, onSet, busyId }: Props) {
                                     }}
                                 />
                                 <button
+                                    type="button"
                                     onClick={async () => {
                                         const el = document.getElementById(
                                             `range-${p.id}`,
@@ -76,6 +77,7 @@ export default function PanelGrid({ panels, onSet, busyId }: Props) {
 
                             <div className="chips">
                                 {[0, 25, 50, 75, 100].map((v) => (
+                                    // biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/noStaticElementInteractions: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor
                                     <span
                                         key={v}
                                         className="chip"

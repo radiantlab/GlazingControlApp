@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
     Area,
     AreaChart,
@@ -31,14 +31,15 @@ export default function SpectralGraph({ sensorId, fixedTs, height = 350 }: Spect
             }
             setData(res);
             setError(null);
-        } catch (err: any) {
+        } catch (err) {
             console.error("Failed to load spectral data", err);
-            setError(err.message || String(err));
+            setError(err instanceof Error && err.message ? err.message : String(err));
         } finally {
             setLoading(false);
         }
     };
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     useEffect(() => {
         setLoading(true);
         loadData();
@@ -85,7 +86,7 @@ export default function SpectralGraph({ sensorId, fixedTs, height = 350 }: Spect
         );
     }
 
-    if (!data || !data.values || !data.values.length) {
+    if (!data?.values?.length) {
         return (
             <div
                 style={{
@@ -169,7 +170,7 @@ export default function SpectralGraph({ sensorId, fixedTs, height = 350 }: Spect
                             color: "var(--hmi-text)",
                         }}
                         labelFormatter={(label) => `Wavelength: ${label} nm`}
-                        formatter={(value: any) => [formatValue(Number(value)), "Irradiance"]}
+                        formatter={(value) => [formatValue(Number(value)), "Irradiance"]}
                     />
                     <Area
                         type="monotone"

@@ -987,7 +987,6 @@ body {
 .side-panel-close {
     width: 32px;
     height: 32px;
-    border: none;
     background: var(--hmi-surface);
     border: 1px solid var(--hmi-border);
     border-radius: 6px;
@@ -1087,11 +1086,15 @@ body {
 }
 
 /* form controls unified HMI styling */
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 input[type="text"],
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 input[type="number"],
 input[type="password"],
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 input[type="datetime-local"],
 textarea,
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 select {
     padding: 10px 12px;
     background: var(--hmi-bg-alt);
@@ -1125,6 +1128,7 @@ textarea::placeholder {
 
 input:focus,
 textarea:focus,
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 select:focus {
     border-color: var(--hmi-primary);
     box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
@@ -1140,6 +1144,7 @@ select:disabled {
     cursor: not-allowed;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 input[type="number"] {
     -moz-appearance: textfield;
     padding-right: 10px;
@@ -1151,6 +1156,7 @@ input[type="number"]::-webkit-inner-spin-button {
     margin: 0;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 select {
     background-image:
         linear-gradient(45deg, transparent 50%, var(--hmi-text) 50%),
@@ -1196,7 +1202,9 @@ select::-ms-expand {
 }
 
 .input-error {
+    /* biome-ignore lint/complexity/noImportantStyles: needed to override inline/component styles; removing it changes rendering */
     border-color: var(--hmi-danger) !important;
+    /* biome-ignore lint/complexity/noImportantStyles: needed to override inline/component styles; removing it changes rendering */
     box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.06) !important;
 }
 
@@ -1814,6 +1822,7 @@ select option[disabled] {
     color: var(--hmi-text);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 .sensor-visibility-row input {
     width: 16px;
     height: 16px;
@@ -2411,7 +2420,9 @@ select option[disabled] {
     margin-bottom: 0;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 .logs-sensor-filter-grid select,
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 .logs-sensor-filter-grid input {
     width: 100%;
 }
@@ -2468,17 +2479,21 @@ select option[disabled] {
     flex: 1;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 .logs-date-time-field span,
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 .logs-latest-inputs span {
     color: var(--hmi-text-muted);
     font-size: 12px;
     font-weight: 700;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 .logs-latest-inputs input {
     max-width: 92px;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: rule order is intentional; reordering would change the cascade */
 .logs-latest-inputs select {
     max-width: 150px;
 }
@@ -2760,6 +2775,7 @@ select option[disabled] {
 }
 
 .routine-editor-toolbar label {
+    /* biome-ignore lint/complexity/noImportantStyles: needed to override inline/component styles; removing it changes rendering */
     margin-bottom: 0 !important;
 }
 
@@ -2915,14 +2931,19 @@ select option[disabled] {
     display: flex;
     align-items: center;
     gap: 6px;
+    /* biome-ignore lint/complexity/noImportantStyles: needed to override inline/component styles; removing it changes rendering */
     margin-bottom: 0 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: needed to override inline/component styles; removing it changes rendering */
     text-transform: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: needed to override inline/component styles; removing it changes rendering */
     font-size: 13px !important;
 }
 
 .routine-interval-input {
     width: 80px;
+    /* biome-ignore lint/complexity/noImportantStyles: needed to override inline/component styles; removing it changes rendering */
     padding: 6px 8px !important;
+    /* biome-ignore lint/complexity/noImportantStyles: needed to override inline/component styles; removing it changes rendering */
     font-size: 13px !important;
 }
 
@@ -3296,6 +3317,7 @@ select option[disabled] {
    ======================================= */
 
 .docs-layout {
+    /* biome-ignore lint/complexity/noImportantStyles: needed to override inline/component styles; removing it changes rendering */
     max-width: 1000px !important;
     margin: 0 auto;
     padding: 24px 16px;

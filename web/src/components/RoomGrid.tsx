@@ -230,6 +230,7 @@ function PanelTile({
                 <div className="panel-tile-quick-controls">
                     {[0, 25, 50, 75, 100].map((v) => (
                         <button
+                            type="button"
                             key={v}
                             className="panel-tile-quick-btn"
                             disabled={isBusy}
@@ -247,13 +248,14 @@ function PanelTile({
                 </div>
 
                 <button
+                    type="button"
                     className="panel-tile-apply-btn"
                     disabled={isBusy || readSliderValue() === panel.level}
                     onClick={async () => {
                         const val = readSliderValue();
                         try {
                             await onSet(panel.id, val);
-                        } catch (e) {
+                        } catch {
                             setLocalLevel(panel.level);
                         }
                     }}

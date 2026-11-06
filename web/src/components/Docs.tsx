@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "react-router-dom";
 
 export default function Docs() {
@@ -16,7 +15,7 @@ export default function Docs() {
                     </div>
                     <div className="hmi-status">
                         <Link to="/">
-                            <button className="hmi-manage-btn" title="Back to Home">
+                            <button type="button" className="hmi-manage-btn" title="Back to Home">
                                 Back to Home
                             </button>
                         </Link>

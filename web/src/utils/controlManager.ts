@@ -141,7 +141,9 @@ export class ControlManager {
 
     private notifyListeners(): void {
         const state = this.getActiveControllers();
-        this.listeners.forEach((listener) => listener(state));
+        this.listeners.forEach((listener) => {
+            listener(state);
+        });
     }
 
     private sourcesMatch(a: ControlSource, b: ControlSource): boolean {
@@ -158,7 +160,7 @@ export class ControlManager {
         return false;
     }
 
-    private getGroupName(groupId: string): string | null {
+    private getGroupName(_groupId: string): string | null {
         // This would need to be passed in or fetched
         // For now, return null
         return null;

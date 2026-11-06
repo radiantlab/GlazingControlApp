@@ -1,4 +1,3 @@
-import React from "react";
 import type { ControlState } from "../utils/controlManager";
 
 type Props = {
@@ -36,6 +35,7 @@ export default function ActiveControllersBar({
                         </div>
                         {onCancelRoutine && (
                             <button
+                                type="button"
                                 className="active-controller-cancel"
                                 onClick={() => onCancelRoutine(id)}
                                 title="Cancel routine"
@@ -59,6 +59,7 @@ export default function ActiveControllersBar({
                         </div>
                         {onCancelGroup && (
                             <button
+                                type="button"
                                 className="active-controller-cancel"
                                 onClick={() => onCancelGroup(id)}
                                 title="Release group control"

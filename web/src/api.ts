@@ -11,7 +11,7 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
         const text = await res.text();
         // Preserve status code in error message for dwell time detection
         const error = new Error(`${res.status} ${text}`);
-        (error as any).status = res.status;
+        (error as Error & { status?: number }).status = res.status;
         throw error;
     }
     // some endpoints return no body (eg 204) so guard
@@ -149,7 +149,9 @@ export const api = {
         params.append("sort_field", sortField);
         params.append("sort_dir", sortDir);
         if (sensorId) params.append("sensor_id", sensorId);
-        filters?.sensorIds?.forEach((id) => params.append("sensor_ids", id));
+        filters?.sensorIds?.forEach((id) => {
+            params.append("sensor_ids", id);
+        });
         if (filters?.sensorKind) params.append("sensor_kind", filters.sensorKind);
         if (metric) params.append("metric", metric);
         if (tsFrom != null) params.append("ts_from", String(tsFrom));
@@ -171,7 +173,9 @@ export const api = {
         params.append("sort_field", sortField);
         params.append("sort_dir", sortDir);
         if (sensorId) params.append("sensor_id", sensorId);
-        filters?.sensorIds?.forEach((id) => params.append("sensor_ids", id));
+        filters?.sensorIds?.forEach((id) => {
+            params.append("sensor_ids", id);
+        });
         if (filters?.sensorKind) params.append("sensor_kind", filters.sensorKind);
         if (metric) params.append("metric", metric);
         if (tsFrom != null) params.append("ts_from", String(tsFrom));
@@ -261,6 +265,7 @@ export type SensorInfo = {
     kind: string;
     label: string;
     location?: string;
+    // biome-ignore lint/suspicious/noExplicitAny: sensor config is free-form JSON from the backend; callers read ad-hoc keys like custom_label
     config: any;
 };
 

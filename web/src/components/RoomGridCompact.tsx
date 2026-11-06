@@ -1,4 +1,3 @@
-import React from "react";
 import type { Panel } from "../types";
 import { isSkylightPanel, organizePanelsByRoom } from "../utils/panelRooms";
 import type { ControlSource } from "../utils/controlManager";

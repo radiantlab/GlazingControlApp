@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "react-router-dom";
 
 export default function SensorDocs() {
@@ -16,7 +15,7 @@ export default function SensorDocs() {
                     </div>
                     <div className="hmi-status">
                         <Link to="/">
-                            <button className="hmi-manage-btn" title="Back to Home">
+                            <button type="button" className="hmi-manage-btn" title="Back to Home">
                                 Back to Home
                             </button>
                         </Link>
@@ -63,6 +62,7 @@ export default function SensorDocs() {
                         }}
                     >
                         <svg
+                            aria-hidden="true"
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
                             viewBox="0 0 24 24"
@@ -338,7 +338,6 @@ export default function SensorDocs() {
                         Network & Hardware Setup:
                     </h3>
                     <ol style={{ lineHeight: "1.6", paddingLeft: "20px", margin: "0 0 20px 0" }}>
-
                         <li style={{ marginBottom: "8px" }}>
                             Verify the EKO sensors are wired into the C-BOX and powered.
                         </li>
@@ -354,7 +353,6 @@ export default function SensorDocs() {
                             <strong>Modbus TCP Access</strong> is enabled (allow access from any IP
                             address).
                         </li>
-
                     </ol>
 
                     <h3

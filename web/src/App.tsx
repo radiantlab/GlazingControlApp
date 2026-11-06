@@ -21,6 +21,7 @@ export default function App() {
         if (!groupId && g.length) setGroupId(g[0].id);
     }
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     useEffect(() => {
         refresh().catch((err) => setHealth(`error  ${String(err)}`));
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,12 +97,17 @@ export default function App() {
                                 setGroupLevel(Number(e.target.value))
                             }
                         />
-                        <button onClick={setGroup} disabled={!groupId || busy === groupId}>
+                        <button
+                            type="button"
+                            onClick={setGroup}
+                            disabled={!groupId || busy === groupId}
+                        >
                             {busy === groupId ? "Setting..." : "Tint Group"}
                         </button>
 
                         <div className="chips">
                             {[0, 25, 50, 75, 100].map((v) => (
+                                // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor
                                 <span key={v} className="chip" onClick={() => setGroupLevel(v)}>
                                     {v}
                                 </span>

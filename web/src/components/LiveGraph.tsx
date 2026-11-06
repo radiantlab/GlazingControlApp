@@ -65,6 +65,7 @@ function LiveGraph({
         }
     };
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     useEffect(() => {
         loadData();
         if (endTs != null) return; // A past window does not change

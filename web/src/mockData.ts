@@ -225,7 +225,7 @@ export const mockApi = {
 
         if (timeSinceLastChange < MIN_DWELL_SECONDS && panel.level !== level) {
             // Simulate 429 error for dwell time
-            const error: any = new Error("429 dwell time not met");
+            const error: Error & { status?: number } = new Error("429 dwell time not met");
             error.status = 429;
             throw error;
         }
@@ -262,7 +262,7 @@ export const mockApi = {
             }
         });
         if (blockedPanels.length > 0) {
-            const error: any = new Error(
+            const error: Error & { status?: number; blocked_panels?: string[] } = new Error(
                 `429 dwell time not met for panels: ${blockedPanels.join(", ")}`,
             );
             error.status = 429;
