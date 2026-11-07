@@ -1,7 +1,7 @@
-# Shared logic for Invoke-ControlCenter.ps1, kept separate so Pester can test
-# it without a container engine. Every external command goes through
-# Invoke-ControlCenterNative, and every host check through a small function,
-# so tests can mock them.
+# Shared logic for Invoke-ControlCenter.ps1 and ControlCenter.Launcher.ps1, kept
+# separate so Pester can test it without a container engine. Every external
+# command goes through Invoke-ControlCenterNative, and every host check through
+# a small function, so tests can mock them.
 #
 # No Set-StrictMode here: this file is dot-sourced into the caller's scope, so
 # a mode set here would replace the caller's `Set-StrictMode -Version Latest`.
@@ -16,9 +16,17 @@
 $script:ControlCenterAppService = 'app'
 $script:ControlCenterDataTarget = '/app/svc/data'
 
-# Exit code for an exception the script did not raise itself, so a bug is
-# never reported as one of the documented causes.
-$script:ControlCenterUnexpectedExitCode = 5
+# The exit codes of Invoke-ControlCenter.ps1 and Open-ControlCenter.ps1, named
+# once so every throw site and the launcher's next steps use the same values.
+# Unexpected is for an exception the scripts did not raise themselves, so a bug
+# is never reported as one of the documented causes.
+$script:ControlCenterExitCodes = @{
+    Engine = 1
+    Configuration = 2
+    Compose = 3
+    HealthTimeout = 4
+    Unexpected = 5
+}
 
 # The variable behind each bind mount, so errors name what to fix in the env
 # file rather than a container path.
@@ -31,8 +39,10 @@ $script:ControlCenterMountVariables = @{
 
 function New-ControlCenterError {
     param(
+        # A name from $script:ControlCenterExitCodes, which gives the exit code.
         [Parameter(Mandatory = $true)]
-        [int]$ExitCode,
+        [ValidateSet('Engine', 'Configuration', 'Compose', 'HealthTimeout')]
+        [string]$Kind,
 
         [Parameter(Mandatory = $true)]
         [string]$Message,
@@ -41,7 +51,7 @@ function New-ControlCenterError {
     )
 
     $exception = New-Object System.Exception $Message
-    $exception.Data['ExitCode'] = $ExitCode
+    $exception.Data['ExitCode'] = $script:ControlCenterExitCodes[$Kind]
     $exception.Data['Reason'] = $Reason
     return $exception
 }
@@ -56,7 +66,7 @@ function Get-ControlCenterExitCode {
     if ($data.Contains('ExitCode')) {
         return [int]$data['ExitCode']
     }
-    return $script:ControlCenterUnexpectedExitCode
+    return $script:ControlCenterExitCodes.Unexpected
 }
 
 function Get-ControlCenterErrorReason {
@@ -162,7 +172,7 @@ function Resolve-ControlCenterDocker {
     # is only reported.
     $dockerPath = Find-ControlCenterCommand -Name 'docker'
     if (-not $dockerPath) {
-        throw (New-ControlCenterError -ExitCode 1 -Reason 'NotInstalled' -Message (
+        throw (New-ControlCenterError -Kind Engine -Reason 'NotInstalled' -Message (
             'Docker is not installed. Install it (see DEV-SETUP.md) and run ' +
             'this again.'
         ))
@@ -171,7 +181,7 @@ function Resolve-ControlCenterDocker {
     $info = Invoke-ControlCenterNative -FilePath $dockerPath `
         -Arguments @('info', '--format', '{{.ServerVersion}}')
     if ($info.ExitCode -ne 0) {
-        throw (New-ControlCenterError -ExitCode 1 -Reason 'EngineStopped' -Message (
+        throw (New-ControlCenterError -Kind Engine -Reason 'EngineStopped' -Message (
             'Docker is installed but not running. Start Docker Desktop (or ' +
             'the Docker service) and run this again.'
         ))
@@ -180,7 +190,7 @@ function Resolve-ControlCenterDocker {
     $compose = Invoke-ControlCenterNative -FilePath $dockerPath `
         -Arguments @('compose', 'version')
     if ($compose.ExitCode -ne 0) {
-        throw (New-ControlCenterError -ExitCode 1 -Reason 'NoCompose' -Message (
+        throw (New-ControlCenterError -Kind Engine -Reason 'NoCompose' -Message (
             "'docker compose' does not work:`n" + (Get-ControlCenterNativeText -Result $compose)
         ))
     }
@@ -237,7 +247,7 @@ function Get-ControlCenterApp {
     )
 
     if (-not (Test-Path -LiteralPath $Project.EnvFile -PathType Leaf)) {
-        throw (New-ControlCenterError -ExitCode 2 -Reason 'NoEnvFile' -Message (
+        throw (New-ControlCenterError -Kind Configuration -Reason 'NoEnvFile' -Message (
             "Env file not found: $($Project.EnvFile). Create it from " +
             'svc/.env.production.example (see DEV-SETUP.md).'
         ))
@@ -248,7 +258,7 @@ function Get-ControlCenterApp {
     $result = Invoke-ControlCenterCompose -Project $Project `
         -Arguments @('config', '--format', 'json', '--no-path-resolution')
     if ($result.ExitCode -ne 0) {
-        throw (New-ControlCenterError -ExitCode 2 -Reason 'ComposeConfig' -Message (
+        throw (New-ControlCenterError -Kind Configuration -Reason 'ComposeConfig' -Message (
             "Compose could not read $($Project.EnvFile):`n" +
             (Get-ControlCenterNativeText -Result $result)
         ))
@@ -258,7 +268,7 @@ function Get-ControlCenterApp {
     $services = Get-ControlCenterProperty $config 'services'
     $app = Get-ControlCenterProperty $services $script:ControlCenterAppService
     if ($null -eq $app) {
-        throw (New-ControlCenterError -ExitCode 2 -Message (
+        throw (New-ControlCenterError -Kind Configuration -Message (
             "docker-compose.yml has no '$script:ControlCenterAppService' service."
         ))
     }
@@ -320,12 +330,12 @@ function Assert-ControlCenterMounts {
         }
 
         if (-not $mount.Source -or -not (Test-ControlCenterAbsolutePath -Path $mount.Source)) {
-            throw (New-ControlCenterError -ExitCode 2 -Reason 'RelativePath' -Message (
+            throw (New-ControlCenterError -Kind Configuration -Reason 'RelativePath' -Message (
                 "$name must be an absolute path, not '$($mount.Source)'."
             ))
         }
         if (-not (Test-Path -LiteralPath $mount.Source)) {
-            throw (New-ControlCenterError -ExitCode 2 -Reason 'MissingPath' -Message (
+            throw (New-ControlCenterError -Kind Configuration -Reason 'MissingPath' -Message (
                 "$name does not exist: $($mount.Source)"
             ))
         }
@@ -333,7 +343,7 @@ function Assert-ControlCenterMounts {
         if ($mount.Target -eq $script:ControlCenterDataTarget) {
             $database = Join-Path $mount.Source 'audit.db'
             if (-not (Test-Path -LiteralPath $database -PathType Leaf)) {
-                throw (New-ControlCenterError -ExitCode 2 -Reason 'NoDatabase' -Message (
+                throw (New-ControlCenterError -Kind Configuration -Reason 'NoDatabase' -Message (
                     "audit.db not found in $name ($($mount.Source)). Production " +
                     'refuses to start without it; see the restore steps in ' +
                     'svc/README.md.'
@@ -481,13 +491,13 @@ function Wait-ControlCenterHealth {
         if ($null -eq $container -or $container.Status -ne 'running' -or
             $container.RestartCount -gt $RestartCount) {
             Write-ControlCenterLogs -Project $Project -Name $App.ContainerName
-            throw (New-ControlCenterError -ExitCode 3 -Reason 'ContainerExited' -Message (
+            throw (New-ControlCenterError -Kind Compose -Reason 'ContainerExited' -Message (
                 "$($App.ContainerName) stopped or restarted before /health answered."
             ))
         }
 
         if ($stopwatch.Elapsed.TotalSeconds -ge $TimeoutSeconds) {
-            throw (New-ControlCenterError -ExitCode 4 -Reason 'HealthTimeout' -Message (
+            throw (New-ControlCenterError -Kind HealthTimeout -Reason 'HealthTimeout' -Message (
                 "/health did not answer within $TimeoutSeconds seconds. Check " +
                 "'docker logs $($App.ContainerName)'."
             ))
@@ -521,7 +531,7 @@ function Write-ControlCenterHealth {
     }
 
     if ($environment -ne 'production' -or $controlSource -ne 'physical') {
-        throw (New-ControlCenterError -ExitCode 2 -Reason 'WrongEnvironment' -Message (
+        throw (New-ControlCenterError -Kind Configuration -Reason 'WrongEnvironment' -Message (
             "Expected environment 'production' and control_source 'physical', " +
             "got '$environment' and '$controlSource'. Check SVC_ENVIRONMENT and " +
             "that port $Port belongs to this stack."
@@ -546,14 +556,34 @@ function Start-ControlCenter {
     )
 
     $app = Get-ControlCenterApp -Project $Project
-    Assert-ControlCenterMounts -App $app
+    Start-ControlCenterApp -Project $Project -App $app `
+        -TimeoutSeconds $TimeoutSeconds -Build:$Build
+}
+
+function Start-ControlCenterApp {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Project,
+
+        # From Get-ControlCenterApp. Separate from Start-ControlCenter so the
+        # launcher can reuse the port without reading the config twice.
+        [Parameter(Mandatory = $true)]
+        [object]$App,
+
+        [Parameter(Mandatory = $true)]
+        [int]$TimeoutSeconds,
+
+        [switch]$Build
+    )
+
+    Assert-ControlCenterMounts -App $App
 
     $restartCount = 0
     $container = Get-ControlCenterContainer -Project $Project -Name $app.ContainerName
     if ($null -ne $container -and $container.Status -eq 'paused') {
         # A paused container still holds the port, so it is ours, not a
         # conflict, but compose up does not resume it.
-        throw (New-ControlCenterError -ExitCode 3 -Reason 'Paused' -Message (
+        throw (New-ControlCenterError -Kind Compose -Reason 'Paused' -Message (
             "$($app.ContainerName) is paused. Run 'docker unpause " +
             "$($app.ContainerName)', or Stop and then Start."
         ))
@@ -564,7 +594,7 @@ function Start-ControlCenter {
     }
     else {
         if (Test-ControlCenterPortOpen -Port $app.Port) {
-            throw (New-ControlCenterError -ExitCode 2 -Reason 'PortInUse' -Message (
+            throw (New-ControlCenterError -Kind Configuration -Reason 'PortInUse' -Message (
                 "Port $($app.Port) is in use by another process, so " +
                 "$($app.ContainerName) cannot start. Stop that process first."
             ))
@@ -577,7 +607,7 @@ function Start-ControlCenter {
         Write-Host "Starting $($app.ContainerName)..."
         $result = Invoke-ControlCenterCompose -Project $Project -Arguments $arguments
         if ($result.ExitCode -ne 0) {
-            throw (New-ControlCenterError -ExitCode 3 -Reason 'ComposeUp' -Message (
+            throw (New-ControlCenterError -Kind Compose -Reason 'ComposeUp' -Message (
                 "docker compose up failed:`n" + (Get-ControlCenterNativeText -Result $result)
             ))
         }
@@ -604,7 +634,7 @@ function Stop-ControlCenter {
     [void](Get-ControlCenterApp -Project $Project)
     $result = Invoke-ControlCenterCompose -Project $Project -Arguments @('down')
     if ($result.ExitCode -ne 0) {
-        throw (New-ControlCenterError -ExitCode 3 -Reason 'ComposeDown' -Message (
+        throw (New-ControlCenterError -Kind Compose -Reason 'ComposeDown' -Message (
             "docker compose down failed:`n" + (Get-ControlCenterNativeText -Result $result)
         ))
     }
@@ -628,7 +658,7 @@ function Get-ControlCenterStatus {
         if ($state -ne 'paused' -and (Test-ControlCenterPortOpen -Port $app.Port)) {
             $message += " Another process holds port $($app.Port), so Start would fail."
         }
-        throw (New-ControlCenterError -ExitCode 3 -Reason 'NotRunning' -Message $message)
+        throw (New-ControlCenterError -Kind Compose -Reason 'NotRunning' -Message $message)
     }
 
     Write-Host "$($app.ContainerName) is running."
