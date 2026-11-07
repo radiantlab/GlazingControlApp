@@ -4,6 +4,10 @@ const DEFAULT_SENSOR_FRESHNESS_SECONDS = 120;
 const MIN_SENSOR_FRESHNESS_SECONDS = 30;
 
 export function sensorFreshnessWindowSeconds(sensor: SensorInfo): number {
+    const staleAfterSeconds = Number(sensor.config?.stale_after_s);
+    if (Number.isFinite(staleAfterSeconds) && staleAfterSeconds > 0) {
+        return staleAfterSeconds;
+    }
     const intervalSeconds = Number(sensor.config?.interval_s);
     if (Number.isFinite(intervalSeconds) && intervalSeconds > 0) {
         return Math.max(MIN_SENSOR_FRESHNESS_SECONDS, intervalSeconds * 3);
@@ -17,7 +21,7 @@ export function getFreshMetricsForSensor(
     nowSeconds = Date.now() / 1000,
 ): SensorReadingResponse[] {
     const cutoff = nowSeconds - sensorFreshnessWindowSeconds(sensor);
-    return latestMetrics.filter(metric => metric.sensor_id === sensor.id && metric.ts >= cutoff);
+    return latestMetrics.filter(metric => metric.sensor_id === sensor.id && metric.ts > cutoff);
 }
 
 /**

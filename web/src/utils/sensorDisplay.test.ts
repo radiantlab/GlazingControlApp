@@ -30,6 +30,32 @@ describe("sensorDisplay", () => {
         expect(sensorFreshnessWindowSeconds(sensor("unknown"))).toBe(120);
     });
 
+    it.each([10, 300])("uses stale_after_s=%s instead of the polling interval", staleAfterSeconds => {
+        const configuredSensor = {
+            ...sensor("S1", 60),
+            config: { interval_s: 60, stale_after_s: staleAfterSeconds },
+        };
+        const readings = [
+            reading("S1", "lux", 1000 - staleAfterSeconds + 1),
+            reading("S1", "board_temp_c", 1000 - staleAfterSeconds),
+        ];
+
+        expect(sensorFreshnessWindowSeconds(configuredSensor)).toBe(staleAfterSeconds);
+        expect(getFreshMetricsForSensor(configuredSensor, readings, 1000)).toEqual([readings[0]]);
+    });
+
+    it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+        "falls back to the polling interval for invalid stale_after_s=%s",
+        staleAfterSeconds => {
+            const configuredSensor = {
+                ...sensor("S1", 60),
+                config: { interval_s: 60, stale_after_s: staleAfterSeconds },
+            };
+
+            expect(sensorFreshnessWindowSeconds(configuredSensor)).toBe(180);
+        },
+    );
+
     it("returns only sensors with recent latest metrics", () => {
         const sensors = [sensor("fresh", 10), sensor("stale", 10), sensor("default-window")];
         const metrics = [
