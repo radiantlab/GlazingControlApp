@@ -71,6 +71,9 @@ class HealthResponse(BaseModel):
     environment: Literal["development", "production"] = Field(
         description="Current deployment environment"
     )
+    revision: str = Field(
+        description="Git commit used to build the application"
+    )
     control_source: Literal["simulated", "physical"] = Field(
         description="Effective panel-control source"
     )
@@ -87,6 +90,10 @@ class HealthResponse(BaseModel):
         default_factory=list,
         description="Current sensor startup or polling errors",
     )
+    revision: str = Field(
+    description="Git revision used to build the application"
+    )
+
 
 
 class GroupCreate(BaseModel):
