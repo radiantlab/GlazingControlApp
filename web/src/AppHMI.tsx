@@ -11,7 +11,10 @@ import { useToast } from "./utils/toast";
 import LogsPanel from "./components/LogsPanel";
 import { Link } from "react-router-dom";
 import LiveGraph from "./components/LiveGraph";
-import type { SensorInfo, SensorReadingResponse } from "./api";
+import type { SensorReadingResponse } from "./api";
+import SystemHealthDetails from "./components/SystemHealthDetails";
+import { useSystemHealth } from "./utils/useSystemHealth";
+import { lastSensorReadingText, sensorHealthIssues } from "./utils/sensorHealth";
 import {
     getDisplayMetricsForSensor,
     pruneVisibleSensorIds,
@@ -212,7 +215,20 @@ function formatMetricTimestamp(ts: number): string {
 }
 
 export default function AppHMI() {
-    const [health, setHealth] = useState<string>("checking");
+    const diagnostics = useSystemHealth();
+    const { health, healthError, sensors, latestMetrics, refreshHealth } = diagnostics;
+    const [controlError, setControlError] = useState<string | null>(null);
+    const systemStatusText = healthError
+        ? "unavailable"
+        : controlError
+          ? "control unavailable"
+          : health?.status || "checking";
+    const systemStatusClass =
+        health?.status === "ok" && !healthError && !controlError
+            ? "status-ok"
+            : health || healthError || controlError
+              ? "status-error"
+              : "status-checking";
     const [mainTab, setMainTab] = useState<"control" | "sensors">("control");
     const [panels, setPanels] = useState<Panel[]>([]);
     const [groups, setGroups] = useState<Group[]>([]);
@@ -229,8 +245,6 @@ export default function AppHMI() {
     const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
     const [logsLoading, setLogsLoading] = useState<boolean>(false);
     const [logsError, setLogsError] = useState<string | null>(null);
-    const [sensors, setSensors] = useState<SensorInfo[]>([]);
-    const [latestMetrics, setLatestMetrics] = useState<SensorReadingResponse[]>([]);
     const [graphMetricBySensor, setGraphMetricBySensor] = useState<Record<string, string>>({});
     const [visibleSensorIds, setVisibleSensorIds] = useState<string[]>([]);
     const sensorVisibilityUserSet = useRef(false);
@@ -268,52 +282,39 @@ export default function AppHMI() {
     const sensorControlKey = sensorIdsForControls.join("|");
     const selectedGroup = groups.find((g) => g.id === groupId);
     const highlightedPanelIds = new Set(selectedGroup?.member_ids || []);
+    const healthIssues = sensorHealthIssues(health?.sensor_errors || [], sensors);
 
     async function refresh() {
+        // Health and sensor diagnostics must still refresh if panel control fails.
+        void refreshHealth();
         try {
             // Try the backend API first
-            const [p, g, h, s, m] = await Promise.all([
-                api.panels(),
-                api.groups(),
-                api.health(),
-                api.listSensors(),
-                api.getLatestMetrics(),
-            ]);
+            const [p, g] = await Promise.all([api.panels(), api.groups()]);
             setPanels(p);
             setGroups(g);
-            setSensors(s);
-            setLatestMetrics(m);
 
             // set default group only once, without stomping user choice
             if (g.length) {
                 setGroupId((prev) => prev || g[0].id);
             }
 
-            setHealth(`${h.status} • ${h.environment}`);
+            setControlError(null);
             setUsingMock(false);
         } catch {
             // Fall back to mock data if API is unavailable
             try {
-                const [p, g, h] = await Promise.all([
-                    mockApi.panels(),
-                    mockApi.groups(),
-                    mockApi.health(),
-                ]);
+                const [p, g] = await Promise.all([mockApi.panels(), mockApi.groups()]);
                 setPanels(p);
                 setGroups(g);
-                setSensors([]);
-                setLatestMetrics([]);
 
                 if (g.length) {
                     setGroupId((prev) => prev || g[0].id);
                 }
 
-                setHealth(`${h.status} • ${h.environment} (mock)`);
+                setControlError("Panel controls unavailable. Displaying frontend mock panels.");
                 setUsingMock(true);
             } catch (mockErr) {
-                setSensors([]);
-                setLatestMetrics([]);
-                setHealth(`error • ${String(mockErr)}`);
+                setControlError(`Panel controls unavailable: ${String(mockErr)}`);
                 setUsingMock(false);
             }
         }
@@ -614,36 +615,51 @@ export default function AppHMI() {
             />
             <header className="hmi-header">
                 <div className="hmi-header-inner">
-                    <div className="hmi-brand">
-                        <div className="hmi-logo"></div>
-                        <div className="hmi-brand-text">
-                            <h1>DIAL Control Center</h1>
-                            <p>Electrochromic Panel Management</p>
+                    <div className="hmi-identity">
+                        <div className="hmi-brand">
+                            <div className="hmi-logo"></div>
+                            <div className="hmi-brand-text">
+                                <h1>DIAL Control Center</h1>
+                                <p>Electrochromic Panel Management</p>
+                            </div>
+                        </div>
+                        <div className="hmi-system-status">
+                            <SystemHealthDetails
+                                {...diagnostics}
+                                warnings={[
+                                    ...diagnostics.warnings,
+                                    ...(controlError ? [controlError] : []),
+                                ]}
+                            >
+                                <span className="hmi-system-summary">
+                                    <span className="hmi-status-label">System status</span>
+                                    <span
+                                        aria-hidden="true"
+                                        className={`hmi-system-dot ${systemStatusClass}`}
+                                    />
+                                    <span className="hmi-system-state">{systemStatusText}</span>
+                                    {usingMock && (
+                                        <span
+                                            className="hmi-status-badge"
+                                            style={{
+                                                marginLeft: "8px",
+                                                fontSize: "11px",
+                                                color: "#f59e0b",
+                                            }}
+                                        >
+                                            MOCK MODE
+                                        </span>
+                                    )}
+                                </span>
+                            </SystemHealthDetails>
+                            <span
+                                className={`hmi-environment-badge ${health?.environment === "production" ? "is-production" : ""}`}
+                            >
+                                <span>Mode</span> {health?.environment || "unknown"}
+                            </span>
                         </div>
                     </div>
                     <div className="hmi-status">
-                        <div className="hmi-status-item">
-                            <span className="hmi-status-label">System</span>
-                            <span
-                                className={`hmi-status-value ${health.includes("ok") ? "status-ok" : "status-error"}`}
-                            >
-                                {health.includes("ok") ? "●" : "○"}
-                            </span>
-                            <span className="hmi-status-text">{health}</span>
-                            {usingMock && (
-                                <span
-                                    className="hmi-status-badge"
-                                    style={{
-                                        marginLeft: "8px",
-                                        fontSize: "11px",
-                                        color: "#f59e0b",
-                                    }}
-                                >
-                                    MOCK MODE
-                                </span>
-                            )}
-                        </div>
-
                         <div className="hmi-status-item">
                             <span className="hmi-status-label">Panels</span>
                             <span className="hmi-status-value">{panels.length}</span>
@@ -1076,10 +1092,46 @@ export default function AppHMI() {
                 {mainTab === "sensors" &&
                     !usingMock &&
                     visibleSensors.map((sensor) => {
-                        const { metrics: sensorMetrics, stale } = getDisplayMetricsForSensor(
-                            sensor,
-                            latestMetrics,
+                        const { metrics: sensorMetrics, stale: readingsStale } =
+                            getDisplayMetricsForSensor(
+                                sensor,
+                                latestMetrics,
+                                diagnostics.nowSeconds,
+                            );
+                        const sensorIssues = healthIssues.filter((issue) =>
+                            issue.sensorIds.includes(sensor.id),
                         );
+                        const stale =
+                            readingsStale ||
+                            sensorIssues.length > 0 ||
+                            diagnostics.metricsError !== null;
+                        const healthNotice = stale ? (
+                            <div className="sensor-health-notice" role="status">
+                                {sensorIssues.length > 0
+                                    ? sensorIssues.map((issue, index) => (
+                                          // biome-ignore lint/suspicious/noArrayIndexKey: rows have no stable unique id
+                                          <p key={`${issue.raw}-${index}`}>{issue.reason}</p>
+                                      ))
+                                    : !diagnostics.metricsError && (
+                                          <p>
+                                              {diagnostics.metricsAvailable
+                                                  ? "No recent readings received."
+                                                  : "Latest readings unavailable."}
+                                          </p>
+                                      )}
+                                <p>
+                                    {lastSensorReadingText(
+                                        [sensor.id],
+                                        latestMetrics,
+                                        diagnostics.nowSeconds,
+                                        diagnostics.metricsAvailable,
+                                    )}
+                                </p>
+                                {diagnostics.warnings.map((warning) => (
+                                    <p key={warning}>{warning}</p>
+                                ))}
+                            </div>
+                        ) : null;
                         const metricMap = new Map<string, SensorReadingResponse>();
                         sensorMetrics.forEach((m) => {
                             metricMap.set(m.metric, m);
@@ -1376,6 +1428,7 @@ export default function AppHMI() {
                                             </>
                                         )}
                                     </div>
+                                    {healthNotice}
                                     <div className="sensor-card-layout">
                                         <div className="sensor-metrics-panel">
                                             <div className="sensor-metrics-heading">
@@ -1680,6 +1733,7 @@ export default function AppHMI() {
                                     )}
                                 </div>
 
+                                {healthNotice}
                                 <div className="sensor-card-layout">
                                     <div className="sensor-metrics-panel">
                                         <div className="sensor-metrics-heading">

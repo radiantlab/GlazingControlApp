@@ -22,7 +22,7 @@ async function http<T>(path: string, options?: RequestInit): Promise<T> {
     return (await res.json()) as T;
 }
 export const api = {
-    health: () =>
+    health: (signal?: AbortSignal) =>
         http<{
             status: string;
             environment: "development" | "production";
@@ -31,7 +31,7 @@ export const api = {
             sensor_acquisition: "embedded" | "external";
             sensor_status: "healthy" | "degraded";
             sensor_errors: string[];
-        }>("/health"),
+        }>("/health", { signal }),
     panels: () => http<Panel[]>("/panels"),
     groups: () => http<Group[]>("/groups"),
     createGroup: (name: string, memberIds: string[]) =>
@@ -208,7 +208,7 @@ export const api = {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
     },
-    listSensors: () => http<SensorInfo[]>("/sensors"),
+    listSensors: (signal?: AbortSignal) => http<SensorInfo[]>("/sensors", { signal }),
     updateSensorLabels: (sensorId: string, customLabel: string, deviceCustomLabel: string) =>
         http<{ ok: boolean }>(`/sensors/${encodeURIComponent(sensorId)}`, {
             method: "PATCH",
@@ -217,7 +217,8 @@ export const api = {
                 device_custom_label: deviceCustomLabel,
             }),
         }),
-    getLatestMetrics: () => http<SensorReadingResponse[]>("/metrics/latest"),
+    getLatestMetrics: (signal?: AbortSignal) =>
+        http<SensorReadingResponse[]>("/metrics/latest", { signal }),
     getMetricHistory: (sensorId: string, metric: string, tsFrom: number, tsTo: number) =>
         http<SensorReadingResponse[]>(
             `/metrics/history?sensor_id=${encodeURIComponent(sensorId)}&metric=${encodeURIComponent(metric)}&ts_from=${tsFrom}&ts_to=${tsTo}`,

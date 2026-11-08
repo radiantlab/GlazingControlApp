@@ -1,0 +1,112 @@
+.system-health {
+    position: relative;
+    max-width: 100%;
+}
+
+.system-health-trigger {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: left;
+    box-shadow: none;
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    list-style: none;
+    border-radius: 6px;
+}
+
+.system-health-trigger::before {
+    content: "";
+    position: absolute;
+    inset: -6px -8px;
+    z-index: -1;
+    border: 1px solid var(--hmi-border-light, var(--chip-brd));
+    border-radius: 10px;
+    background: var(--hmi-surface-hover, var(--chip-bg));
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms ease;
+}
+
+.system-health-trigger:focus-visible::before {
+    opacity: 1;
+}
+
+@media (hover: hover) {
+    .system-health-trigger:hover::before {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .system-health-trigger::before {
+        transition: none;
+    }
+}
+
+.system-health-trigger:focus-visible {
+    outline: 2px solid var(--hmi-accent, var(--primary));
+    outline-offset: 4px;
+}
+
+.system-health-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--hmi-warning, var(--warn));
+    font: inherit;
+    line-height: inherit;
+    white-space: nowrap;
+}
+
+.system-health-panel {
+    box-sizing: border-box;
+    position: fixed;
+    z-index: 1200;
+    width: min(440px, calc(100vw - 32px));
+    inset: 16px;
+    height: fit-content;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    margin: auto;
+    padding: 16px;
+    border: 1px solid var(--hmi-border, var(--border));
+    border-radius: 8px;
+    background: var(--hmi-bg-alt, var(--bg));
+    color: var(--hmi-text, var(--text));
+    box-shadow: var(--hmi-shadow-lg, var(--shadow));
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.system-health-panel p {
+    margin: 8px 0;
+}
+
+.system-health-panel ul {
+    margin: 12px 0 0;
+    padding-left: 20px;
+}
+
+.system-health-panel li + li {
+    margin-top: 12px;
+}
+
+.system-health-age {
+    display: block;
+    color: var(--hmi-text-muted, var(--muted));
+}
+
+.system-health-warning {
+    color: var(--hmi-warning, var(--warn));
+}
