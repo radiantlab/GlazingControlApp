@@ -270,3 +270,21 @@ tests use a temporary database and cannot write to `svc/data/audit.db`.
   Sensor Agent and its `port_identity` for COM devices,
   `SVC_JETI_CAPTURE_PATH`, the C-BOX IP, and Modbus TCP port 502. See
   [If Something Fails](./docs/on_site_sensor_checklist.md#if-something-fails).
+- **Docker image is outdated after `git pull`:** Pulling changes
+  does not rebuild the Docker image. Rebuild with
+  `docker compose up -d --build` using the appropriate
+  production configuration, or use the Windows launcher
+  with `-Build` when the container is stopped.
+- **Docker image reports `revision: unknown`:** The image was
+  built without a Git revision. The Windows launcher
+  automatically supplies the revision and UTC timestamp
+  when building. Manual builds must supply these values.
+- **Docker build fails with `can't stat`:** Docker may be
+  unable to read a directory in the build context, even
+  when it is listed in `.dockerignore`. Check the folder
+  permissions and remove any disposable generated cache
+  directories causing the problem. Do not delete production
+  data or configuration files.
+- **Git is missing during a launcher build:** Install Git
+  and make sure it is available on PATH. The launcher
+  requires Git to identify the source revision.
