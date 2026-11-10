@@ -571,11 +571,64 @@ function Start-ControlCenter {
         }
 
         $arguments = @('up', '-d')
-        if ($Build -or -not (Test-ControlCenterImage -Project $Project -Image $app.Image)) {
+        $buildImage = $Build -or -not (Test-ControlCenterImage -Project $Project -Image $app.Image)
+        if ($buildImage) {
             $arguments += '--build'
+
+            $gitPath = Find-ControlCenterCommand -Name 'git'
+            if (-not $gitPath) {
+                throw (New-ControlCenterError -ExitCode 2 -Reason 'GitMissing' -Message (
+                    'Git is required to build the image. Install Git and try again.'
+                ))
+            }
+
+            $revisionResult = Invoke-ControlCenterNative -FilePath $gitPath `
+                -Arguments @('-C', $Project.RepositoryRoot, 'rev-parse', '--verify', 'HEAD^{commit}')
+            $revision = ($revisionResult.Output -join '').Trim()
+            if ($revisionResult.ExitCode -ne 0 -or
+                $revision -notmatch '^[0-9a-fA-F]{40}([0-9a-fA-F]{24})?$') {
+                throw (New-ControlCenterError -ExitCode 2 -Reason 'GitRevision' -Message (
+                    'Could not determine a valid Git commit revision for the image build.'
+                ))
+            }
+
+            $statusResult = Invoke-ControlCenterNative -FilePath $gitPath `
+                -Arguments @('-C', $Project.RepositoryRoot, 'status', '--porcelain',
+                    '--untracked-files=all')
+            if ($statusResult.ExitCode -ne 0) {
+                throw (New-ControlCenterError -ExitCode 2 -Reason 'GitStatus' -Message (
+                    'Could not check the repository for uncommitted changes.'
+                ))
+            }
+            if (@($statusResult.Output).Count -gt 0) {
+                Write-Warning (
+                    'The repository has uncommitted changes. The image revision identifies ' +
+                    'HEAD, but may not identify the exact source in this build.'
+                )
+            }
+
+            $buildCreated = [DateTime]::UtcNow.ToString(
+                'yyyy-MM-ddTHH:mm:ssZ',
+                [Globalization.CultureInfo]::InvariantCulture
+            )
         }
         Write-Host "Starting $($app.ContainerName)..."
-        $result = Invoke-ControlCenterCompose -Project $Project -Arguments $arguments
+        if ($buildImage) {
+            $previousRevision = [Environment]::GetEnvironmentVariable('GIT_REVISION', 'Process')
+            $previousCreated = [Environment]::GetEnvironmentVariable('BUILD_CREATED', 'Process')
+            try {
+                $env:GIT_REVISION = $revision
+                $env:BUILD_CREATED = $buildCreated
+                $result = Invoke-ControlCenterCompose -Project $Project -Arguments $arguments
+            }
+            finally {
+                [Environment]::SetEnvironmentVariable('GIT_REVISION', $previousRevision, 'Process')
+                [Environment]::SetEnvironmentVariable('BUILD_CREATED', $previousCreated, 'Process')
+            }
+        }
+        else {
+            $result = Invoke-ControlCenterCompose -Project $Project -Arguments $arguments
+        }
         if ($result.ExitCode -ne 0) {
             throw (New-ControlCenterError -ExitCode 3 -Reason 'ComposeUp' -Message (
                 "docker compose up failed:`n" + (Get-ControlCenterNativeText -Result $result)

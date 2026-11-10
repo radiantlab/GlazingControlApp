@@ -91,9 +91,8 @@ class HealthResponse(BaseModel):
         description="Current sensor startup or polling errors",
     )
     revision: str = Field(
-    description="Git revision used to build the application"
+        description="Git revision used to build the application"
     )
-
 
 
 class GroupCreate(BaseModel):
