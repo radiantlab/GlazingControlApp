@@ -19,8 +19,9 @@ interface LiveGraphProps {
     variant?: "card" | "embedded";
     yAxisLabel?: string;
     valueFormatter?: (value: number | undefined) => string;
-    /** Show the hour ending here instead of the last hour (offline sensors). */
+    /** Start of the requested range in Unix seconds; defaults to the preceding hour. */
     startTs?: number;
+    /** Fixed end of a past window in Unix seconds; omit to poll live data. */
     endTs?: number;
 }
 
@@ -46,6 +47,7 @@ function LiveGraph({
     variant = "card",
     yAxisLabel,
     valueFormatter,
+    startTs,
     endTs,
 }: LiveGraphProps) {
     const [data, setData] = useState<SensorReadingResponse[]>([]);
@@ -55,8 +57,13 @@ function LiveGraph({
         const loadData = async () => {
             try {
                 const end = endTs ?? Date.now() / 1000;
-                // Get 1 hour of data ending now, or at the sensor's last reading
-                const history = await api.getMetricHistory(sensorId, metric, end - 3600, end);
+                // Default to the preceding hour unless a start was selected.
+                const history = await api.getMetricHistory(
+                    sensorId,
+                    metric,
+                    startTs ?? end - 3600,
+                    end,
+                );
                 // Sort by timestamp
                 history.sort((a, b) => a.ts - b.ts);
                 setData(history);
@@ -71,7 +78,7 @@ function LiveGraph({
         if (endTs != null) return; // A past window does not change
         const interval = setInterval(loadData, 2000); // Poll every 2s
         return () => clearInterval(interval);
-    }, [sensorId, metric, endTs]);
+    }, [sensorId, metric, startTs, endTs]);
 
     const formatTime = (ts: number) => {
         const d = new Date(ts * 1000);
@@ -201,6 +208,7 @@ export default React.memo(LiveGraph, (prevProps, nextProps) => {
         prevProps.height === nextProps.height &&
         prevProps.variant === nextProps.variant &&
         prevProps.yAxisLabel === nextProps.yAxisLabel &&
+        prevProps.startTs === nextProps.startTs &&
         prevProps.endTs === nextProps.endTs
     );
 });
