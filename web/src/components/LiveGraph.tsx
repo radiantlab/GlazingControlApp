@@ -12,6 +12,7 @@ interface LiveGraphProps {
     yAxisLabel?: string;
     valueFormatter?: (value: number | undefined) => string;
     /** Show the hour ending here instead of the last hour (offline sensors). */
+    startTs?: number;
     endTs?: number;
 }
 
