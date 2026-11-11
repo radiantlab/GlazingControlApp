@@ -11,6 +11,7 @@ import { useToast } from "./utils/toast";
 import LogsPanel from "./components/LogsPanel";
 import { Link } from "react-router-dom";
 import LiveGraph from "./components/LiveGraph";
+import HistoricalTimePicker, { type HistoricalRange } from "./components/HistoricalTimePicker";
 import { type SensorReadingResponse } from "./api";
 import SystemHealthDetails from "./components/SystemHealthDetails";
 import { useSystemHealth } from "./utils/useSystemHealth";
@@ -240,6 +241,7 @@ export default function AppHMI() {
     const [logsLoading, setLogsLoading] = useState<boolean>(false);
     const [logsError, setLogsError] = useState<string | null>(null);
     const [graphMetricBySensor, setGraphMetricBySensor] = useState<Record<string, string>>({});
+    const [graphRangeBySensor, setGraphRangeBySensor] = useState<Record<string, HistoricalRange>>({});
     const [visibleSensorIds, setVisibleSensorIds] = useState<string[]>([]);
     const sensorVisibilityUserSet = useRef(false);
     const [targetRoutineId, setTargetRoutineId] = useState<string | null>(null);
@@ -947,6 +949,7 @@ export default function AppHMI() {
                     const selectedReading = selectedGraphMetric ? metricMap.get(selectedGraphMetric) : undefined;
                     const sensorKindLabel = SENSOR_KIND_LABELS[sensor.kind] || sensor.kind;
                     const graphHeight = sensorGraphHeight(sensor.kind);
+                    const graphRange = graphRangeBySensor[sensor.id];
 
                     if (!selectedGraphMetric || !selectedReading) {
                         return (
@@ -1292,7 +1295,20 @@ export default function AppHMI() {
                                             </select>
                                         </div>
                                     )}
+                                    <HistoricalTimePicker
+                                        isHistorical={Boolean(graphRange)}
+                                        onApply={range => setGraphRangeBySensor(prev => ({
+                                            ...prev,
+                                            [sensor.id]: range,
+                                        }))}
+                                        onBackToLive={() => setGraphRangeBySensor(prev => {
+                                            const next = { ...prev };
+                                            delete next[sensor.id];
+                                            return next;
+                                        })}
+                                    />
                                     <LiveGraph
+                                        key={`${sensor.id}-${selectedGraphMetric}-${graphRange?.startTs ?? "default"}-${graphRange?.endTs ?? "default"}`}
                                         sensorId={sensor.id}
                                         metric={selectedGraphMetric}
                                         label={`${sensor.config?.custom_label ? `${sensor.config.custom_label} (${sensor.label || sensor.id})` : (sensor.label || sensor.id)} - ${METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric}`}
@@ -1301,7 +1317,8 @@ export default function AppHMI() {
                                         color={sensorGraphColor(sensor.kind)}
                                         height={graphHeight}
                                         variant="embedded"
-                                        endTs={stale ? selectedReading.ts : undefined}
+                                        startTs={graphRange?.startTs}
+                                        endTs={graphRange?.endTs ?? (stale ? selectedReading.ts : undefined)}
                                     />
                                 </div>
                             </div>
