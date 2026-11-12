@@ -50,7 +50,13 @@ describe("AppHMI dashboard", () => {
 
     async function renderDashboard() {
         await act(async () => {
-            render(<MemoryRouter><ToastProvider><AppHMI /></ToastProvider></MemoryRouter>);
+            render(
+                <MemoryRouter>
+                    <ToastProvider>
+                        <AppHMI />
+                    </ToastProvider>
+                </MemoryRouter>,
+            );
         });
     }
 
@@ -68,7 +74,7 @@ describe("AppHMI dashboard", () => {
 
     it("submits a group tint request and refreshes the dashboard", async () => {
         await renderDashboard();
-        vi.mocked(api.panels).mockResolvedValue(panels.map(panel => ({ ...panel, level: 75 })));
+        vi.mocked(api.panels).mockResolvedValue(panels.map((panel) => ({ ...panel, level: 75 })));
 
         fireEvent.change(screen.getByLabelText("Tint Level"), { target: { value: "75" } });
         await act(async () => {
