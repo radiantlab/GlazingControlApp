@@ -9,9 +9,9 @@ historical sensor data from the control service in `svc/`.
 `index.html` loads `src/main-hmi.tsx`, which wraps the app in `ToastProvider`
 and `BrowserRouter` and renders `src/AppHMI.tsx` on `/`.
 
-`src/main.tsx`, `src/App.tsx`, and `src/styles.css` are a legacy entry.
-`index.html` does not load them, but `src/App.test.tsx` still imports `App.tsx`,
-so leave them in place until that test is retired.
+Vite builds only this entry through `index.html`. The Docker image runs the
+same `npm run build` and packages `dist/`. Dashboard tests live in
+`src/AppHMI.test.tsx`.
 
 Routes (`src/main-hmi.tsx`):
 
