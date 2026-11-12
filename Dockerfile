@@ -35,6 +35,13 @@ RUN uv sync --frozen --no-dev --no-cache \
     && python3 -c "import requests, fastapi, pymodbus, serial"
 
 COPY --from=web-build /build/web/dist /app/web/dist
+ARG GIT_REVISION=unknown
+ARG BUILD_CREATED=unknown
+
+LABEL org.opencontainers.image.revision="${GIT_REVISION}" \
+      org.opencontainers.image.created="${BUILD_CREATED}"
+
+ENV SVC_BUILD_REVISION="${GIT_REVISION}"
 
 EXPOSE 8000
 VOLUME ["/app/svc/data"]

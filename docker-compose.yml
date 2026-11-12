@@ -11,6 +11,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        GIT_REVISION: ${GIT_REVISION:-unknown}
+        BUILD_CREATED: ${BUILD_CREATED:-unknown}
     image: glazing-control-app
     container_name: glazing-control-app
     ports:

@@ -507,22 +507,124 @@ Describe "Start-ControlCenter" {
     }
 
     Context "builds when the image is missing" {
-        It "builds when the image is missing" {
+        BeforeEach {
+            $script:upCalled = $false
+            $script:originalRevision = [Environment]::GetEnvironmentVariable(
+                'GIT_REVISION', 'Process'
+            )
+            $script:originalCreated = [Environment]::GetEnvironmentVariable(
+                'BUILD_CREATED', 'Process'
+            )
+
             Mock Get-ControlCenterApp { New-TestApp }
             Mock Get-ControlCenterContainer { $running } -ParameterFilter { $script:upCalled }
             Mock Get-ControlCenterContainer { $null }
             Mock Test-ControlCenterPortOpen { $false }
             Mock Test-ControlCenterImage { $false }
+            Mock Find-ControlCenterCommand { "git" }
+            Mock Invoke-ControlCenterNative {
+                New-NativeResult -Output @(("a" * 40))
+            } -ParameterFilter { $Arguments -contains "rev-parse" }
+            Mock Invoke-ControlCenterNative {
+                New-NativeResult
+            } -ParameterFilter { $Arguments -contains "status" }
             Mock Invoke-ControlCenterCompose { $script:upCalled = $true; New-NativeResult }
             Mock Get-ControlCenterHealthResponse { New-TestHealth }
             Mock Write-Host { }
-            $script:upCalled = $false
+        }
+
+        AfterEach {
+            [Environment]::SetEnvironmentVariable(
+                'GIT_REVISION', $script:originalRevision, 'Process'
+            )
+            [Environment]::SetEnvironmentVariable(
+                'BUILD_CREATED', $script:originalCreated, 'Process'
+            )
+        }
+
+        It "builds when the image is missing" {
 
             Start-ControlCenter -Project (New-TestProject) -TimeoutSeconds 1
 
             Assert-MockCalled Invoke-ControlCenterCompose -Scope It -Times 1 -Exactly -ParameterFilter {
                 $Arguments -contains "--build"
             }
+        }
+
+        It "passes the Git revision and UTC timestamp to Compose and restores prior values" {
+            $env:GIT_REVISION = "previous-revision"
+            $env:BUILD_CREATED = "previous-created"
+            Mock Invoke-ControlCenterCompose {
+                $script:upCalled = $true
+                $script:composeRevision = $env:GIT_REVISION
+                $script:composeCreated = $env:BUILD_CREATED
+                New-NativeResult
+            }
+
+            Start-ControlCenter -Project (New-TestProject) -TimeoutSeconds 1
+
+            $script:composeRevision | Should Be ("a" * 40)
+            $script:composeCreated | Should Match '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$'
+            $env:GIT_REVISION | Should Be "previous-revision"
+            $env:BUILD_CREATED | Should Be "previous-created"
+        }
+
+        It "fails clearly without Git and does not call Compose" {
+            Mock Find-ControlCenterCommand { $null }
+
+            $thrown = Get-ThrownError {
+                Start-ControlCenter -Project (New-TestProject) -TimeoutSeconds 1
+            }
+
+            Get-ControlCenterExitCode -ErrorRecord $thrown | Should Be 2
+            Get-ControlCenterErrorReason -ErrorRecord $thrown | Should Be "GitMissing"
+            Assert-MockCalled Invoke-ControlCenterCompose -Scope It -Times 0 -Exactly
+        }
+
+        It "rejects an invalid Git revision" {
+            Mock Invoke-ControlCenterNative {
+                New-NativeResult -Output @("not-a-sha")
+            } -ParameterFilter { $Arguments -contains "rev-parse" }
+
+            $thrown = Get-ThrownError {
+                Start-ControlCenter -Project (New-TestProject) -TimeoutSeconds 1
+            }
+
+            Get-ControlCenterErrorReason -ErrorRecord $thrown | Should Be "GitRevision"
+            Assert-MockCalled Invoke-ControlCenterCompose -Scope It -Times 0 -Exactly
+        }
+
+        It "warns about uncommitted changes while passing the HEAD revision" {
+            Mock Invoke-ControlCenterNative {
+                New-NativeResult -Output @(" M scripts/ControlCenter.Common.ps1")
+            } -ParameterFilter { $Arguments -contains "status" }
+            Mock Write-Warning { }
+            Mock Invoke-ControlCenterCompose {
+                $script:upCalled = $true
+                $script:composeRevision = $env:GIT_REVISION
+                New-NativeResult
+            }
+
+            Start-ControlCenter -Project (New-TestProject) -TimeoutSeconds 1
+
+            $script:composeRevision | Should Be ("a" * 40)
+            Assert-MockCalled Write-Warning -Scope It -Times 1 -Exactly -ParameterFilter {
+                $Message -match "uncommitted changes"
+            }
+        }
+
+        It "restores absent environment variables when Compose throws" {
+            [Environment]::SetEnvironmentVariable('GIT_REVISION', $null, 'Process')
+            [Environment]::SetEnvironmentVariable('BUILD_CREATED', $null, 'Process')
+            Mock Invoke-ControlCenterCompose { throw "Compose failed" }
+
+            $thrown = Get-ThrownError {
+                Start-ControlCenter -Project (New-TestProject) -TimeoutSeconds 1
+            }
+
+            $thrown.Exception.Message | Should Match "Compose failed"
+            [Environment]::GetEnvironmentVariable('GIT_REVISION', 'Process') | Should Be $null
+            [Environment]::GetEnvironmentVariable('BUILD_CREATED', 'Process') | Should Be $null
         }
     }
 
