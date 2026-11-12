@@ -208,6 +208,29 @@ docker compose --env-file svc/.env.production up -d --build
 Follow the logs with `docker logs -f glazing-control-app`. Stop with
 `docker compose --env-file svc/.env.production down`.
 
+#### Start with the desktop shortcut
+
+On the Windows host, `scripts\Start-ControlCenter.cmd` starts production with
+Compose and opens the HMI. It does the same Start as
+`scripts\Invoke-ControlCenter.ps1 -Action Start`: it checks Docker,
+`svc\.env.production`, the mount paths, and `audit.db` before it starts
+anything, then waits for `/health`.
+
+To make the shortcut once, right-click `scripts\Start-ControlCenter.cmd` in
+File Explorer, choose **Send to > Desktop (create shortcut)**, and rename the
+shortcut, for example to "DIAL Control Center". On Windows 11, choose **Show
+more options** first.
+
+Double-clicking it then does one of two things:
+
+- **Started, or already running:** the HMI opens in the default browser and
+  the window closes after 10 seconds. A degraded-sensor warning stays in the
+  window until then; the HMI also reports it. A second double-click opens the
+  HMI again and does not start a second copy.
+- **Failed:** the window stays open with the reason and a next step until you
+  press Enter. Docker Desktop must already be running; the shortcut does not
+  start it.
+
 ### 5. Start the Sensor Agent
 
 Only if a device is marked `"acquisition": "external"`. On the Windows host:
