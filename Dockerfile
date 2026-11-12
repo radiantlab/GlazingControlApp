@@ -1,7 +1,7 @@
 # The base image versions must match .nvmrc and svc/.python-version, which CI
 # tests against. A Dependabot bump here needs those files updated in the same PR;
 # scripts/check-runtime-versions.sh fails the docker-builds check until they are.
-FROM node:24-bookworm-slim AS web-build
+FROM node:25-bookworm-slim AS web-build
 
 WORKDIR /build/web
 COPY web/package.json web/package-lock.json ./
@@ -9,7 +9,7 @@ RUN npm ci
 COPY web/ ./
 RUN npm run build
 
-FROM python:3.14-slim AS runtime
+FROM python:3.15-slim AS runtime
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.17 /uv /bin/uv
 
