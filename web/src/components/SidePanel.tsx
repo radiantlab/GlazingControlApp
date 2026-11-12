@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import type { Panel, Group } from "../types";
 import { useToast } from "../utils/toast";
 import RoutineCodeEditor from "./RoutineCodeEditor";
@@ -24,7 +24,7 @@ export default function SidePanel({
     onGroupCreate,
     onGroupUpdate,
     onGroupDelete,
-    targetRoutineId
+    targetRoutineId,
 }: Props) {
     const sortedPanels = [...panels].sort((a, b) => a.name.localeCompare(b.name));
     const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
@@ -42,7 +42,7 @@ export default function SidePanel({
     const [isSavingGroup, setIsSavingGroup] = useState(false);
 
     const handlePanelToggle = (panelId: string) => {
-        setSelectedPanelIds(prev => {
+        setSelectedPanelIds((prev) => {
             const next = new Set(prev);
             if (next.has(panelId)) next.delete(panelId);
             else next.add(panelId);
@@ -75,7 +75,7 @@ export default function SidePanel({
     };
 
     const handleEditPanelToggle = (panelId: string) => {
-        setEditMemberIds(prev => {
+        setEditMemberIds((prev) => {
             const next = new Set(prev);
             if (next.has(panelId)) next.delete(panelId);
             else next.add(panelId);
@@ -91,11 +91,7 @@ export default function SidePanel({
 
         setIsSavingGroup(true);
         try {
-            await onGroupUpdate(
-                editingGroupId,
-                editGroupName.trim(),
-                Array.from(editMemberIds)
-            );
+            await onGroupUpdate(editingGroupId, editGroupName.trim(), Array.from(editMemberIds));
 
             setEditingGroupId(null);
             setEditGroupName("");
@@ -136,11 +132,18 @@ export default function SidePanel({
 
     return (
         <>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor */}
             <div className="side-panel-overlay" onClick={onClose} />
+            {/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor */}
             <div className="side-panel" onClick={(e) => e.stopPropagation()}>
                 <div className="side-panel-header">
                     <h2>{mode === "groups" ? "Groups" : "Routines"}</h2>
-                    <button className="side-panel-close" onClick={onClose} aria-label="Close panel">
+                    <button
+                        type="button"
+                        className="side-panel-close"
+                        onClick={onClose}
+                        aria-label="Close panel"
+                    >
                         ✕
                     </button>
                 </div>
@@ -150,19 +153,21 @@ export default function SidePanel({
                         <div className="side-panel-section">
                             <h3>Create New Group</h3>
                             <div className="form-group">
+                                {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
                                 <label>Group Name</label>
                                 <input
                                     type="text"
                                     value={newGroupName}
-                                    onChange={e => setNewGroupName(e.target.value)}
+                                    onChange={(e) => setNewGroupName(e.target.value)}
                                     placeholder="e.g., West Windows"
                                 />
                             </div>
 
                             <div className="form-group">
+                                {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
                                 <label>Select Windows ({selectedPanelIds.size} selected)</label>
                                 <div className="panel-selector">
-                                    {sortedPanels.map(panel => (
+                                    {sortedPanels.map((panel) => (
                                         <label key={panel.id} className="panel-checkbox">
                                             <input
                                                 type="checkbox"
@@ -177,6 +182,7 @@ export default function SidePanel({
                             </div>
 
                             <button
+                                type="button"
                                 className="side-panel-action-btn"
                                 onClick={handleCreateGroup}
                                 disabled={
@@ -192,7 +198,7 @@ export default function SidePanel({
 
                             <h3>Existing Groups</h3>
                             <div className="groups-list">
-                                {sortedGroups.map(group => {
+                                {sortedGroups.map((group) => {
                                     const isEditing = editingGroupId === group.id;
                                     return (
                                         <div key={group.id} className="group-item">
@@ -201,7 +207,9 @@ export default function SidePanel({
                                                     <input
                                                         type="text"
                                                         value={editGroupName}
-                                                        onChange={e => setEditGroupName(e.target.value)}
+                                                        onChange={(e) =>
+                                                            setEditGroupName(e.target.value)
+                                                        }
                                                         placeholder="Group name"
                                                     />
                                                 ) : (
@@ -213,15 +221,23 @@ export default function SidePanel({
                                             {isEditing ? (
                                                 <>
                                                     <div className="form-group">
+                                                        {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
                                                         <label>Edit members</label>
                                                         <div className="panel-selector">
-                                                            {sortedPanels.map(panel => (
-                                                                <label key={panel.id} className="panel-checkbox">
+                                                            {sortedPanels.map((panel) => (
+                                                                <label
+                                                                    key={panel.id}
+                                                                    className="panel-checkbox"
+                                                                >
                                                                     <input
                                                                         type="checkbox"
-                                                                        checked={editMemberIds.has(panel.id)}
+                                                                        checked={editMemberIds.has(
+                                                                            panel.id,
+                                                                        )}
                                                                         onChange={() =>
-                                                                            handleEditPanelToggle(panel.id)
+                                                                            handleEditPanelToggle(
+                                                                                panel.id,
+                                                                            )
                                                                         }
                                                                     />
                                                                     <span>{panel.name}</span>
@@ -234,6 +250,7 @@ export default function SidePanel({
                                                     </div>
                                                     <div style={{ display: "flex", gap: 8 }}>
                                                         <button
+                                                            type="button"
                                                             className="side-panel-action-btn"
                                                             onClick={handleSaveGroupChanges}
                                                             disabled={
@@ -242,9 +259,12 @@ export default function SidePanel({
                                                                 isSavingGroup
                                                             }
                                                         >
-                                                            {isSavingGroup ? "Saving..." : "Save Changes"}
+                                                            {isSavingGroup
+                                                                ? "Saving..."
+                                                                : "Save Changes"}
                                                         </button>
                                                         <button
+                                                            type="button"
                                                             className="side-panel-secondary-btn"
                                                             onClick={cancelEditing}
                                                         >
@@ -262,18 +282,22 @@ export default function SidePanel({
                                                         style={{
                                                             display: "flex",
                                                             gap: 8,
-                                                            marginTop: 8
+                                                            marginTop: 8,
                                                         }}
                                                     >
                                                         <button
+                                                            type="button"
                                                             className="side-panel-secondary-btn"
                                                             onClick={() => startEditingGroup(group)}
                                                         >
                                                             Edit
                                                         </button>
                                                         <button
+                                                            type="button"
                                                             className="side-panel-secondary-btn"
-                                                            onClick={() => handleDeleteGroup(group.id)}
+                                                            onClick={() =>
+                                                                handleDeleteGroup(group.id)
+                                                            }
                                                             disabled={isSavingGroup}
                                                         >
                                                             Delete
@@ -289,8 +313,15 @@ export default function SidePanel({
                     )}
 
                     {mode === "routines" && (
-                        <div className="side-panel-section" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-                            <RoutineCodeEditor panels={panels} groups={groups} initialRoutineId={targetRoutineId} />
+                        <div
+                            className="side-panel-section"
+                            style={{ height: "100%", display: "flex", flexDirection: "column" }}
+                        >
+                            <RoutineCodeEditor
+                                panels={panels}
+                                groups={groups}
+                                initialRoutineId={targetRoutineId}
+                            />
                         </div>
                     )}
                 </div>

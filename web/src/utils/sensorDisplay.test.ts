@@ -16,7 +16,12 @@ const sensor = (id: string, interval_s?: number, kind = "t10a", label = id): Sen
     config: interval_s == null ? {} : { interval_s },
 });
 
-const reading = (sensor_id: string, metric: string, ts: number, value = 1): SensorReadingResponse => ({
+const reading = (
+    sensor_id: string,
+    metric: string,
+    ts: number,
+    value = 1,
+): SensorReadingResponse => ({
     sensor_id,
     metric,
     value,
@@ -30,23 +35,28 @@ describe("sensorDisplay", () => {
         expect(sensorFreshnessWindowSeconds(sensor("unknown"))).toBe(120);
     });
 
-    it.each([10, 300])("uses stale_after_s=%s instead of the polling interval", staleAfterSeconds => {
-        const configuredSensor = {
-            ...sensor("S1", 60),
-            config: { interval_s: 60, stale_after_s: staleAfterSeconds },
-        };
-        const readings = [
-            reading("S1", "lux", 1000 - staleAfterSeconds + 1),
-            reading("S1", "board_temp_c", 1000 - staleAfterSeconds),
-        ];
+    it.each([10, 300])(
+        "uses stale_after_s=%s instead of the polling interval",
+        (staleAfterSeconds) => {
+            const configuredSensor = {
+                ...sensor("S1", 60),
+                config: { interval_s: 60, stale_after_s: staleAfterSeconds },
+            };
+            const readings = [
+                reading("S1", "lux", 1000 - staleAfterSeconds + 1),
+                reading("S1", "board_temp_c", 1000 - staleAfterSeconds),
+            ];
 
-        expect(sensorFreshnessWindowSeconds(configuredSensor)).toBe(staleAfterSeconds);
-        expect(getFreshMetricsForSensor(configuredSensor, readings, 1000)).toEqual([readings[0]]);
-    });
+            expect(sensorFreshnessWindowSeconds(configuredSensor)).toBe(staleAfterSeconds);
+            expect(getFreshMetricsForSensor(configuredSensor, readings, 1000)).toEqual([
+                readings[0],
+            ]);
+        },
+    );
 
     it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
         "falls back to the polling interval for invalid stale_after_s=%s",
-        staleAfterSeconds => {
+        (staleAfterSeconds) => {
             const configuredSensor = {
                 ...sensor("S1", 60),
                 config: { interval_s: 60, stale_after_s: staleAfterSeconds },
@@ -64,7 +74,7 @@ describe("sensorDisplay", () => {
             reading("default-window", "lux", 879),
         ];
 
-        expect(connectedSensors(sensors, metrics, 1000).map(s => s.id)).toEqual(["fresh"]);
+        expect(connectedSensors(sensors, metrics, 1000).map((s) => s.id)).toEqual(["fresh"]);
     });
 
     it("treats zero-valued fresh metrics as connected", () => {
@@ -72,7 +82,7 @@ describe("sensorDisplay", () => {
         const metrics = [reading("capped", "lux", 1000, 0)];
 
         expect(getFreshMetricsForSensor(sensors[0], metrics, 1000)[0].value).toBe(0);
-        expect(connectedSensors(sensors, metrics, 1000).map(s => s.id)).toEqual(["capped"]);
+        expect(connectedSensors(sensors, metrics, 1000).map((s) => s.id)).toEqual(["capped"]);
     });
 
     it("filters stale metrics per sensor", () => {
@@ -82,7 +92,9 @@ describe("sensorDisplay", () => {
             reading("S2", "lux", 1000),
         ];
 
-        expect(getFreshMetricsForSensor(sensor("S1", 10), readings, 1000).map(m => m.metric)).toEqual(["lux"]);
+        expect(
+            getFreshMetricsForSensor(sensor("S1", 10), readings, 1000).map((m) => m.metric),
+        ).toEqual(["lux"]);
     });
 
     it("displays fresh metrics while a sensor is reporting", () => {
@@ -91,7 +103,7 @@ describe("sensorDisplay", () => {
         const display = getDisplayMetricsForSensor(sensor("S1", 10), readings, 1000);
 
         expect(display.stale).toBe(false);
-        expect(display.metrics.map(m => m.metric)).toEqual(["lux"]);
+        expect(display.metrics.map((m) => m.metric)).toEqual(["lux"]);
     });
 
     it("falls back to the last stored readings for an offline sensor", () => {
@@ -104,7 +116,7 @@ describe("sensorDisplay", () => {
         const display = getDisplayMetricsForSensor(sensor("S1", 10), readings, 1000);
 
         expect(display.stale).toBe(true);
-        expect(display.metrics.map(m => m.metric)).toEqual(["lux", "cct_ohno_k"]);
+        expect(display.metrics.map((m) => m.metric)).toEqual(["lux", "cct_ohno_k"]);
     });
 
     it("prunes visible sensors to the allowed connected sensor order", () => {
@@ -121,7 +133,7 @@ describe("sensorDisplay", () => {
             sensor("T10A2-H1", undefined, "t10a", "T-10A #2 Head 1"),
         ];
 
-        expect(sortSensorsForDisplay(sensors).map(s => s.id)).toEqual([
+        expect(sortSensorsForDisplay(sensors).map((s) => s.id)).toEqual([
             "T10A1-H1",
             "T10A1-H8",
             "T10A2-H1",

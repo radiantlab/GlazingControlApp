@@ -5,7 +5,9 @@ import { lastSensorReadingText, sensorDisplayLabel, sensorHealthIssues } from ".
 const sensors: SensorInfo[] = [
     { id: "S1", kind: "t10a", label: "Head 1", config: { device_id: "D1" } },
     {
-        id: "S2", kind: "t10a", label: "Head 2",
+        id: "S2",
+        kind: "t10a",
+        label: "Head 2",
         config: { device_id: "D1", custom_label: "Window head" },
     },
     { id: "S3", kind: "t10a", label: "Other head", config: { device_id: "D2" } },
@@ -30,8 +32,10 @@ describe("sensorHealthIssues", () => {
     it("maps a device ID to all of its sensor heads", () => {
         expect(sensorHealthIssues(["D1: disconnected"], sensors)).toEqual([
             {
-                raw: "D1: disconnected", reason: "disconnected",
-                sensorIds: ["S1", "S2"], label: "Head 1, Window head",
+                raw: "D1: disconnected",
+                reason: "disconnected",
+                sensorIds: ["S1", "S2"],
+                label: "Head 1, Window head",
             },
         ]);
     });
@@ -41,8 +45,10 @@ describe("sensorHealthIssues", () => {
 
         expect(sensorHealthIssues(["D1: disconnected"], [...sensors, exact])).toEqual([
             {
-                raw: "D1: disconnected", reason: "disconnected",
-                sensorIds: ["D1"], label: "Exact sensor",
+                raw: "D1: disconnected",
+                reason: "disconnected",
+                sensorIds: ["D1"],
+                label: "Exact sensor",
             },
         ]);
     });
@@ -52,8 +58,10 @@ describe("sensorHealthIssues", () => {
         ({ availableSensors }) => {
             expect(sensorHealthIssues(["UNKNOWN: disconnected"], availableSensors)).toEqual([
                 {
-                    raw: "UNKNOWN: disconnected", reason: "disconnected",
-                    sensorIds: [], label: "UNKNOWN",
+                    raw: "UNKNOWN: disconnected",
+                    reason: "disconnected",
+                    sensorIds: [],
+                    label: "UNKNOWN",
                 },
             ]);
         },
@@ -62,8 +70,10 @@ describe("sensorHealthIssues", () => {
     it("preserves an error without a colon as the full reason", () => {
         expect(sensorHealthIssues(["Sensor service unavailable"], sensors)).toEqual([
             {
-                raw: "Sensor service unavailable", reason: "Sensor service unavailable",
-                sensorIds: [], label: "",
+                raw: "Sensor service unavailable",
+                reason: "Sensor service unavailable",
+                sensorIds: [],
+                label: "",
             },
         ]);
     });
@@ -71,8 +81,10 @@ describe("sensorHealthIssues", () => {
     it("splits only at the first separator so the reason can contain colons", () => {
         expect(sensorHealthIssues(["S1: read failed: timed out"], sensors)).toEqual([
             {
-                raw: "S1: read failed: timed out", reason: "read failed: timed out",
-                sensorIds: ["S1"], label: "Head 1",
+                raw: "S1: read failed: timed out",
+                reason: "read failed: timed out",
+                sensorIds: ["S1"],
+                label: "Head 1",
             },
         ]);
     });
@@ -91,13 +103,21 @@ describe("lastSensorReadingText", () => {
     ];
 
     it("distinguishes unavailable metrics from a sensor with no readings", () => {
-        expect(lastSensorReadingText(["S1"], metrics, 1000, false)).toBe("Last reading unavailable");
-        expect(lastSensorReadingText(["UNKNOWN"], metrics, 1000, true)).toBe("No readings available");
-        expect(lastSensorReadingText(["S1"], [metrics[3]], 1000, true)).toBe("No readings available");
+        expect(lastSensorReadingText(["S1"], metrics, 1000, false)).toBe(
+            "Last reading unavailable",
+        );
+        expect(lastSensorReadingText(["UNKNOWN"], metrics, 1000, true)).toBe(
+            "No readings available",
+        );
+        expect(lastSensorReadingText(["S1"], [metrics[3]], 1000, true)).toBe(
+            "No readings available",
+        );
     });
 
     it("uses the newest finite timestamp belonging to the requested sensors", () => {
-        expect(lastSensorReadingText(["S1", "S2"], metrics, 1000, true)).toBe("Last reading 50s ago");
+        expect(lastSensorReadingText(["S1", "S2"], metrics, 1000, true)).toBe(
+            "Last reading 50s ago",
+        );
     });
 
     it.each([
@@ -109,6 +129,8 @@ describe("lastSensorReadingText", () => {
         [87349, "23h 59m"],
         [87350, "1d 0h"],
     ])("formats reading age at time %s", (nowSeconds, age) => {
-        expect(lastSensorReadingText(["S2"], metrics, nowSeconds, true)).toBe(`Last reading ${age} ago`);
+        expect(lastSensorReadingText(["S2"], metrics, nowSeconds, true)).toBe(
+            `Last reading ${age} ago`,
+        );
     });
 });

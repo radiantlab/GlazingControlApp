@@ -3,16 +3,22 @@ import { describe, expect, it } from "vitest";
 import SystemHealthDetails from "./SystemHealthDetails";
 
 function renderDetails() {
-    render(<SystemHealthDetails
-        health={{ status: "degraded", environment: "development", sensor_errors: ["Sensor disconnected"] }}
-        sensors={[]}
-        latestMetrics={[]}
-        metricsAvailable={true}
-        nowSeconds={1000}
-        warnings={[]}
-    >
-        <span>System status degraded</span>
-    </SystemHealthDetails>);
+    render(
+        <SystemHealthDetails
+            health={{
+                status: "degraded",
+                environment: "development",
+                sensor_errors: ["Sensor disconnected"],
+            }}
+            sensors={[]}
+            latestMetrics={[]}
+            metricsAvailable={true}
+            nowSeconds={1000}
+            warnings={[]}
+        >
+            <span>System status degraded</span>
+        </SystemHealthDetails>,
+    );
     const trigger = screen.getByRole("button");
     fireEvent.click(trigger);
     return trigger;

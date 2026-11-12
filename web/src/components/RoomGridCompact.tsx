@@ -1,4 +1,3 @@
-import React from "react";
 import type { Panel } from "../types";
 import { isSkylightPanel, organizePanelsByRoom } from "../utils/panelRooms";
 import type { ControlSource } from "../utils/controlManager";
@@ -40,7 +39,10 @@ export default function RoomGridCompact({
                 title={controlSource ? `Controlled by: ${controlType}` : panel.name}
             >
                 <div className="room-compact-panel-id">{panel.id}</div>
-                <div className="room-compact-panel-status" style={{ backgroundColor: getTintColor(panel.level) }}>
+                <div
+                    className="room-compact-panel-status"
+                    style={{ backgroundColor: getTintColor(panel.level) }}
+                >
                     {panel.level}%
                 </div>
                 {showIndicator && (

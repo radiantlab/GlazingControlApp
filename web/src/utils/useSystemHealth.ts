@@ -33,37 +33,63 @@ export function useSystemHealth() {
     const refreshHealth = useCallback((): Promise<void> => {
         if (inFlight.current) return inFlight.current;
         const request = Promise.all([
-            fetchDiagnostic(api.health).then(value => {
-                setHealth(value);
-                setHealthError(null);
-            }, () => {
-                setHealthError("Health check unavailable. Recovery cannot be confirmed.");
-            }),
-            fetchDiagnostic(api.listSensors).then(value => {
-                setSensors(value);
-                setSensorError(null);
-            }, () => {
-                setSensorError("Sensor labels unavailable. Showing last known labels or device IDs.");
-            }),
-            fetchDiagnostic(api.getLatestMetrics).then(value => {
-                setLatestMetrics(value);
-                setMetricsAvailable(true);
-                setMetricsError(null);
-            }, () => {
-                setMetricsError("Latest readings unavailable. Any displayed readings are from the last successful refresh.");
-            }),
+            fetchDiagnostic(api.health).then(
+                (value) => {
+                    setHealth(value);
+                    setHealthError(null);
+                },
+                () => {
+                    setHealthError("Health check unavailable. Recovery cannot be confirmed.");
+                },
+            ),
+            fetchDiagnostic(api.listSensors).then(
+                (value) => {
+                    setSensors(value);
+                    setSensorError(null);
+                },
+                () => {
+                    setSensorError(
+                        "Sensor labels unavailable. Showing last known labels or device IDs.",
+                    );
+                },
+            ),
+            fetchDiagnostic(api.getLatestMetrics).then(
+                (value) => {
+                    setLatestMetrics(value);
+                    setMetricsAvailable(true);
+                    setMetricsError(null);
+                },
+                () => {
+                    setMetricsError(
+                        "Latest readings unavailable. Any displayed readings are from the last successful refresh.",
+                    );
+                },
+            ),
         ]).then(() => {});
         inFlight.current = request;
-        return request.finally(() => { inFlight.current = null; });
+        return request.finally(() => {
+            inFlight.current = null;
+        });
     }, []);
 
     const healthText = healthError
         ? "health unavailable"
-        : health ? `${health.status} • ${health.environment}` : "checking";
+        : health
+          ? `${health.status} • ${health.environment}`
+          : "checking";
 
     return {
-        health, healthText, healthError, sensors, latestMetrics, metricsAvailable, metricsError,
-        nowSeconds, refreshHealth,
-        warnings: [healthError, sensorError, metricsError].filter((error): error is string => error !== null),
+        health,
+        healthText,
+        healthError,
+        sensors,
+        latestMetrics,
+        metricsAvailable,
+        metricsError,
+        nowSeconds,
+        refreshHealth,
+        warnings: [healthError, sensorError, metricsError].filter(
+            (error): error is string => error !== null,
+        ),
     };
 }

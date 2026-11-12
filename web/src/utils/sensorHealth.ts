@@ -12,17 +12,16 @@ export function sensorDisplayLabel(sensor: SensorInfo): string {
 }
 
 export function sensorHealthIssues(errors: string[], sensors: SensorInfo[]): SensorHealthIssue[] {
-    return errors.map(raw => {
+    return errors.map((raw) => {
         const separator = raw.indexOf(": ");
         const id = separator < 0 ? "" : raw.slice(0, separator);
-        const exact = sensors.filter(sensor => sensor.id === id);
-        const matches = exact.length > 0
-            ? exact
-            : sensors.filter(sensor => sensor.config?.device_id === id);
+        const exact = sensors.filter((sensor) => sensor.id === id);
+        const matches =
+            exact.length > 0 ? exact : sensors.filter((sensor) => sensor.config?.device_id === id);
         return {
             raw,
             reason: separator < 0 ? raw : raw.slice(separator + 2),
-            sensorIds: matches.map(sensor => sensor.id),
+            sensorIds: matches.map((sensor) => sensor.id),
             label: matches.length > 0 ? matches.map(sensorDisplayLabel).join(", ") : id,
         };
     });
@@ -36,8 +35,8 @@ export function lastSensorReadingText(
 ): string {
     if (!metricsAvailable) return "Last reading unavailable";
     const timestamps = metrics
-        .filter(metric => sensorIds.includes(metric.sensor_id) && Number.isFinite(metric.ts))
-        .map(metric => metric.ts);
+        .filter((metric) => sensorIds.includes(metric.sensor_id) && Number.isFinite(metric.ts))
+        .map((metric) => metric.ts);
     if (timestamps.length === 0) return "No readings available";
     const seconds = Math.max(0, Math.floor(nowSeconds - Math.max(...timestamps)));
     if (seconds < 60) return `Last reading ${seconds}s ago`;
