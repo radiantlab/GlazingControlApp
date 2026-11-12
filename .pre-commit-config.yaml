@@ -3,10 +3,12 @@ repos:
     rev: v5.0.0
     hooks:
       # JETI LiVal .cap captures end each row with "; "; keep them as written.
+      # CLAUDE.md is a symlink to AGENTS.md. Checkouts without symlink support
+      # write it as a text file and break the link for everyone else.
       - id: trailing-whitespace
-        exclude: \.cap$
+        exclude: (\.cap$|^CLAUDE\.md$)
       - id: end-of-file-fixer
-        exclude: \.cap$
+        exclude: (\.cap$|^CLAUDE\.md$)
       - id: check-yaml
 
   - repo: https://github.com/Yelp/detect-secrets
