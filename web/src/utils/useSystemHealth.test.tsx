@@ -1,4 +1,3 @@
-// biome-ignore-all lint/style/noNonNullAssertion: test code asserts mocks and abort signals exist; a failing assertion here should crash the test
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSystemHealth } from "./useSystemHealth";
@@ -20,6 +19,18 @@ function json(body: unknown, status = 200) {
 describe("useSystemHealth", () => {
     const fetchMock = vi.fn<typeof fetch>();
 
+    function currentFetch(): typeof fetch {
+        const implementation = fetchMock.getMockImplementation();
+        if (!implementation) throw new Error("fetch mock has no implementation");
+        return implementation;
+    }
+
+    function rejectOnAbort(options: RequestInit | undefined, reject: (reason: Error) => void) {
+        const signal = options?.signal;
+        if (!signal) throw new Error("expected the request to pass an AbortSignal");
+        signal.addEventListener("abort", () => reject(new Error("aborted")));
+    }
+
     beforeEach(() => {
         vi.useFakeTimers();
         vi.setSystemTime(1000000);
@@ -39,11 +50,11 @@ describe("useSystemHealth", () => {
     it.each(["/sensors", "/metrics/latest"])(
         "updates health and reading ages while %s hangs, then times out and retries",
         async (stalledPath) => {
-            const successfulFetch = fetchMock.getMockImplementation()!;
+            const successfulFetch = currentFetch();
             fetchMock.mockImplementation((input, options) => {
                 if (String(input) !== stalledPath) return successfulFetch(input, options);
                 return new Promise((_, reject) => {
-                    options!.signal!.addEventListener("abort", () => reject(new Error("aborted")));
+                    rejectOnAbort(options, reject);
                 });
             });
             const { result, unmount } = renderHook(() => useSystemHealth());
@@ -77,7 +88,7 @@ describe("useSystemHealth", () => {
     );
 
     it("retains readings on refresh failure and clears the warning on recovery", async () => {
-        const successfulFetch = fetchMock.getMockImplementation()!;
+        const successfulFetch = currentFetch();
         const { result } = renderHook(() => useSystemHealth());
         await act(async () => {
             await result.current.refreshHealth();
@@ -104,7 +115,7 @@ describe("useSystemHealth", () => {
     });
 
     it("retains known sensor errors when the health request times out", async () => {
-        const successfulFetch = fetchMock.getMockImplementation()!;
+        const successfulFetch = currentFetch();
         const { result } = renderHook(() => useSystemHealth());
         await act(async () => {
             await result.current.refreshHealth();
@@ -112,7 +123,7 @@ describe("useSystemHealth", () => {
         fetchMock.mockImplementation((input, options) => {
             if (String(input) !== "/health") return successfulFetch(input, options);
             return new Promise((_, reject) => {
-                options!.signal!.addEventListener("abort", () => reject(new Error("aborted")));
+                rejectOnAbort(options, reject);
             });
         });
         let request!: Promise<void>;

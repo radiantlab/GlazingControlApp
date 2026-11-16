@@ -50,23 +50,22 @@ function LiveGraph({
     const [data, setData] = useState<SensorReadingResponse[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const loadData = async () => {
-        try {
-            const end = endTs ?? Date.now() / 1000;
-            // Get 1 hour of data ending now, or at the sensor's last reading
-            const history = await api.getMetricHistory(sensorId, metric, end - 3600, end);
-            // Sort by timestamp
-            history.sort((a, b) => a.ts - b.ts);
-            setData(history);
-        } catch (err) {
-            console.error("Failed to load graph data", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     useEffect(() => {
+        const loadData = async () => {
+            try {
+                const end = endTs ?? Date.now() / 1000;
+                // Get 1 hour of data ending now, or at the sensor's last reading
+                const history = await api.getMetricHistory(sensorId, metric, end - 3600, end);
+                // Sort by timestamp
+                history.sort((a, b) => a.ts - b.ts);
+                setData(history);
+            } catch (err) {
+                console.error("Failed to load graph data", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         loadData();
         if (endTs != null) return; // A past window does not change
         const interval = setInterval(loadData, 2000); // Poll every 2s

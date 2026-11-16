@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { SensorInfo, SensorReadingResponse } from "../api";
+import { withContentKeys } from "../utils/contentKeys";
 import {
     lastSensorReadingText,
     sensorDisplayLabel,
@@ -30,6 +31,10 @@ export default function SystemHealthDetails({
     const [open, setOpen] = useState(false);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLElement>(null);
+    const sensorLabelFor = (sensorId: string) => {
+        const sensor = sensors.find((s) => s.id === sensorId);
+        return sensor ? sensorDisplayLabel(sensor) : sensorId;
+    };
     const panelId = useId();
     const interactive = health?.status === "degraded" || warnings.length > 0;
 
@@ -86,8 +91,6 @@ export default function SystemHealthDetails({
                         ref={panelRef}
                         className="system-health-panel"
                         aria-label="System health details"
-                        // biome-ignore lint/a11y/noNoninteractiveTabindex: the panel scrolls, so it must take keyboard focus for keyboard users to scroll it
-                        tabIndex={0}
                     >
                         <strong>System health details</strong>
                         {warnings.map((warning) => (
@@ -103,26 +106,26 @@ export default function SystemHealthDetails({
                         )}
                         {issues.length > 0 ? (
                             <ul>
-                                {issues.map((issue, index) => (
-                                    // biome-ignore lint/suspicious/noArrayIndexKey: rows have no stable unique id
-                                    <li key={`${issue.raw}-${index}`}>
-                                        {issue.label && <strong>{issue.label}: </strong>}
-                                        {issue.reason}
-                                        {issue.sensorIds.map((sensorId) => (
-                                            <span className="system-health-age" key={sensorId}>
-                                                {issue.sensorIds.length > 1 &&
-                                                    // biome-ignore lint/style/noNonNullAssertion: the sensor id comes from this issue list, which is built from the loaded sensors, so the lookup always finds one
-                                                    `${sensorDisplayLabel(sensors.find((sensor) => sensor.id === sensorId)!)}: `}
-                                                {lastSensorReadingText(
-                                                    [sensorId],
-                                                    latestMetrics,
-                                                    nowSeconds,
-                                                    metricsAvailable,
-                                                )}
-                                            </span>
-                                        ))}
-                                    </li>
-                                ))}
+                                {withContentKeys(issues, (issue) => issue.raw).map(
+                                    ({ key, item: issue }) => (
+                                        <li key={key}>
+                                            {issue.label && <strong>{issue.label}: </strong>}
+                                            {issue.reason}
+                                            {issue.sensorIds.map((sensorId) => (
+                                                <span className="system-health-age" key={sensorId}>
+                                                    {issue.sensorIds.length > 1 &&
+                                                        `${sensorLabelFor(sensorId)}: `}
+                                                    {lastSensorReadingText(
+                                                        [sensorId],
+                                                        latestMetrics,
+                                                        nowSeconds,
+                                                        metricsAvailable,
+                                                    )}
+                                                </span>
+                                            ))}
+                                        </li>
+                                    ),
+                                )}
                             </ul>
                         ) : health?.status === "degraded" ? (
                             <p>No sensor error details were provided.</p>

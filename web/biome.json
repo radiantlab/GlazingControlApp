@@ -14,24 +14,7 @@
     },
     "linter": {
         "rules": {
-            "preset": "recommended",
-            "a11y": {
-                "noLabelWithoutControl": "warn",
-                "noStaticElementInteractions": "warn",
-                "noSvgWithoutTitle": "warn",
-                "useAriaPropsSupportedByRole": "warn",
-                "useButtonType": "warn",
-                "useKeyWithClickEvents": "warn",
-                "useSemanticElements": "warn"
-            },
-            "correctness": {
-                "useExhaustiveDependencies": "warn"
-            },
-            "suspicious": {
-                "noArrayIndexKey": "warn",
-                "noDuplicateProperties": "warn",
-                "useIterableCallbackReturn": "warn"
-            }
+            "preset": "recommended"
         }
     }
 }

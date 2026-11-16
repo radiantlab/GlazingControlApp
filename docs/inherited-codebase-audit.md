@@ -107,7 +107,8 @@ here:
   (1,274) mix several concerns and are where most changes land.
 - **Routines run arbitrary Python** from the HMI as subprocesses. This is
   acceptable only because the service is LAN-only (ADR 0005); it has no tests.
-- **Biome warnings.** 174 warnings across 11 rules in `web/` (#92).
+- **Biome warnings.** 174 warnings across 11 rules in `web/`. Fixed in #92:
+  all recommended rules are now errors in CI, with no `biome-ignore` comments.
 - **Sensor metric names.** Each driver chose its own names and units
   (RFC-0006).
 

@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useId } from "react";
 import { Link } from "react-router-dom";
+import { withContentKeys } from "../utils/contentKeys";
 import { API_BASE, type RoutineStatusResponse } from "../api";
 import type { Panel, Group } from "../types";
 
@@ -99,6 +100,7 @@ type Props = {
 };
 
 export default function RoutineCodeEditor({ initialRoutineId }: Props) {
+    const fieldId = useId();
     const [code, setCode] = useState("");
     const [routineName, setRoutineName] = useState("");
     const [mode, setMode] = useState<"once" | "interval">("once");
@@ -328,7 +330,6 @@ export default function RoutineCodeEditor({ initialRoutineId }: Props) {
                         {activeRoutines
                             .filter((r) => r.status === "running" || r.status === "scheduled")
                             .map((r) => (
-                                // biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/noStaticElementInteractions: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor
                                 <div
                                     key={r.id}
                                     style={{
@@ -341,15 +342,24 @@ export default function RoutineCodeEditor({ initialRoutineId }: Props) {
                                             r.id === focusedRoutineId
                                                 ? "var(--hmi-bg-panel-hover)"
                                                 : "transparent",
-                                        cursor: "pointer",
                                     }}
-                                    onClick={() => setFocusedRoutineId(r.id)}
                                 >
-                                    <div
+                                    <button
+                                        type="button"
+                                        aria-pressed={r.id === focusedRoutineId}
+                                        onClick={() => setFocusedRoutineId(r.id)}
                                         style={{
                                             display: "flex",
+                                            flex: 1,
                                             alignItems: "center",
                                             gap: "8px",
+                                            padding: 0,
+                                            border: "none",
+                                            background: "none",
+                                            color: "inherit",
+                                            font: "inherit",
+                                            textAlign: "left",
+                                            cursor: "pointer",
                                         }}
                                     >
                                         <span
@@ -379,7 +389,7 @@ export default function RoutineCodeEditor({ initialRoutineId }: Props) {
                                                 — at {new Date(r.run_at_ts * 1000).toLocaleString()}
                                             </span>
                                         )}
-                                    </div>
+                                    </button>
                                     <div style={{ display: "flex", gap: "6px" }}>
                                         {(r.status === "running" || r.status === "scheduled") && (
                                             <button
@@ -421,8 +431,7 @@ export default function RoutineCodeEditor({ initialRoutineId }: Props) {
                         alignItems: "center",
                     }}
                 >
-                    {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                    <label>Routine Name</label>
+                    <label htmlFor={`${fieldId}-name`}>Routine Name</label>
                     <Link to="/docs/routines" target="_blank" rel="noopener noreferrer">
                         <button
                             type="button"
@@ -462,6 +471,7 @@ export default function RoutineCodeEditor({ initialRoutineId }: Props) {
                     </Link>{" "}
                 </div>
                 <input
+                    id={`${fieldId}-name`}
                     type="text"
                     value={routineName}
                     onChange={(e) => setRoutineName(e.target.value)}
@@ -472,8 +482,7 @@ export default function RoutineCodeEditor({ initialRoutineId }: Props) {
             {/* editor */}
             <div className="form-group">
                 <div className="routine-editor-toolbar">
-                    {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                    <label>Script (Python)</label>
+                    <label htmlFor={`${fieldId}-script`}>Script (Python)</label>
                     <button
                         className="routine-examples-toggle"
                         onClick={() => setShowExamples(!showExamples)}
@@ -485,10 +494,9 @@ export default function RoutineCodeEditor({ initialRoutineId }: Props) {
 
                 {showExamples && (
                     <div className="routine-examples">
-                        {EXAMPLES.map((ex, i) => (
+                        {EXAMPLES.map((ex) => (
                             <button
-                                // biome-ignore lint/suspicious/noArrayIndexKey: rows have no stable unique id
-                                key={i}
+                                key={ex.label}
                                 className="routine-example-btn"
                                 onClick={() => handleInsertExample(ex.code)}
                                 type="button"
@@ -501,6 +509,7 @@ export default function RoutineCodeEditor({ initialRoutineId }: Props) {
 
                 <div className="routine-textarea-wrapper">
                     <textarea
+                        id={`${fieldId}-script`}
                         className="routine-code-textarea"
                         value={code}
                         onChange={(e) => setCode(e.target.value)}
@@ -569,8 +578,8 @@ export default function RoutineCodeEditor({ initialRoutineId }: Props) {
                         flexWrap: "wrap",
                     }}
                 >
-                    {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
                     <label
+                        htmlFor={`${fieldId}-run-at`}
                         style={{
                             fontSize: "13px",
                             color: "var(--hmi-text-muted)",
@@ -580,6 +589,7 @@ export default function RoutineCodeEditor({ initialRoutineId }: Props) {
                         Run At <span style={{ fontWeight: "normal" }}>(Optional)</span>
                     </label>
                     <input
+                        id={`${fieldId}-run-at`}
                         type="date"
                         className="routine-interval-input"
                         value={runAtDate}
@@ -588,6 +598,7 @@ export default function RoutineCodeEditor({ initialRoutineId }: Props) {
                     />
                     <input
                         type="time"
+                        aria-label="Run at time (optional)"
                         className="routine-interval-input"
                         value={runAtTime}
                         onChange={(e) => setRunAtTime(e.target.value)}
@@ -650,22 +661,23 @@ export default function RoutineCodeEditor({ initialRoutineId }: Props) {
                         {!focusedRoutine?.logs || focusedRoutine.logs.length === 0 ? (
                             <div className="routine-console-empty">Waiting for output...</div>
                         ) : (
-                            focusedRoutine.logs.map((line, i) => (
-                                <div
-                                    // biome-ignore lint/suspicious/noArrayIndexKey: rows have no stable unique id
-                                    key={i}
-                                    className={`routine-console-line ${
-                                        line.startsWith("❌") ||
-                                        line.toLowerCase().includes("error")
-                                            ? "error"
-                                            : line.startsWith("✅") || line.includes("✓")
-                                              ? "success"
-                                              : ""
-                                    }`}
-                                >
-                                    {line}
-                                </div>
-                            ))
+                            withContentKeys(focusedRoutine.logs, (line) => line).map(
+                                ({ key, item: line }) => (
+                                    <div
+                                        key={key}
+                                        className={`routine-console-line ${
+                                            line.startsWith("❌") ||
+                                            line.toLowerCase().includes("error")
+                                                ? "error"
+                                                : line.startsWith("✅") || line.includes("✓")
+                                                  ? "success"
+                                                  : ""
+                                        }`}
+                                    >
+                                        {line}
+                                    </div>
+                                ),
+                            )
                         )}
                     </div>
                 </div>

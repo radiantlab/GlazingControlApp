@@ -218,5 +218,5 @@ Current maintenance issues:
 - [x] #86 Standardize on Docker as the single container runtime.
 - [ ] #76 Clean up the Docker build.
 - [ ] #59 Add ruff, Biome, and Pester checks to CI.
-- [ ] #92 Fix Biome lint warnings in `web/`.
+- [x] #92 Fix Biome lint warnings in `web/`.
 - [ ] Triage open issues still labeled `needs-triage`.
