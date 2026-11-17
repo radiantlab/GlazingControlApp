@@ -345,11 +345,18 @@ EKO config example:
 
 After wiring and config:
 
-1. Start the API container in the `production` environment:
+1. Start the API container in the `production` environment with the
+   lifecycle script. It checks Docker, `svc\.env.production`, the mount paths,
+   and `audit.db` first, then waits for `/health` and prints it. Pass `-Build`
+   after pulling an update. For its options, exit codes, and the raw
+   `docker compose` fallback, see
+   [Start with Compose](../DEV-SETUP.md#start-with-compose).
 
 ```powershell
-docker compose --env-file svc/.env.production up -d --build
+.\scripts\Invoke-ControlCenter.ps1
 ```
+
+Check it later with `-Action Status`, and stop it with `-Action Stop`.
 
 2. Confirm the service sees all configured sensors and reports their health:
 

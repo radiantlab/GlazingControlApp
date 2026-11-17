@@ -86,4 +86,4 @@ jobs:
         run: |
           Import-Module Pester -RequiredVersion 3.4.0
           $ErrorActionPreference = 'Continue'
-          Invoke-Pester -Path scripts/sensors/tests -EnableExit
+          Invoke-Pester -Path scripts/tests, scripts/sensors/tests -EnableExit

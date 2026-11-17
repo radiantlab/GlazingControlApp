@@ -436,7 +436,11 @@ export default function SensorDocs() {
                                     overflowX: "auto",
                                 }}
                             >
-                                {`# From the repository root:
+                                {`# From the repository root (add -Build after an update):
+.\\scripts\\Invoke-ControlCenter.ps1
+.\\scripts\\Invoke-ControlCenter.ps1 -Action Status
+
+# Without the script (skips its checks):
 docker compose --env-file svc/.env.production up -d --build
 
 # Only if a device is marked "acquisition": "external":

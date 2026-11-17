@@ -201,12 +201,48 @@ the same file works for both methods.
 
 #### Start with Compose
 
-```bash
-docker compose --env-file svc/.env.production up -d --build
+Start, check, and stop production with the lifecycle script. Docker Desktop
+must already be running; the script does not start it.
+
+```powershell
+.\scripts\Invoke-ControlCenter.ps1                  # Start
+.\scripts\Invoke-ControlCenter.ps1 -Action Status
+.\scripts\Invoke-ControlCenter.ps1 -Action Stop
 ```
 
-Follow the logs with `docker logs -f glazing-control-app`. Stop with
-`docker compose --env-file svc/.env.production down`.
+**Start** (the default) checks before it starts anything: Docker is installed
+and running, Compose can read `svc\.env.production`, the four mount sources
+are absolute paths that exist, `audit.db` is in the data directory, and no
+other process holds port 8000. It then runs `docker compose up -d` and waits up
+to 30 seconds for `/health`. If the app is already running, it says so and
+only checks health. It builds the image only when the image is missing, so
+after pulling an update pass `-Build`, or the old image keeps running.
+`-TimeoutSeconds` changes the wait and `-EnvFile` picks another env file.
+
+Start and Status print `status`, `environment`, `control_source`,
+`sensor_status`, and one `sensor_error` line per failing sensor.
+`status: degraded` is a success with a warning: missing instruments are
+reported, not fatal. **Status** starts nothing and checks `/health` once.
+**Stop** runs `docker compose down` and leaves data on the host untouched.
+
+The script's exit codes:
+
+| Code | Meaning |
+|---|---|
+| 0 | Success, including `status: degraded`. Stop also exits 0 when Docker is not running. |
+| 1 | Docker is not installed, or is installed but not running. |
+| 2 | Configuration: the env file, a mount path, `audit.db`, another process on port 8000, or `/health` reporting an `environment` other than `production` or a `control_source` other than `physical`. |
+| 3 | Compose: `up` or `down` failed, or the container exited while starting. Status exits 3 when the app is not running. |
+| 4 | `/health` did not answer within the timeout. |
+| 5 | Unexpected error in the script. |
+
+Follow the logs with `docker logs -f glazing-control-app`. Without the script,
+run Compose directly; this skips the checks above:
+
+```bash
+docker compose --env-file svc/.env.production up -d --build
+docker compose --env-file svc/.env.production down
+```
 
 #### Start with the desktop shortcut
 
@@ -250,6 +286,9 @@ agent loads `svc/.env.production`, so it shares the ingest token and config
 directory with the service.
 
 ### 6. Verify
+
+`.\scripts\Invoke-ControlCenter.ps1 -Action Status` prints the main health
+fields. For the full responses:
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/health
