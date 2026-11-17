@@ -93,6 +93,17 @@ function New-TestProject {
     }
 }
 
+# A Resolve-ControlCenterDocker mock: the engine is stopped on the first call
+# and running after that. Reset $script:resolveCalls to 0 before using it.
+$engineStoppedThenRunning = {
+    $script:resolveCalls++
+    if ($script:resolveCalls -eq 1) {
+        throw (New-ControlCenterError -Kind Engine -Reason "EngineStopped" `
+            -Message "stopped")
+    }
+    "docker"
+}
+
 function New-TestApp {
     param([object[]]$Mounts = @())
 
@@ -793,7 +804,7 @@ Describe "Open-ControlCenter.ps1 exit codes" {
 
         $run.ExitCode | Should Be 1
         $run.Stderr | Should Match "Docker is not installed"
-        $run.Stdout | Should Match "If Docker Desktop is installed, open it from the Start menu"
+        $run.Stdout | Should Match "Docker Desktop is not installed or did not start"
     }
 }
 
@@ -809,7 +820,7 @@ Describe "Invoke-ControlCenterLauncher" {
 
     # Literal text, so a wrong entry in the next-step table fails a test.
     $nextSteps = @{
-        1 = "If Docker Desktop is installed, open it from the Start menu"
+        1 = "Docker Desktop is not installed or did not start. If it is"
         2 = "A setting or file is wrong"
         3 = "The app did not start"
         4 = "The app did not answer in time"
@@ -874,10 +885,11 @@ Describe "Invoke-ControlCenterLauncher" {
         }
     }
 
-    Context "stops before reading config when Docker is not running" {
+    Context "stops before reading config when Docker is not installed" {
         It "exits 1 without reading the config or starting anything" {
             Mock Resolve-ControlCenterDocker {
-                throw (New-ControlCenterError -Kind Engine -Message "not running")
+                throw (New-ControlCenterError -Kind Engine -Reason "NotInstalled" `
+                    -Message "not installed")
             }
             Mock Get-ControlCenterApp { New-TestApp }
             Mock Start-ControlCenterApp {}
@@ -889,6 +901,126 @@ Describe "Invoke-ControlCenterLauncher" {
             $exitCode | Should Be 1
             Assert-MockCalled Get-ControlCenterApp -Times 0 -Exactly
             Assert-MockCalled Start-ControlCenterApp -Times 0 -Exactly
+        }
+    }
+
+    Context "starts Docker Desktop, then the app" {
+        It "starts Docker Desktop when the engine is stopped, then starts the app and opens the HMI" {
+            $script:resolveCalls = 0
+            Mock Resolve-ControlCenterDocker $engineStoppedThenRunning
+            Mock Find-ControlCenterCommand { "docker" }
+            Mock Test-ControlCenterDockerDesktopRunning { $false }
+            Mock Start-ControlCenterDockerDesktop {}
+            Mock Wait-ControlCenterDockerEngine {}
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Start-ControlCenterApp {}
+            Mock Open-ControlCenterBrowser {}
+            Mock Wait-ControlCenterClose {}
+            Mock Wait-ControlCenterEnter {}
+            Mock Write-Host {}
+
+            $exitCode = & $launch
+
+            $exitCode | Should Be 0
+            Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                "$Object" -eq "Starting Docker Desktop..."
+            }
+            Assert-MockCalled Start-ControlCenterDockerDesktop -Times 1 -Exactly
+            Assert-MockCalled Wait-ControlCenterDockerEngine -Times 1 -Exactly -ParameterFilter {
+                $TimeoutSeconds -eq 120
+            }
+            # Checked again after the wait, which also checks docker compose.
+            Assert-MockCalled Resolve-ControlCenterDocker -Times 2 -Exactly
+            Assert-MockCalled Start-ControlCenterApp -Times 1 -Exactly
+            Assert-MockCalled Open-ControlCenterBrowser -Times 1 -Exactly
+            Assert-MockCalled Wait-ControlCenterEnter -Times 0 -Exactly
+        }
+    }
+
+    Context "stops when the Docker engine never answers" {
+        It "exits 1 with the next step, waits for Enter, and does not start the app" {
+            Mock Resolve-ControlCenterDocker {
+                throw (New-ControlCenterError -Kind Engine -Reason "EngineStopped" `
+                    -Message "stopped")
+            }
+            Mock Find-ControlCenterCommand { "docker" }
+            Mock Test-ControlCenterDockerDesktopRunning { $false }
+            Mock Start-ControlCenterDockerDesktop {}
+            Mock Wait-ControlCenterDockerEngine {
+                throw (New-ControlCenterError -Kind Engine -Reason "EngineTimeout" `
+                    -Message "timed out")
+            }
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Start-ControlCenterApp {}
+            Mock Open-ControlCenterBrowser {}
+            Mock Wait-ControlCenterEnter {}
+            Mock Write-Host {}
+
+            $exitCode = & $launch
+
+            $exitCode | Should Be 1
+            Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                "$Object" -match [regex]::Escape($nextSteps[1])
+            }
+            Assert-MockCalled Wait-ControlCenterEnter -Times 1 -Exactly
+            Assert-MockCalled Get-ControlCenterApp -Times 0 -Exactly
+            Assert-MockCalled Start-ControlCenterApp -Times 0 -Exactly
+            Assert-MockCalled Open-ControlCenterBrowser -Times 0 -Exactly
+        }
+    }
+
+    Context "stops when Docker Desktop is not installed" {
+        It "exits 1 with the Docker Desktop or Docker service next step, and does not start the app" {
+            Mock Resolve-ControlCenterDocker {
+                throw (New-ControlCenterError -Kind Engine -Reason "EngineStopped" `
+                    -Message "stopped")
+            }
+            Mock Find-ControlCenterCommand { "docker" }
+            Mock Test-ControlCenterDockerDesktopRunning { $false }
+            Mock Invoke-ControlCenterNative { New-NativeResult -ExitCode 1 }
+            Mock Get-ControlCenterDockerDesktopPath { $null }
+            Mock Wait-ControlCenterDockerEngine {}
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Start-ControlCenterApp {}
+            Mock Open-ControlCenterBrowser {}
+            Mock Wait-ControlCenterEnter {}
+            Mock Write-Host {}
+
+            $exitCode = & $launch
+
+            $exitCode | Should Be 1
+            Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                "$Object" -match "Start Docker Desktop or the Docker service"
+            }
+            Assert-MockCalled Wait-ControlCenterDockerEngine -Times 0 -Exactly
+            Assert-MockCalled Get-ControlCenterApp -Times 0 -Exactly
+            Assert-MockCalled Start-ControlCenterApp -Times 0 -Exactly
+            Assert-MockCalled Wait-ControlCenterEnter -Times 1 -Exactly
+        }
+    }
+
+    Context "stops when docker compose does not work" {
+        It "exits 1 with the compose next step, not the Docker Desktop one" {
+            Mock Resolve-ControlCenterDocker {
+                throw (New-ControlCenterError -Kind Engine -Reason "NoCompose" `
+                    -Message "compose broken")
+            }
+            Mock Start-ControlCenterDockerDesktop {}
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Wait-ControlCenterEnter {}
+            Mock Write-Host {}
+
+            $exitCode = & $launch
+
+            $exitCode | Should Be 1
+            Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                "$Object" -match "'docker compose' does not work"
+            }
+            Assert-MockCalled Write-Host -Times 0 -Exactly -ParameterFilter {
+                "$Object" -match [regex]::Escape($nextSteps[1])
+            }
+            Assert-MockCalled Start-ControlCenterDockerDesktop -Times 0 -Exactly
+            Assert-MockCalled Get-ControlCenterApp -Times 0 -Exactly
         }
     }
 
@@ -945,8 +1077,208 @@ Describe "Invoke-ControlCenterLauncher" {
             }
         }
 
+        It "uses a reason's own next step where the exit code's would mislead" {
+            Get-ControlCenterNextStep -ExitCode 1 -Reason "NoCompose" |
+                Should Match "'docker compose' does not work"
+            Get-ControlCenterNextStep -ExitCode 1 -Reason "NoDockerDesktop" |
+                Should Match "Start Docker Desktop or the Docker service"
+            Get-ControlCenterNextStep -ExitCode 1 -Reason "EngineTimeout" |
+                Should Match ([regex]::Escape($nextSteps[1]))
+        }
+
         It "names an exit code it does not know" {
             Get-ControlCenterNextStep -ExitCode 42 | Should Match "exit code 42"
+        }
+    }
+}
+
+Describe "Resolve-ControlCenterLauncherDocker" {
+    . $commonScript
+    . $launcherCommon
+
+    Context "Docker already running" {
+        It "returns the docker path without starting Docker Desktop" {
+            Mock Resolve-ControlCenterDocker { "docker" }
+            Mock Start-ControlCenterDockerDesktop {}
+            Mock Wait-ControlCenterDockerEngine {}
+
+            Resolve-ControlCenterLauncherDocker | Should Be "docker"
+            Assert-MockCalled Start-ControlCenterDockerDesktop -Times 0 -Exactly
+            Assert-MockCalled Wait-ControlCenterDockerEngine -Times 0 -Exactly
+        }
+    }
+
+    Context "Docker not installed" {
+        It "fails with NotInstalled without starting Docker Desktop" {
+            Mock Resolve-ControlCenterDocker {
+                throw (New-ControlCenterError -Kind Engine -Reason "NotInstalled" `
+                    -Message "not installed")
+            }
+            Mock Start-ControlCenterDockerDesktop {}
+
+            $thrown = Get-ThrownError { Resolve-ControlCenterLauncherDocker }
+
+            Get-ControlCenterExitCode -ErrorRecord $thrown | Should Be 1
+            Get-ControlCenterErrorReason -ErrorRecord $thrown | Should Be "NotInstalled"
+            Assert-MockCalled Start-ControlCenterDockerDesktop -Times 0 -Exactly
+        }
+    }
+
+    Context "engine stopped while Docker Desktop is already starting" {
+        It "only waits for the engine" {
+            $script:resolveCalls = 0
+            Mock Resolve-ControlCenterDocker $engineStoppedThenRunning
+            Mock Find-ControlCenterCommand { "docker" }
+            Mock Test-ControlCenterDockerDesktopRunning { $true }
+            Mock Start-ControlCenterDockerDesktop {}
+            Mock Wait-ControlCenterDockerEngine {}
+            Mock Write-Host {}
+
+            Resolve-ControlCenterLauncherDocker | Should Be "docker"
+            Assert-MockCalled Start-ControlCenterDockerDesktop -Times 0 -Exactly
+            Assert-MockCalled Wait-ControlCenterDockerEngine -Times 1 -Exactly
+        }
+    }
+
+    Context "docker compose broken with the engine running" {
+        It "fails with NoCompose at once, without starting Docker Desktop" {
+            Mock Resolve-ControlCenterDocker {
+                throw (New-ControlCenterError -Kind Engine -Reason "NoCompose" `
+                    -Message "compose broken")
+            }
+            Mock Start-ControlCenterDockerDesktop {}
+            Mock Wait-ControlCenterDockerEngine {}
+
+            $thrown = Get-ThrownError { Resolve-ControlCenterLauncherDocker }
+
+            Get-ControlCenterErrorReason -ErrorRecord $thrown | Should Be "NoCompose"
+            Assert-MockCalled Start-ControlCenterDockerDesktop -Times 0 -Exactly
+            Assert-MockCalled Wait-ControlCenterDockerEngine -Times 0 -Exactly
+        }
+    }
+
+    Context "docker compose broken once Docker Desktop is up" {
+        It "fails with NoCompose after the wait" {
+            $script:resolveCalls = 0
+            Mock Resolve-ControlCenterDocker {
+                $script:resolveCalls++
+                if ($script:resolveCalls -eq 1) {
+                    throw (New-ControlCenterError -Kind Engine -Reason "EngineStopped" `
+                        -Message "stopped")
+                }
+                throw (New-ControlCenterError -Kind Engine -Reason "NoCompose" `
+                    -Message "compose broken")
+            }
+            Mock Find-ControlCenterCommand { "docker" }
+            Mock Test-ControlCenterDockerDesktopRunning { $false }
+            Mock Start-ControlCenterDockerDesktop {}
+            Mock Wait-ControlCenterDockerEngine {}
+            Mock Write-Host {}
+
+            $thrown = Get-ThrownError { Resolve-ControlCenterLauncherDocker }
+
+            Get-ControlCenterExitCode -ErrorRecord $thrown | Should Be 1
+            Get-ControlCenterErrorReason -ErrorRecord $thrown | Should Be "NoCompose"
+            Assert-MockCalled Start-ControlCenterDockerDesktop -Times 1 -Exactly
+        }
+    }
+}
+
+Describe "Start-ControlCenterDockerDesktop" {
+    . $commonScript
+    . $launcherCommon
+
+    Context "docker desktop start works" {
+        It "uses docker desktop start --detach and does not run the program file" {
+            Mock Invoke-ControlCenterNative { New-NativeResult }
+            Mock Get-ControlCenterDockerDesktopPath { "C:\Docker Desktop.exe" }
+            Mock Start-ControlCenterProgram {}
+
+            Start-ControlCenterDockerDesktop -DockerPath "docker"
+
+            Assert-MockCalled Invoke-ControlCenterNative -Times 1 -Exactly -ParameterFilter {
+                ($Arguments -join " ") -eq "desktop start --detach"
+            }
+            Assert-MockCalled Start-ControlCenterProgram -Times 0 -Exactly
+        }
+    }
+
+    Context "docker desktop start is not available" {
+        It "runs Docker Desktop from its install path" {
+            Mock Invoke-ControlCenterNative { New-NativeResult -ExitCode 1 }
+            Mock Get-ControlCenterDockerDesktopPath { "C:\Docker Desktop.exe" }
+            Mock Start-ControlCenterProgram {}
+
+            Start-ControlCenterDockerDesktop -DockerPath "docker"
+
+            Assert-MockCalled Start-ControlCenterProgram -Times 1 -Exactly -ParameterFilter {
+                $FilePath -eq "C:\Docker Desktop.exe"
+            }
+        }
+    }
+
+    Context "Docker Desktop not installed" {
+        It "fails with exit 1 and NoDockerDesktop" {
+            Mock Invoke-ControlCenterNative { New-NativeResult -ExitCode 1 }
+            Mock Get-ControlCenterDockerDesktopPath { $null }
+            Mock Start-ControlCenterProgram {}
+
+            $thrown = Get-ThrownError { Start-ControlCenterDockerDesktop -DockerPath "docker" }
+
+            Get-ControlCenterExitCode -ErrorRecord $thrown | Should Be 1
+            Get-ControlCenterErrorReason -ErrorRecord $thrown | Should Be "NoDockerDesktop"
+            Assert-MockCalled Start-ControlCenterProgram -Times 0 -Exactly
+        }
+    }
+
+    Context "Docker Desktop fails to launch" {
+        It "fails with exit 1 and DockerDesktopFailed" {
+            Mock Invoke-ControlCenterNative { New-NativeResult -ExitCode 1 }
+            Mock Get-ControlCenterDockerDesktopPath { "C:\Docker Desktop.exe" }
+            Mock Start-ControlCenterProgram { throw "access denied" }
+
+            $thrown = Get-ThrownError { Start-ControlCenterDockerDesktop -DockerPath "docker" }
+
+            Get-ControlCenterExitCode -ErrorRecord $thrown | Should Be 1
+            Get-ControlCenterErrorReason -ErrorRecord $thrown | Should Be "DockerDesktopFailed"
+        }
+    }
+}
+
+Describe "Wait-ControlCenterDockerEngine" {
+    . $commonScript
+    . $launcherCommon
+
+    Context "engine comes up" {
+        It "returns once the engine answers" {
+            $script:engineChecks = 0
+            Mock Test-ControlCenterDockerEngine {
+                $script:engineChecks++
+                $script:engineChecks -ge 3
+            }
+            Mock Start-Sleep {}
+
+            Wait-ControlCenterDockerEngine -DockerPath "docker" -TimeoutSeconds 120 -PollSeconds 2
+
+            Assert-MockCalled Test-ControlCenterDockerEngine -Times 3 -Exactly
+            Assert-MockCalled Start-Sleep -Times 2 -Exactly
+        }
+    }
+
+    Context "engine never comes up" {
+        It "fails with exit 1 and EngineTimeout after the timeout's worth of checks" {
+            Mock Test-ControlCenterDockerEngine { $false }
+            Mock Start-Sleep {}
+
+            $thrown = Get-ThrownError {
+                Wait-ControlCenterDockerEngine -DockerPath "docker" -TimeoutSeconds 120 -PollSeconds 2
+            }
+
+            Get-ControlCenterExitCode -ErrorRecord $thrown | Should Be 1
+            Get-ControlCenterErrorReason -ErrorRecord $thrown | Should Be "EngineTimeout"
+            Assert-MockCalled Test-ControlCenterDockerEngine -Times 60 -Exactly
+            # No sleep after the last check.
+            Assert-MockCalled Start-Sleep -Times 59 -Exactly
         }
     }
 }
