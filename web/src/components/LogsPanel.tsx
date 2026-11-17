@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
     api,
     type SensorInfo,
@@ -7,6 +7,7 @@ import {
     type RoutineStatusResponse,
 } from "../api";
 import { sortSensorsForDisplay } from "../utils/sensorDisplay";
+import { withContentKeys } from "../utils/contentKeys";
 
 import type { AuditLogEntry, SortField, SortDir } from "../types";
 
@@ -147,6 +148,35 @@ function sensorTypeLabelForLogRow(row: SensorLogEntry): string {
     }).label;
 }
 
+// Helper function to convert a date string (YYYY-MM-DD) to UTC timestamp
+// Parses the date string as a local date (start/end of day in user's timezone),
+// then converts to UTC timestamp. This ensures filtering matches what users see
+// in toLocaleString() display, where entries are shown in their local timezone.
+function dateStringToLocalTimestamp(dateString: string, isEndOfDay = false): number {
+    const [year, month, day] = dateString.split("-").map(Number);
+    const date = new Date(
+        year,
+        month - 1,
+        day,
+        isEndOfDay ? 23 : 0,
+        isEndOfDay ? 59 : 0,
+        isEndOfDay ? 59 : 0,
+        isEndOfDay ? 999 : 0,
+    );
+    const seconds = date.getTime() / 1000;
+    if (isEndOfDay) {
+        return seconds;
+    }
+    return Math.floor(seconds);
+}
+
+function dateTimeStringToLocalTimestamp(dateTimeString: string): number | undefined {
+    const date = new Date(dateTimeString);
+    const seconds = date.getTime() / 1000;
+    if (!Number.isFinite(seconds)) return undefined;
+    return seconds;
+}
+
 // local
 type LogsPanelProps = {
     isOpen: boolean;
@@ -173,6 +203,7 @@ export default function LogsPanel({
     onRoutineLinkClick,
     onViewSpectrum,
 }: LogsPanelProps) {
+    const fieldId = useId();
     const [activeTab, setActiveTab] = useState<"audit" | "sensors" | "routines">("audit");
     const [typeFilter, setTypeFilter] = useState<"all" | "panel" | "group">("all");
     const [targetFilter, setTargetFilter] = useState("");
@@ -196,45 +227,12 @@ export default function LogsPanel({
     const [sensorSortDir, setSensorSortDir] = useState<SortDir>("desc");
     const [sensorLogs, setSensorLogs] = useState<SensorLogEntry[]>([]);
     const [sensorMetricOptions, setSensorMetricOptions] = useState<string[]>([]);
-    const [sensorShowAllRows, setSensorShowAllRows] = useState<boolean>(false);
+    const [showAllRowsQueryKey, setShowAllRowsQueryKey] = useState<string | null>(null);
     const [sensorLoading, setSensorLoading] = useState<boolean>(false);
     const [sensorError, setSensorError] = useState<string | null>(null);
     const [sensorExporting, setSensorExporting] = useState<boolean>(false);
     const sensorRequestInFlightRef = useRef(false);
     const sensorRequestIdRef = useRef(0);
-    const sensorHasLoadedRef = useRef(false);
-
-    // Helper function to convert a date string (YYYY-MM-DD) to UTC timestamp
-    // Parses the date string as a local date (start/end of day in user's timezone),
-    // then converts to UTC timestamp. This ensures filtering matches what users see
-    // in toLocaleString() display, where entries are shown in their local timezone.
-    const dateStringToLocalTimestamp = (
-        dateString: string,
-        isEndOfDay: boolean = false,
-    ): number => {
-        const [year, month, day] = dateString.split("-").map(Number);
-        const date = new Date(
-            year,
-            month - 1,
-            day,
-            isEndOfDay ? 23 : 0,
-            isEndOfDay ? 59 : 0,
-            isEndOfDay ? 59 : 0,
-            isEndOfDay ? 999 : 0,
-        );
-        const seconds = date.getTime() / 1000;
-        if (isEndOfDay) {
-            return seconds;
-        }
-        return Math.floor(seconds);
-    };
-
-    const dateTimeStringToLocalTimestamp = (dateTimeString: string): number | undefined => {
-        const date = new Date(dateTimeString);
-        const seconds = date.getTime() / 1000;
-        if (!Number.isFinite(seconds)) return undefined;
-        return seconds;
-    };
 
     // Routines state
     const [routines, setRoutines] = useState<RoutineStatusResponse[]>([]);
@@ -259,14 +257,6 @@ export default function LogsPanel({
         }
     }, [isMock]);
 
-    const sensorsSignature = useMemo(() => {
-        return sensors
-            .map((sensor) => `${sensor.id}\u0001${sensor.kind}\u0001${sensor.label || ""}`)
-            .sort()
-            .join("\u0002");
-    }, [sensors]);
-
-    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     const sensorTypeGroups = useMemo<SensorTypeGroup[]>(() => {
         const groups = new Map<string, SensorTypeGroup>();
 
@@ -290,22 +280,22 @@ export default function LogsPanel({
             if (a.rank !== b.rank) return a.rank - b.rank;
             return a.label.localeCompare(b.label, undefined, { numeric: true });
         });
-    }, [sensorsSignature]);
+    }, [sensors]);
 
     const activeSensorGroup = useMemo(
         () => sensorTypeGroups.find((group) => group.key === activeSensorTypeKey) || null,
         [activeSensorTypeKey, sensorTypeGroups],
     );
 
-    const selectedSensorIds = useMemo(() => {
-        if (!activeSensorGroup) return [];
-        if (sensorDeviceFilter) return [sensorDeviceFilter];
-        return activeSensorGroup.sensors.map((sensor) => sensor.id);
-    }, [activeSensorGroup, sensorDeviceFilter]);
-
-    const selectedSensorIdsKey = useMemo(
-        () => selectedSensorIds.join("\u0001"),
-        [selectedSensorIds],
+    // Sensor objects are rebuilt on every poll. Key the selection on its ids so
+    // loadSensorLogs, and the effects that call it, change only when the
+    // selection itself changes.
+    const selectedSensorIdsKey = !activeSensorGroup
+        ? ""
+        : sensorDeviceFilter || activeSensorGroup.sensors.map((sensor) => sensor.id).join("\u0001");
+    const selectedSensorIds = useMemo(
+        () => (selectedSensorIdsKey ? selectedSensorIdsKey.split("\u0001") : []),
+        [selectedSensorIdsKey],
     );
 
     const displayedSensorMetricOptions = useMemo(() => {
@@ -314,39 +304,44 @@ export default function LogsPanel({
         return Array.from(options).sort((a, b) => a.localeCompare(b));
     }, [sensorMetricFilter, sensorMetricOptions]);
 
-    useEffect(() => {
-        if (!sensorTypeGroups.length) {
-            setActiveSensorTypeKey("");
-            return;
-        }
-        const exists = sensorTypeGroups.some((group) => group.key === activeSensorTypeKey);
-        if (!activeSensorTypeKey || !exists) {
-            setActiveSensorTypeKey(sensorTypeGroups[0].key);
-        }
-    }, [activeSensorTypeKey, sensorTypeGroups]);
-
-    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
-    useEffect(() => {
+    // Changing the sensor type clears the device and metric filters; changing
+    // the device clears the metric filter.
+    const selectSensorType = (key: string) => {
+        if (key === activeSensorTypeKey) return;
+        setActiveSensorTypeKey(key);
         setSensorDeviceFilter("");
         setSensorMetricFilter("");
         setSensorMetricOptions([]);
-    }, [activeSensorTypeKey]);
+    };
 
+    const selectSensorDevice = (sensorId: string) => {
+        if (sensorId === sensorDeviceFilter) return;
+        setSensorDeviceFilter(sensorId);
+        setSensorMetricFilter("");
+        setSensorMetricOptions([]);
+    };
+
+    // Fall back to the first sensor type when the selected one disappears.
+    useEffect(() => {
+        const exists = sensorTypeGroups.some((group) => group.key === activeSensorTypeKey);
+        if (exists || (!sensorTypeGroups.length && !activeSensorTypeKey)) return;
+        setActiveSensorTypeKey(sensorTypeGroups[0]?.key ?? "");
+        setSensorDeviceFilter("");
+        setSensorMetricFilter("");
+        setSensorMetricOptions([]);
+    }, [activeSensorTypeKey, sensorTypeGroups]);
+
+    // Clear the device filter when that device is no longer in the group.
     useEffect(() => {
         if (!activeSensorGroup || !sensorDeviceFilter) return;
         const exists = activeSensorGroup.sensors.some((sensor) => sensor.id === sensorDeviceFilter);
         if (!exists) {
             setSensorDeviceFilter("");
+            setSensorMetricFilter("");
+            setSensorMetricOptions([]);
         }
     }, [activeSensorGroup, sensorDeviceFilter]);
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
-    useEffect(() => {
-        setSensorMetricFilter("");
-        setSensorMetricOptions([]);
-    }, [sensorDeviceFilter]);
-
-    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     const getSensorTimeRange = useCallback((): {
         tsFrom?: number;
         tsTo?: number;
@@ -388,10 +383,9 @@ export default function LogsPanel({
         sensorTimeFilterMode,
     ]);
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     const loadSensorLogs = useCallback(
         async (options: LoadSensorLogsOptions = {}) => {
-            const showLoading = options.showLoading ?? !sensorHasLoadedRef.current;
+            const showLoading = options.showLoading ?? true;
 
             if (sensorRequestInFlightRef.current && !options.force) {
                 return;
@@ -405,7 +399,6 @@ export default function LogsPanel({
                 setSensorLogs((prev) => (prev.length ? [] : prev));
                 setSensorError("Sensor logs are not available in mock mode");
                 setSensorLoading(false);
-                sensorHasLoadedRef.current = true;
                 sensorRequestInFlightRef.current = false;
                 return;
             }
@@ -414,7 +407,6 @@ export default function LogsPanel({
                 setSensorLogs((prev) => (prev.length ? [] : prev));
                 setSensorError("No sensors are currently configured");
                 setSensorLoading(false);
-                sensorHasLoadedRef.current = true;
                 sensorRequestInFlightRef.current = false;
                 return;
             }
@@ -425,7 +417,6 @@ export default function LogsPanel({
                 setSensorLogs((prev) => (prev.length ? [] : prev));
                 setSensorError(error);
                 setSensorLoading(false);
-                sensorHasLoadedRef.current = true;
                 sensorRequestInFlightRef.current = false;
                 return;
             }
@@ -461,7 +452,6 @@ export default function LogsPanel({
                     const nextOptions = Array.from(next).sort((a, b) => a.localeCompare(b));
                     return areStringArraysEqual(prev, nextOptions) ? prev : nextOptions;
                 });
-                sensorHasLoadedRef.current = true;
             } catch (err) {
                 if (requestId === sensorRequestIdRef.current) {
                     setSensorError(`Failed to load sensor logs: ${String(err)}`);
@@ -477,7 +467,7 @@ export default function LogsPanel({
         },
         [
             isMock,
-            selectedSensorIdsKey,
+            selectedSensorIds,
             sensorMetricFilter,
             getSensorTimeRange,
             sensorSortField,
@@ -485,11 +475,9 @@ export default function LogsPanel({
         ],
     );
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
-    useEffect(() => {
-        sensorHasLoadedRef.current = false;
-        setSensorShowAllRows(false);
-    }, [
+    // "Show all fetched rows" applies to the current query only; any filter
+    // change falls back to the render limit.
+    const sensorQueryKey = [
         selectedSensorIdsKey,
         sensorMetricFilter,
         sensorTimeFilterMode,
@@ -499,7 +487,8 @@ export default function LogsPanel({
         sensorLatestUnit,
         sensorSortField,
         sensorSortDir,
-    ]);
+    ].join("\u0002");
+    const sensorShowAllRows = showAllRowsQueryKey === sensorQueryKey;
 
     useEffect(() => {
         if (!isOpen || activeTab !== "sensors") return;
@@ -529,7 +518,6 @@ export default function LogsPanel({
         return () => clearInterval(interval);
     }, [isOpen, activeTab, loadRoutines]);
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     const filteredAuditLogs = useMemo(() => {
         let rows = auditLogs;
 
@@ -724,15 +712,18 @@ export default function LogsPanel({
 
     return (
         <>
-            {/* biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/noStaticElementInteractions: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor */}
-            <div className="side-panel-overlay" onClick={onClose} />
-            {/* biome-ignore lint/a11y/useKeyWithClickEvents: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor */}
+            <button
+                type="button"
+                className="side-panel-overlay"
+                aria-label="Close logs"
+                tabIndex={-1}
+                onClick={onClose}
+            />
             <div
                 className="logs-modal logs-panel"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="logs-modal-title"
-                onClick={(e) => e.stopPropagation()}
             >
                 <div className="logs-modal-header">
                     <h2 id="logs-modal-title">Logs</h2>
@@ -795,9 +786,8 @@ export default function LogsPanel({
 
                             <div className="logs-toolbar">
                                 <div className="logs-filters">
-                                    <div className="form-group logs-date-range-group">
-                                        {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                                        <label>Date Range</label>
+                                    <fieldset className="form-fieldset form-group logs-date-range-group">
+                                        <legend>Date Range</legend>
                                         <div className="logs-date-inputs">
                                             <input
                                                 type="date"
@@ -826,12 +816,12 @@ export default function LogsPanel({
                                                 </button>
                                             )}
                                         </div>
-                                    </div>
+                                    </fieldset>
 
                                     <div className="form-group">
-                                        {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                                        <label>Type</label>
+                                        <label htmlFor={`${fieldId}-type`}>Type</label>
                                         <select
+                                            id={`${fieldId}-type`}
                                             value={typeFilter}
                                             onChange={(e) =>
                                                 setTypeFilter(
@@ -846,9 +836,9 @@ export default function LogsPanel({
                                     </div>
 
                                     <div className="form-group">
-                                        {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                                        <label>Target</label>
+                                        <label htmlFor={`${fieldId}-target`}>Target</label>
                                         <input
+                                            id={`${fieldId}-target`}
                                             type="text"
                                             value={targetFilter}
                                             onChange={(e) => setTargetFilter(e.target.value)}
@@ -857,9 +847,9 @@ export default function LogsPanel({
                                     </div>
 
                                     <div className="form-group">
-                                        {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                                        <label>Result</label>
+                                        <label htmlFor={`${fieldId}-result`}>Result</label>
                                         <input
+                                            id={`${fieldId}-result`}
                                             type="text"
                                             value={resultFilter}
                                             onChange={(e) => setResultFilter(e.target.value)}
@@ -972,9 +962,12 @@ export default function LogsPanel({
                                                 </td>
                                             </tr>
                                         ) : (
-                                            filteredAuditLogs.map((row, idx) => (
-                                                // biome-ignore lint/suspicious/noArrayIndexKey: rows have no stable unique id
-                                                <tr key={`${row.ts}-${row.target_id}-${idx}`}>
+                                            withContentKeys(
+                                                filteredAuditLogs,
+                                                (row) =>
+                                                    `${row.ts}-${row.target_type}-${row.target_id}-${row.actor}-${row.level}`,
+                                            ).map(({ key, item: row }) => (
+                                                <tr key={key}>
                                                     <td className="logs-cell-time">
                                                         {formatDateTime(row.ts)}
                                                     </td>
@@ -1057,7 +1050,7 @@ export default function LogsPanel({
                                             role="tab"
                                             aria-selected={activeSensorTypeKey === group.key}
                                             className={`logs-sensor-type-tab ${activeSensorTypeKey === group.key ? "active" : ""}`}
-                                            onClick={() => setActiveSensorTypeKey(group.key)}
+                                            onClick={() => selectSensorType(group.key)}
                                         >
                                             <span>{group.label}</span>
                                             <small>{group.sensors.length}</small>
@@ -1071,12 +1064,14 @@ export default function LogsPanel({
                                     <div className="logs-sensor-filter-grid">
                                         {showSensorDeviceFilter && (
                                             <div className="form-group">
-                                                {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                                                <label>{sensorDeviceFilterLabel}</label>
+                                                <label htmlFor={`${fieldId}-device`}>
+                                                    {sensorDeviceFilterLabel}
+                                                </label>
                                                 <select
+                                                    id={`${fieldId}-device`}
                                                     value={sensorDeviceFilter}
                                                     onChange={(e) =>
-                                                        setSensorDeviceFilter(e.target.value)
+                                                        selectSensorDevice(e.target.value)
                                                     }
                                                 >
                                                     <option value="">
@@ -1092,9 +1087,9 @@ export default function LogsPanel({
                                         )}
 
                                         <div className="form-group">
-                                            {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                                            <label>Metric</label>
+                                            <label htmlFor={`${fieldId}-metric`}>Metric</label>
                                             <select
+                                                id={`${fieldId}-metric`}
                                                 value={sensorMetricFilter}
                                                 onChange={(e) =>
                                                     setSensorMetricFilter(e.target.value)
@@ -1109,15 +1104,9 @@ export default function LogsPanel({
                                             </select>
                                         </div>
 
-                                        <div className="form-group logs-time-mode-group">
-                                            {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                                            <label>Time Filter</label>
-                                            {/* biome-ignore lint/a11y/useSemanticElements: <fieldset> default styling would change the layout; role=group gives the same semantics */}
-                                            <div
-                                                className="logs-filter-mode-toggle"
-                                                role="group"
-                                                aria-label="Sensor log time filter mode"
-                                            >
+                                        <fieldset className="form-fieldset form-group logs-time-mode-group">
+                                            <legend>Time Filter</legend>
+                                            <div className="logs-filter-mode-toggle">
                                                 <button
                                                     type="button"
                                                     className={
@@ -1145,15 +1134,14 @@ export default function LogsPanel({
                                                     Latest
                                                 </button>
                                             </div>
-                                        </div>
+                                        </fieldset>
 
-                                        <div className="form-group logs-date-time-range-group">
-                                            {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                                            <label>
+                                        <fieldset className="form-fieldset form-group logs-date-time-range-group">
+                                            <legend>
                                                 {sensorTimeFilterMode === "latest"
                                                     ? "Latest Range"
                                                     : "Date Range"}
-                                            </label>
+                                            </legend>
                                             {sensorTimeFilterMode === "latest" ? (
                                                 <div className="logs-latest-inputs">
                                                     <span>Latest</span>
@@ -1221,7 +1209,7 @@ export default function LogsPanel({
                                                     )}
                                                 </div>
                                             )}
-                                        </div>
+                                        </fieldset>
                                     </div>
 
                                     <div className="logs-sensor-filter-footer">
@@ -1388,7 +1376,9 @@ export default function LogsPanel({
                                                                 className="logs-inline-btn"
                                                                 type="button"
                                                                 onClick={() =>
-                                                                    setSensorShowAllRows(true)
+                                                                    setShowAllRowsQueryKey(
+                                                                        sensorQueryKey,
+                                                                    )
                                                                 }
                                                             >
                                                                 Show all fetched rows

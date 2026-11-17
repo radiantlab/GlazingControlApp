@@ -54,14 +54,15 @@ function ToastContainer({
     return (
         <div className="toast-container">
             {toasts.map((toast) => (
-                <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
+                <ToastItem key={toast.id} toast={toast} removeToast={removeToast} />
             ))}
         </div>
     );
 }
 
-function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
-    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
+function ToastItem({ toast, removeToast }: { toast: Toast; removeToast: (id: string) => void }) {
+    const onClose = () => removeToast(toast.id);
+
     React.useEffect(() => {
         // Different durations based on toast type
         // Warnings and errors stay longer since they contain important information
@@ -80,20 +81,21 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
                       : // Longest for errors
                         4000; // Default fallback
 
-        const timer = setTimeout(onClose, duration);
+        const timer = setTimeout(() => removeToast(toast.id), duration);
         return () => clearTimeout(timer);
-    }, [toast.id, toast.type]);
+    }, [toast.id, toast.type, removeToast]);
 
     return (
-        // biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/noStaticElementInteractions: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor
-        <div className={`toast toast-${toast.type}`} onClick={onClose}>
-            <div className="toast-icon">
-                {toast.type === "success" && "✓"}
-                {toast.type === "error" && "✕"}
-                {toast.type === "warning" && "⚠"}
-                {toast.type === "info" && "ℹ"}
-            </div>
-            <div className="toast-message">{toast.message}</div>
+        <div className={`toast toast-${toast.type}`}>
+            <button type="button" className="toast-body" onClick={onClose}>
+                <span className="toast-icon" aria-hidden="true">
+                    {toast.type === "success" && "✓"}
+                    {toast.type === "error" && "✕"}
+                    {toast.type === "warning" && "⚠"}
+                    {toast.type === "info" && "ℹ"}
+                </span>
+                <span className="toast-message">{toast.message}</span>
+            </button>
             <button type="button" className="toast-close" onClick={onClose} aria-label="Close">
                 ×
             </button>

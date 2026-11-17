@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Panel, Group } from "../types";
 import { useToast } from "../utils/toast";
 import RoutineCodeEditor from "./RoutineCodeEditor";
@@ -31,6 +31,7 @@ export default function SidePanel({
     const { showToast } = useToast();
 
     // group creation state
+    const groupNameId = useId();
     const [newGroupName, setNewGroupName] = useState("");
     const [selectedPanelIds, setSelectedPanelIds] = useState<Set<string>>(new Set());
     const [isCreatingGroup, setIsCreatingGroup] = useState(false);
@@ -132,10 +133,14 @@ export default function SidePanel({
 
     return (
         <>
-            {/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor */}
-            <div className="side-panel-overlay" onClick={onClose} />
-            {/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor */}
-            <div className="side-panel" onClick={(e) => e.stopPropagation()}>
+            <button
+                type="button"
+                className="side-panel-overlay"
+                aria-label="Close side panel"
+                tabIndex={-1}
+                onClick={onClose}
+            />
+            <div className="side-panel">
                 <div className="side-panel-header">
                     <h2>{mode === "groups" ? "Groups" : "Routines"}</h2>
                     <button
@@ -153,9 +158,9 @@ export default function SidePanel({
                         <div className="side-panel-section">
                             <h3>Create New Group</h3>
                             <div className="form-group">
-                                {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                                <label>Group Name</label>
+                                <label htmlFor={groupNameId}>Group Name</label>
                                 <input
+                                    id={groupNameId}
                                     type="text"
                                     value={newGroupName}
                                     onChange={(e) => setNewGroupName(e.target.value)}
@@ -163,9 +168,8 @@ export default function SidePanel({
                                 />
                             </div>
 
-                            <div className="form-group">
-                                {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                                <label>Select Windows ({selectedPanelIds.size} selected)</label>
+                            <fieldset className="form-fieldset form-group">
+                                <legend>Select Windows ({selectedPanelIds.size} selected)</legend>
                                 <div className="panel-selector">
                                     {sortedPanels.map((panel) => (
                                         <label key={panel.id} className="panel-checkbox">
@@ -179,7 +183,7 @@ export default function SidePanel({
                                         </label>
                                     ))}
                                 </div>
-                            </div>
+                            </fieldset>
 
                             <button
                                 type="button"
@@ -220,9 +224,8 @@ export default function SidePanel({
 
                                             {isEditing ? (
                                                 <>
-                                                    <div className="form-group">
-                                                        {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                                                        <label>Edit members</label>
+                                                    <fieldset className="form-fieldset form-group">
+                                                        <legend>Edit members</legend>
                                                         <div className="panel-selector">
                                                             {sortedPanels.map((panel) => (
                                                                 <label
@@ -247,7 +250,7 @@ export default function SidePanel({
                                                                 </label>
                                                             ))}
                                                         </div>
-                                                    </div>
+                                                    </fieldset>
                                                     <div style={{ display: "flex", gap: 8 }}>
                                                         <button
                                                             type="button"

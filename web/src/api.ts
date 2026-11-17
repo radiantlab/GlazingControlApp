@@ -266,8 +266,17 @@ export type SensorInfo = {
     kind: string;
     label: string;
     location?: string;
-    // biome-ignore lint/suspicious/noExplicitAny: sensor config is free-form JSON from the backend; callers read ad-hoc keys like custom_label
-    config: any;
+    config: SensorConfig;
+};
+
+/** Per-sensor settings from sensors_config.json; keys vary by sensor kind. */
+export type SensorConfig = {
+    custom_label?: string | null;
+    device_custom_label?: string | null;
+    device_id?: string;
+    interval_s?: number;
+    stale_after_s?: number;
+    [key: string]: unknown;
 };
 
 export type SensorSortField =

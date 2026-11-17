@@ -21,26 +21,25 @@ export default function SpectralGraph({ sensorId, fixedTs, height = 350 }: Spect
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const loadData = async () => {
-        try {
-            let res: SensorSpectrumResponse;
-            if (fixedTs != null) {
-                res = await api.getHistoricalSpectrum(sensorId, fixedTs);
-            } else {
-                res = await api.getLatestSpectrum(sensorId);
-            }
-            setData(res);
-            setError(null);
-        } catch (err) {
-            console.error("Failed to load spectral data", err);
-            setError(err instanceof Error && err.message ? err.message : String(err));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     useEffect(() => {
+        const loadData = async () => {
+            try {
+                let res: SensorSpectrumResponse;
+                if (fixedTs != null) {
+                    res = await api.getHistoricalSpectrum(sensorId, fixedTs);
+                } else {
+                    res = await api.getLatestSpectrum(sensorId);
+                }
+                setData(res);
+                setError(null);
+            } catch (err) {
+                console.error("Failed to load spectral data", err);
+                setError(err instanceof Error && err.message ? err.message : String(err));
+            } finally {
+                setLoading(false);
+            }
+        };
+
         setLoading(true);
         loadData();
 

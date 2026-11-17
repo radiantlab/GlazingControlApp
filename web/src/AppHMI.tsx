@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api";
+import { withContentKeys } from "./utils/contentKeys";
 import type { Panel, Group, AuditLogEntry } from "./types";
 import { mockApi } from "./mockData";
 import RoomGrid from "./components/RoomGrid";
@@ -278,13 +279,18 @@ export default function AppHMI() {
     // A configured sensor remains visible when it is stale so operators can
     // distinguish "not reporting" from "not configured".
     const sensorListForControls = sortSensorsForDisplay(sensors);
-    const sensorIdsForControls = sensorListForControls.map((sensor) => sensor.id);
-    const sensorControlKey = sensorIdsForControls.join("|");
+    // Sensor objects are rebuilt on every poll; key on the id list so effects
+    // below re-run only when the set of sensors actually changes.
+    const sensorControlKey = sensorListForControls.map((sensor) => sensor.id).join("|");
+    const sensorIdsForControls = useMemo(
+        () => (sensorControlKey ? sensorControlKey.split("|") : []),
+        [sensorControlKey],
+    );
     const selectedGroup = groups.find((g) => g.id === groupId);
     const highlightedPanelIds = new Set(selectedGroup?.member_ids || []);
     const healthIssues = sensorHealthIssues(health?.sensor_errors || [], sensors);
 
-    async function refresh() {
+    const refresh = useCallback(async () => {
         // Health and sensor diagnostics must still refresh if panel control fails.
         void refreshHealth();
         try {
@@ -318,9 +324,8 @@ export default function AppHMI() {
                 setUsingMock(false);
             }
         }
-    }
+    }, [refreshHealth]);
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     useEffect(() => {
         refresh();
         // Auto-refresh every 5 seconds to keep status current
@@ -333,9 +338,8 @@ export default function AppHMI() {
             clearInterval(interval);
             unsubscribe();
         };
-    }, []);
+    }, [refresh]);
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: dependency list is intentional; adding the flagged deps changes when this re-runs and needs testing
     useEffect(() => {
         if (!sensorIdsForControls.length) {
             setVisibleSensorIds([]);
@@ -348,7 +352,7 @@ export default function AppHMI() {
         }
 
         setVisibleSensorIds((prev) => pruneVisibleSensorIds(prev, sensorIdsForControls));
-    }, [sensorControlKey]);
+    }, [sensorIdsForControls]);
 
     async function setPanel(panelId: string, level: number) {
         try {
@@ -991,10 +995,8 @@ export default function AppHMI() {
                             </div>
                         </div>
                         <div className="sensor-visibility-body">
-                            {/* biome-ignore lint/a11y/useSemanticElements: <fieldset> default styling would change the layout; role=group gives the same semantics */}
-                            <div
-                                className="sensor-visibility-list"
-                                role="group"
+                            <fieldset
+                                className="form-fieldset sensor-visibility-list"
                                 aria-label="Visible sensors"
                             >
                                 {sensorListForControls.map((sensor) => {
@@ -1062,7 +1064,7 @@ export default function AppHMI() {
                                         </label>
                                     );
                                 })}
-                            </div>
+                            </fieldset>
                             <div className="sensor-visibility-actions">
                                 <button
                                     type="button"
@@ -1108,10 +1110,9 @@ export default function AppHMI() {
                         const healthNotice = stale ? (
                             <div className="sensor-health-notice" role="status">
                                 {sensorIssues.length > 0
-                                    ? sensorIssues.map((issue, index) => (
-                                          // biome-ignore lint/suspicious/noArrayIndexKey: rows have no stable unique id
-                                          <p key={`${issue.raw}-${index}`}>{issue.reason}</p>
-                                      ))
+                                    ? withContentKeys(sensorIssues, (issue) => issue.raw).map(
+                                          ({ key, item: issue }) => <p key={key}>{issue.reason}</p>,
+                                      )
                                     : !diagnostics.metricsError && (
                                           <p>
                                               {diagnostics.metricsAvailable
@@ -1791,11 +1792,14 @@ export default function AppHMI() {
                                     <div className="sensor-graph-panel">
                                         {availableGraphMetrics.length > 1 && (
                                             <div className="sensor-graph-controls">
-                                                {/* biome-ignore lint/a11y/noLabelWithoutControl: label is a visual caption for a control group or custom widget; wiring htmlFor/ids is a separate a11y pass */}
-                                                <label className="hmi-status-label">
+                                                <label
+                                                    className="hmi-status-label"
+                                                    htmlFor={`graph-metric-${sensor.id}`}
+                                                >
                                                     Graph metric
                                                 </label>
                                                 <select
+                                                    id={`graph-metric-${sensor.id}`}
                                                     className="sensor-graph-select"
                                                     value={selectedGraphMetric}
                                                     onChange={(e) => {
@@ -1906,13 +1910,14 @@ export default function AppHMI() {
 
             {spectralModal && (
                 <>
-                    {/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor */}
-                    <div
+                    <button
+                        type="button"
                         className="side-panel-overlay"
+                        aria-label="Close spectral graph"
+                        tabIndex={-1}
                         onClick={() => setSpectralModal(null)}
                         style={{ zIndex: 1200 }}
                     />
-                    {/* biome-ignore lint/a11y/useKeyWithClickEvents: click-only legacy element; making it keyboard-accessible needs a semantic/styling refactor */}
                     <div
                         className="logs-modal"
                         role="dialog"
@@ -1923,7 +1928,6 @@ export default function AppHMI() {
                             height: "auto",
                             minHeight: "520px",
                         }}
-                        onClick={(e) => e.stopPropagation()}
                     >
                         <div className="logs-modal-header">
                             <h2>
