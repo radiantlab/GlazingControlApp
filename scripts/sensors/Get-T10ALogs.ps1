@@ -14,7 +14,8 @@
     Path to the production sensors_config.json.
 
 .PARAMETER OutputPath
-    Root for daily CSV and operational log files.
+    Root for daily CSV and operational log files. Defaults to backups\t10a
+    next to this script.
 
 .PARAMETER SamplesPerHead
     Measurements captured from every configured head in this invocation.
@@ -36,7 +37,7 @@
 [CmdletBinding()]
 param(
     [string]$ConfigPath = $env:SENSORS_CONFIG_FILE,
-    [string]$OutputPath = (Join-Path $PSScriptRoot "backups\t10a"),
+    [string]$OutputPath,
     [ValidateRange(1, 10000)]
     [int]$SamplesPerHead = 1,
     [ValidateRange(0, 86400)]
@@ -47,6 +48,14 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# Windows PowerShell 5.1 leaves $PSScriptRoot empty while it evaluates param()
+# defaults for a script started with -File, as Task Scheduler does, so
+# defaults that need it are filled in here.
+if (-not $OutputPath) {
+    $OutputPath = Join-Path $PSScriptRoot "backups\t10a"
+}
+
 . (Join-Path $PSScriptRoot "SensorBackup.Common.ps1")
 
 function Get-T10ABcc {

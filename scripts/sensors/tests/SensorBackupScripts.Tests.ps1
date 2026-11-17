@@ -19,6 +19,28 @@ Describe "Sensor backup script syntax" {
         }
     }
 
+    foreach ($scriptFile in @(Get-ChildItem -LiteralPath $scriptsRoot -Filter "*.ps1")) {
+        It "uses no `$PSScriptRoot in $($scriptFile.Name) parameter defaults" {
+            # Windows PowerShell 5.1 leaves it empty there under -File, as
+            # Task Scheduler starts these scripts.
+            $tokens = $null
+            $errors = $null
+            $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+                $scriptFile.FullName,
+                [ref]$tokens,
+                [ref]$errors
+            )
+            $defaults = @()
+            if ($null -ne $ast.ParamBlock) {
+                $defaults = @($ast.ParamBlock.Parameters |
+                    Where-Object { $null -ne $_.DefaultValue } |
+                    ForEach-Object { $_.DefaultValue.Extent.Text })
+            }
+
+            ($defaults -join "`n") | Should Not Match "PSScriptRoot"
+        }
+    }
+
     It "exposes only SourceFile and DataDirectory for scheduled JETI backups" {
         $tokens = $null
         $errors = $null
