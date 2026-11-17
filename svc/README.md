@@ -238,10 +238,9 @@ To restore:
 4. Optionally verify the restored file with `scripts/production_preflight.py`
    (see `DEV-SETUP.md`).
 5. Start the container: `.\scripts\Invoke-ControlCenter.ps1` (or
-   `docker compose --env-file svc/.env.production up -d`). The script exits 2
-   without starting anything if `audit.db` is missing, which catches a restore
-   that left the data directory empty. See
-   [the exit codes](../DEV-SETUP.md#start-with-compose).
+   `docker compose --env-file svc/.env.production up -d`). The script refuses
+   to start without `audit.db`, which catches a restore that left the data
+   directory empty.
 
 ### HMI mock fallback
 

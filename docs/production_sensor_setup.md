@@ -346,9 +346,7 @@ EKO config example:
 After wiring and config:
 
 1. Start the API container in the `production` environment with the
-   lifecycle script. It checks Docker, `svc\.env.production`, the mount paths,
-   and `audit.db` first, then waits for `/health` and prints it. Pass `-Build`
-   after pulling an update. For its options, exit codes, and the raw
+   lifecycle script. For what it checks, its options, exit codes, and the raw
    `docker compose` fallback, see
    [Start with Compose](../DEV-SETUP.md#start-with-compose).
 

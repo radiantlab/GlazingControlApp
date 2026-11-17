@@ -436,7 +436,7 @@ export default function SensorDocs() {
                                     overflowX: "auto",
                                 }}
                             >
-                                {`# From the repository root (add -Build after an update):
+                                {`# From the repository root (after an update: Stop, then Start with -Build):
 .\\scripts\\Invoke-ControlCenter.ps1
 .\\scripts\\Invoke-ControlCenter.ps1 -Action Status
 
