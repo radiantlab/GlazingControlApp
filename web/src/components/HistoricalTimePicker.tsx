@@ -52,7 +52,7 @@ export default function HistoricalTimePicker({
                     className="sensor-graph-select"
                     type="datetime-local"
                     value={start}
-                    onChange={(event) => setStart(event.target.value)}
+                    onChange={event => setStart(event.target.value)}
                 />
             </label>
             <label className="hmi-status-label">
@@ -61,12 +61,10 @@ export default function HistoricalTimePicker({
                     className="sensor-graph-select"
                     type="datetime-local"
                     value={end}
-                    onChange={(event) => setEnd(event.target.value)}
+                    onChange={event => setEnd(event.target.value)}
                 />
             </label>
-            <button className="hmi-manage-btn" type="submit">
-                Show History
-            </button>
+            <button className="hmi-manage-btn" type="submit">Show History</button>
             {isHistorical && (
                 <button className="hmi-manage-btn" type="button" onClick={onBackToLive}>
                     Back to Live

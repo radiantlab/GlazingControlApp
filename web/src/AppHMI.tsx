@@ -13,7 +13,7 @@ import LogsPanel from "./components/LogsPanel";
 import { Link } from "react-router-dom";
 import LiveGraph from "./components/LiveGraph";
 import HistoricalTimePicker, { type HistoricalRange } from "./components/HistoricalTimePicker";
-import type { SensorReadingResponse } from "./api";
+import { type SensorReadingResponse } from "./api";
 import SystemHealthDetails from "./components/SystemHealthDetails";
 import { useSystemHealth } from "./utils/useSystemHealth";
 import { lastSensorReadingText, sensorHealthIssues } from "./utils/sensorHealth";
@@ -248,9 +248,7 @@ export default function AppHMI() {
     const [logsLoading, setLogsLoading] = useState<boolean>(false);
     const [logsError, setLogsError] = useState<string | null>(null);
     const [graphMetricBySensor, setGraphMetricBySensor] = useState<Record<string, string>>({});
-    const [graphRangeBySensor, setGraphRangeBySensor] = useState<Record<string, HistoricalRange>>(
-        {},
-    );
+    const [graphRangeBySensor, setGraphRangeBySensor] = useState<Record<string, HistoricalRange>>({});
     const [visibleSensorIds, setVisibleSensorIds] = useState<string[]>([]);
     const sensorVisibilityUserSet = useRef(false);
     const [targetRoutineId, setTargetRoutineId] = useState<string | null>(null);
@@ -1095,367 +1093,34 @@ export default function AppHMI() {
                     </div>
                 )}
 
-                {mainTab === "sensors" &&
-                    !usingMock &&
-                    visibleSensors.map((sensor) => {
-                        const { metrics: sensorMetrics, stale: readingsStale } =
-                            getDisplayMetricsForSensor(
-                                sensor,
-                                latestMetrics,
-                                diagnostics.nowSeconds,
-                            );
-                        const sensorIssues = healthIssues.filter((issue) =>
-                            issue.sensorIds.includes(sensor.id),
-                        );
-                        const stale =
-                            readingsStale ||
-                            sensorIssues.length > 0 ||
-                            diagnostics.metricsError !== null;
-                        const healthNotice = stale ? (
-                            <div className="sensor-health-notice" role="status">
-                                {sensorIssues.length > 0
-                                    ? withContentKeys(sensorIssues, (issue) => issue.raw).map(
-                                          ({ key, item: issue }) => <p key={key}>{issue.reason}</p>,
-                                      )
-                                    : !diagnostics.metricsError && (
-                                          <p>
-                                              {diagnostics.metricsAvailable
-                                                  ? "No recent readings received."
-                                                  : "Latest readings unavailable."}
-                                          </p>
-                                      )}
-                                <p>
-                                    {lastSensorReadingText(
-                                        [sensor.id],
-                                        latestMetrics,
-                                        diagnostics.nowSeconds,
-                                        diagnostics.metricsAvailable,
-                                    )}
-                                </p>
-                                {diagnostics.warnings.map((warning) => (
-                                    <p key={warning}>{warning}</p>
-                                ))}
-                            </div>
-                        ) : null;
-                        const metricMap = new Map<string, SensorReadingResponse>();
-                        sensorMetrics.forEach((m) => {
-                            metricMap.set(m.metric, m);
-                        });
-                        const metricNames = Array.from(metricMap.keys());
-                        const orderedMetricNames = orderMetrics(sensor.kind, metricNames);
-                        const availableGraphMetrics = graphMetricOptions(sensor.kind, metricNames);
-                        const requestedMetric = graphMetricBySensor[sensor.id];
-                        const selectedGraphMetric =
-                            requestedMetric && availableGraphMetrics.includes(requestedMetric)
-                                ? requestedMetric
-                                : availableGraphMetrics[0] || "";
-                        const selectedReading = selectedGraphMetric
-                            ? metricMap.get(selectedGraphMetric)
-                            : undefined;
-                        const sensorKindLabel = SENSOR_KIND_LABELS[sensor.kind] || sensor.kind;
-                        const graphHeight = sensorGraphHeight(sensor.kind);
-                        const graphRange = graphRangeBySensor[sensor.id];
-
-                        if (!selectedGraphMetric || !selectedReading) {
-                            return (
-                                <div
-                                    key={sensor.id}
-                                    className="room-section sensor-card sensor-card-no-data"
-                                    style={{ marginTop: 20 }}
-                                >
-                                    <div className="room-header sensor-card-header">
-                                        {editingSensorId === sensor.id ? (
-                                            <div
-                                                className="sensor-edit-form"
-                                                style={{
-                                                    display: "flex",
-                                                    flexDirection: "column",
-                                                    gap: "8px",
-                                                    width: "100%",
-                                                    padding: "4px 0",
-                                                }}
-                                            >
-                                                <div
-                                                    style={{
-                                                        display: "flex",
-                                                        gap: "12px",
-                                                        alignItems: "flex-end",
-                                                        flexWrap: "wrap",
-                                                    }}
-                                                >
-                                                    <div
-                                                        style={{
-                                                            display: "flex",
-                                                            flexDirection: "column",
-                                                            gap: "4px",
-                                                        }}
-                                                    >
-                                                        <span
-                                                            style={{
-                                                                fontSize: "11px",
-                                                                color: "var(--hmi-text-muted)",
-                                                                fontWeight: 500,
-                                                            }}
-                                                        >
-                                                            Head Label
-                                                        </span>
-                                                        <input
-                                                            type="text"
-                                                            className="hmi-input"
-                                                            ref={editCustomLabelRef}
-                                                            defaultValue={
-                                                                sensor.config?.custom_label || ""
-                                                            }
-                                                            placeholder={sensor.label || sensor.id}
-                                                            style={{
-                                                                padding: "6px 10px",
-                                                                fontSize: "13px",
-                                                                background: "var(--hmi-bg-dark)",
-                                                                border: "1px solid var(--hmi-border)",
-                                                                color: "var(--hmi-text)",
-                                                                borderRadius: "4px",
-                                                                width: "160px",
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <div
-                                                        style={{
-                                                            display: "flex",
-                                                            flexDirection: "column",
-                                                            gap: "4px",
-                                                        }}
-                                                    >
-                                                        <span
-                                                            style={{
-                                                                fontSize: "11px",
-                                                                color: "var(--hmi-text-muted)",
-                                                                fontWeight: 500,
-                                                            }}
-                                                        >
-                                                            Body Label
-                                                        </span>
-                                                        <input
-                                                            type="text"
-                                                            className="hmi-input"
-                                                            ref={editDeviceCustomLabelRef}
-                                                            defaultValue={
-                                                                sensor.config
-                                                                    ?.device_custom_label || ""
-                                                            }
-                                                            placeholder={sensorKindLabel}
-                                                            style={{
-                                                                padding: "6px 10px",
-                                                                fontSize: "13px",
-                                                                background: "var(--hmi-bg-dark)",
-                                                                border: "1px solid var(--hmi-border)",
-                                                                color: "var(--hmi-text)",
-                                                                borderRadius: "4px",
-                                                                width: "160px",
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <div style={{ display: "flex", gap: "8px" }}>
-                                                        <button
-                                                            type="button"
-                                                            className="hmi-manage-btn"
-                                                            onClick={async () => {
-                                                                try {
-                                                                    const customLabel =
-                                                                        editCustomLabelRef.current
-                                                                            ?.value || "";
-                                                                    const deviceCustomLabel =
-                                                                        editDeviceCustomLabelRef
-                                                                            .current?.value || "";
-                                                                    await api.updateSensorLabels(
-                                                                        sensor.id,
-                                                                        customLabel,
-                                                                        deviceCustomLabel,
-                                                                    );
-                                                                    setEditingSensorId(null);
-                                                                    await refresh();
-                                                                } catch (err) {
-                                                                    console.error(
-                                                                        "Failed to update labels:",
-                                                                        err,
-                                                                    );
-                                                                    alert(
-                                                                        "Failed to update labels: " +
-                                                                            String(err),
-                                                                    );
-                                                                }
-                                                            }}
-                                                            style={{
-                                                                padding: "6px 12px",
-                                                                fontSize: "12px",
-                                                                height: "31px",
-                                                            }}
-                                                        >
-                                                            Save
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            className="hmi-manage-btn"
-                                                            onClick={() => setEditingSensorId(null)}
-                                                            style={{
-                                                                padding: "6px 12px",
-                                                                fontSize: "12px",
-                                                                background: "transparent",
-                                                                border: "1px solid var(--hmi-border)",
-                                                                height: "31px",
-                                                            }}
-                                                        >
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <h2
-                                                    className="room-title"
-                                                    style={{
-                                                        display: "inline-flex",
-                                                        alignItems: "center",
-                                                        gap: "8px",
-                                                    }}
-                                                >
-                                                    {sensor.config?.custom_label ? (
-                                                        <>
-                                                            {sensor.config.custom_label}{" "}
-                                                            <span
-                                                                style={{
-                                                                    color: "var(--hmi-text-muted)",
-                                                                    fontSize: "0.75em",
-                                                                    fontWeight: "normal",
-                                                                }}
-                                                            >
-                                                                ({sensor.label || sensor.id})
-                                                            </span>
-                                                        </>
-                                                    ) : (
-                                                        sensor.label || sensor.id
-                                                    )}
-                                                    {sensor.kind === "t10a" && (
-                                                        <button
-                                                            type="button"
-                                                            className="hmi-edit-icon-btn"
-                                                            onClick={() => {
-                                                                setEditingSensorId(sensor.id);
-                                                            }}
-                                                            title="Edit labels"
-                                                            style={{
-                                                                background: "none",
-                                                                border: "none",
-                                                                color: "var(--hmi-text-muted)",
-                                                                cursor: "pointer",
-                                                                padding: 0,
-                                                                display: "inline-flex",
-                                                                alignItems: "center",
-                                                            }}
-                                                        >
-                                                            <svg
-                                                                aria-hidden="true"
-                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                fill="none"
-                                                                viewBox="0 0 24 24"
-                                                                strokeWidth={1.5}
-                                                                stroke="currentColor"
-                                                                style={{
-                                                                    width: "16px",
-                                                                    height: "16px",
-                                                                }}
-                                                            >
-                                                                <path
-                                                                    strokeLinecap="round"
-                                                                    strokeLinejoin="round"
-                                                                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.83 20.013a4.5 4.5 0 01-1.897 1.13l-3.885 1.206 1.207-3.885a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"
-                                                                />
-                                                            </svg>
-                                                        </button>
-                                                    )}
-                                                </h2>
-                                                <div className="room-stats">
-                                                    <span>
-                                                        {sensor.config?.device_custom_label ? (
-                                                            <>
-                                                                {sensor.config.device_custom_label}{" "}
-                                                                <span
-                                                                    style={{
-                                                                        color: "var(--hmi-text-muted)",
-                                                                        fontSize: "0.85em",
-                                                                        fontWeight: "normal",
-                                                                    }}
-                                                                >
-                                                                    ({sensorKindLabel})
-                                                                </span>
-                                                            </>
-                                                        ) : (
-                                                            sensorKindLabel
-                                                        )}
-                                                    </span>
-                                                    {sensor.location && (
-                                                        <span style={{ marginLeft: 8 }}>
-                                                            {sensor.location}
-                                                        </span>
-                                                    )}
-                                                    <span style={{ marginLeft: 8 }}>
-                                                        not reporting
-                                                    </span>
-                                                    {sensor.kind === "jeti_spectraval" && (
-                                                        <button
-                                                            type="button"
-                                                            className="hmi-manage-btn"
-                                                            onClick={() =>
-                                                                setSpectralModal({
-                                                                    sensorId: sensor.id,
-                                                                })
-                                                            }
-                                                            style={{
-                                                                marginLeft: 12,
-                                                                marginRight: 8,
-                                                                padding: "2px 8px",
-                                                                fontSize: "11px",
-                                                                height: "auto",
-                                                            }}
-                                                            title="View real-time spectral irradiance graph"
-                                                        >
-                                                            View Spectrum
-                                                        </button>
-                                                    )}
-                                                    <button
-                                                        type="button"
-                                                        className="sensor-card-hide-btn"
-                                                        onClick={() => hideSensor(sensor.id)}
-                                                        title={`Hide ${sensor.config?.custom_label || sensor.label || sensor.id}`}
-                                                    >
-                                                        Hide
-                                                    </button>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                    {healthNotice}
-                                    <div className="sensor-card-layout">
-                                        <div className="sensor-metrics-panel">
-                                            <div className="sensor-metrics-heading">
-                                                Live metrics
-                                            </div>
-                                            <div className="sensor-empty-state">
-                                                No live data yet
-                                            </div>
-                                        </div>
-                                        <div className="sensor-graph-panel">
-                                            <div
-                                                className="sensor-empty-state sensor-empty-graph"
-                                                style={{ height: graphHeight }}
-                                            >
-                                                Graph appears when readings arrive
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        }
+                {mainTab === "sensors" && !usingMock && visibleSensors.map(sensor => {
+                    const { metrics: sensorMetrics, stale: readingsStale } = getDisplayMetricsForSensor(
+                        sensor, latestMetrics, diagnostics.nowSeconds,
+                    );
+                    const sensorIssues = healthIssues.filter(issue => issue.sensorIds.includes(sensor.id));
+                    const stale = readingsStale || sensorIssues.length > 0 || diagnostics.metricsError !== null;
+                    const healthNotice = stale ? (
+                        <div className="sensor-health-notice" role="status">
+                            {sensorIssues.length > 0
+                                ? sensorIssues.map((issue, index) => <p key={`${issue.raw}-${index}`}>{issue.reason}</p>)
+                                : !diagnostics.metricsError && <p>{diagnostics.metricsAvailable ? "No recent readings received." : "Latest readings unavailable."}</p>}
+                            <p>{lastSensorReadingText([sensor.id], latestMetrics, diagnostics.nowSeconds, diagnostics.metricsAvailable)}</p>
+                            {diagnostics.warnings.map(warning => <p key={warning}>{warning}</p>)}
+                        </div>
+                    ) : null;
+                    const metricMap = new Map<string, SensorReadingResponse>();
+                    sensorMetrics.forEach(m => metricMap.set(m.metric, m));
+                    const metricNames = Array.from(metricMap.keys());
+                    const orderedMetricNames = orderMetrics(sensor.kind, metricNames);
+                    const availableGraphMetrics = graphMetricOptions(sensor.kind, metricNames);
+                    const requestedMetric = graphMetricBySensor[sensor.id];
+                    const selectedGraphMetric = requestedMetric && availableGraphMetrics.includes(requestedMetric)
+                        ? requestedMetric
+                        : availableGraphMetrics[0] || "";
+                    const selectedReading = selectedGraphMetric ? metricMap.get(selectedGraphMetric) : undefined;
+                    const sensorKindLabel = SENSOR_KIND_LABELS[sensor.kind] || sensor.kind;
+                    const graphHeight = sensorGraphHeight(sensor.kind);
+                    const graphRange = graphRangeBySensor[sensor.id];
 
                         return (
                             <div
@@ -1868,16 +1533,227 @@ export default function AppHMI() {
                         );
                     })}
 
-                {mainTab === "sensors" &&
-                    !usingMock &&
-                    sensorListForControls.length > 0 &&
-                    visibleSensors.length === 0 && (
-                        <div
-                            className="room-section"
-                            style={{ marginTop: 20, padding: "12px 16px", color: "#9ca3af" }}
-                        >
-                            No sensors selected for display. Use the visibility controls above to
-                            choose what to show.
+                    return (
+                        <div key={sensor.id} className="room-section sensor-card" style={{ marginTop: 20 }}>
+                            <div className="room-header sensor-card-header">
+                                    {editingSensorId === sensor.id ? (
+                                        <div className="sensor-edit-form" style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', padding: '4px 0' }}>
+                                            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    <span style={{ fontSize: '11px', color: 'var(--hmi-text-muted)', fontWeight: 500 }}>Head Label</span>
+                                                    <input
+                                                        type="text"
+                                                        className="hmi-input"
+                                                        ref={editCustomLabelRef}
+                                                        defaultValue={sensor.config?.custom_label || ""}
+                                                        placeholder={sensor.label || sensor.id}
+                                                        style={{ padding: '6px 10px', fontSize: '13px', background: 'var(--hmi-bg-dark)', border: '1px solid var(--hmi-border)', color: 'var(--hmi-text)', borderRadius: '4px', width: '160px' }}
+                                                    />
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    <span style={{ fontSize: '11px', color: 'var(--hmi-text-muted)', fontWeight: 500 }}>Body Label</span>
+                                                    <input
+                                                        type="text"
+                                                        className="hmi-input"
+                                                        ref={editDeviceCustomLabelRef}
+                                                        defaultValue={sensor.config?.device_custom_label || ""}
+                                                        placeholder={sensorKindLabel}
+                                                        style={{ padding: '6px 10px', fontSize: '13px', background: 'var(--hmi-bg-dark)', border: '1px solid var(--hmi-border)', color: 'var(--hmi-text)', borderRadius: '4px', width: '160px' }}
+                                                    />
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="hmi-manage-btn"
+                                                        onClick={async () => {
+                                                            try {
+                                                                const customLabel = editCustomLabelRef.current?.value || "";
+                                                                const deviceCustomLabel = editDeviceCustomLabelRef.current?.value || "";
+                                                                await api.updateSensorLabels(sensor.id, customLabel, deviceCustomLabel);
+                                                                setEditingSensorId(null);
+                                                                await refresh();
+                                                            } catch (err) {
+                                                                console.error("Failed to update labels:", err);
+                                                                alert("Failed to update labels: " + String(err));
+                                                            }
+                                                        }}
+                                                        style={{ padding: '6px 12px', fontSize: '12px', height: '31px' }}
+                                                    >
+                                                        Save
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="hmi-manage-btn"
+                                                        onClick={() => setEditingSensorId(null)}
+                                                        style={{ padding: '6px 12px', fontSize: '12px', background: 'transparent', border: '1px solid var(--hmi-border)', height: '31px' }}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <h2 className="room-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                                {sensor.config?.custom_label ? (
+                                                    <>
+                                                        {sensor.config.custom_label}{" "}
+                                                        <span style={{ color: "var(--hmi-text-muted)", fontSize: "0.75em", fontWeight: "normal" }}>
+                                                            ({sensor.label || sensor.id})
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    sensor.label || sensor.id
+                                                )}
+                                                {sensor.kind === "t10a" && (
+                                                    <button
+                                                        type="button"
+                                                        className="hmi-edit-icon-btn"
+                                                        onClick={() => {
+                                                            setEditingSensorId(sensor.id);
+                                                        }}
+                                                        title="Edit labels"
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            color: 'var(--hmi-text-muted)',
+                                                            cursor: 'pointer',
+                                                            padding: 0,
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center'
+                                                        }}
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: "16px", height: "16px" }}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.83 20.013a4.5 4.5 0 01-1.897 1.13l-3.885 1.206 1.207-3.885a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </h2>
+                                            <div className="room-stats">
+                                                <span>
+                                                    {sensor.config?.device_custom_label ? (
+                                                        <>
+                                                            {sensor.config.device_custom_label}{" "}
+                                                            <span style={{ color: "var(--hmi-text-muted)", fontSize: "0.85em", fontWeight: "normal" }}>
+                                                                ({sensorKindLabel})
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        sensorKindLabel
+                                                    )}
+                                                </span>
+                                                {sensor.location && <span style={{ marginLeft: 8 }}>{sensor.location}</span>}
+                                                <span style={{ marginLeft: 8 }}>{orderedMetricNames.length} metrics</span>
+                                                {stale && <span style={{ marginLeft: 8 }}>not reporting</span>}
+                                                {sensor.kind === "jeti_spectraval" && (
+                                                    <button
+                                                        className="hmi-manage-btn"
+                                                        onClick={() => setSpectralModal({ sensorId: sensor.id })}
+                                                        style={{ marginLeft: 12, marginRight: 8, padding: "2px 8px", fontSize: "11px", height: "auto" }}
+                                                        title="View real-time spectral irradiance graph"
+                                                    >
+                                                        View Spectrum
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    className="sensor-card-hide-btn"
+                                                    onClick={() => hideSensor(sensor.id)}
+                                                    title={`Hide ${sensor.config?.custom_label || sensor.label || sensor.id}`}
+                                                >
+                                                    Hide
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                            {healthNotice}
+                            <div className="sensor-card-layout">
+                                <div className="sensor-metrics-panel">
+                                    <div className="sensor-metrics-heading">{stale ? "Last readings" : "Live metrics"}</div>
+                                    <div className="sensor-metrics-grid">
+                                        {orderedMetricNames.map(metric => {
+                                            const reading = metricMap.get(metric);
+                                            if (!reading) return null;
+                                            const isSelected = metric === selectedGraphMetric;
+
+                                            return (
+                                                <button
+                                                    key={`${sensor.id}-${metric}`}
+                                                    type="button"
+                                                    className={`sensor-metric-row ${isSelected ? "active" : ""}`}
+                                                    aria-pressed={isSelected}
+                                                    onClick={() => {
+                                                        if (availableGraphMetrics.includes(metric)) {
+                                                            setGraphMetricBySensor(prev => ({ ...prev, [sensor.id]: metric }));
+                                                        }
+                                                    }}
+                                                >
+                                                    <span className="sensor-metric-label">
+                                                        {METRIC_LABELS[metric] || metric}
+                                                    </span>
+                                                    <span className="sensor-metric-value">
+                                                        {formatMetricValue(metric, reading.value)}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="sensor-metrics-meta">
+                                        Graphing {METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric} - {stale
+                                            ? `last reading ${new Date(selectedReading.ts * 1000).toLocaleString()}`
+                                            : `updated ${formatMetricTimestamp(selectedReading.ts)}`}
+                                    </div>
+                                </div>
+
+                                <div className="sensor-graph-panel">
+                                    {availableGraphMetrics.length > 1 && (
+                                        <div className="sensor-graph-controls">
+                                            <label className="hmi-status-label">Graph metric</label>
+                                            <select
+                                                className="sensor-graph-select"
+                                                value={selectedGraphMetric}
+                                                onChange={(e) => {
+                                                    const nextMetric = e.target.value;
+                                                    setGraphMetricBySensor(prev => ({ ...prev, [sensor.id]: nextMetric }));
+                                                }}
+                                            >
+                                                {availableGraphMetrics.map(metric => (
+                                                    <option key={`${sensor.id}-graph-${metric}`} value={metric}>
+                                                        {METRIC_LABELS[metric] || metric}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+                                    <HistoricalTimePicker
+                                        isHistorical={Boolean(graphRange)}
+                                        onApply={range => setGraphRangeBySensor(prev => ({
+                                            ...prev,
+                                            [sensor.id]: range,
+                                        }))}
+                                        onBackToLive={() => setGraphRangeBySensor(prev => {
+                                            const next = { ...prev };
+                                            delete next[sensor.id];
+                                            return next;
+                                        })}
+                                    />
+                                    <LiveGraph
+                                        key={`${sensor.id}-${selectedGraphMetric}-${graphRange?.startTs ?? "default"}-${graphRange?.endTs ?? "default"}`}
+                                        sensorId={sensor.id}
+                                        metric={selectedGraphMetric}
+                                        label={`${sensor.config?.custom_label ? `${sensor.config.custom_label} (${sensor.label || sensor.id})` : (sensor.label || sensor.id)} - ${METRIC_LABELS[selectedGraphMetric] || selectedGraphMetric}`}
+                                        yAxisLabel={metricAxisLabel(selectedGraphMetric)}
+                                        valueFormatter={(value) => value != null ? formatMetricValue(selectedGraphMetric, value) : "N/A"}
+                                        color={sensorGraphColor(sensor.kind)}
+                                        height={graphHeight}
+                                        variant="embedded"
+                                        startTs={graphRange?.startTs}
+                                        endTs={graphRange?.endTs ?? (stale ? selectedReading.ts : undefined)}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     )}
 

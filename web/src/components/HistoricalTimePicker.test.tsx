@@ -6,7 +6,11 @@ describe("HistoricalTimePicker", () => {
     it("rejects reversed times and applies a valid range in Unix seconds", () => {
         const onApply = vi.fn();
         render(
-            <HistoricalTimePicker isHistorical={false} onApply={onApply} onBackToLive={vi.fn()} />,
+            <HistoricalTimePicker
+                isHistorical={false}
+                onApply={onApply}
+                onBackToLive={vi.fn()}
+            />,
         );
 
         fireEvent.change(screen.getByLabelText("Start"), {

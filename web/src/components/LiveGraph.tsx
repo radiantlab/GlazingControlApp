@@ -38,20 +38,24 @@ function toFiniteNumber(value: unknown): number | undefined {
     return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function LiveGraph({
-    sensorId,
-    metric,
-    color = "#8884d8",
-    label,
-    height = 300,
-    variant = "card",
-    yAxisLabel,
-    valueFormatter,
-    startTs,
-    endTs,
-}: LiveGraphProps) {
+function LiveGraph({ sensorId, metric, color = "#8884d8", label, height = 300, variant = "card", yAxisLabel, valueFormatter, startTs, endTs }: LiveGraphProps) {
     const [data, setData] = useState<SensorReadingResponse[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const loadData = async () => {
+        try {
+            const end = endTs ?? Date.now() / 1000;
+            // Default to the preceding hour unless a start was selected.
+            const history = await api.getMetricHistory(sensorId, metric, startTs ?? end - 3600, end);
+            // Sort by timestamp
+            history.sort((a, b) => a.ts - b.ts);
+            setData(history);
+        } catch (err) {
+            console.error("Failed to load graph data", err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         const loadData = async () => {

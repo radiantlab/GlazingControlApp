@@ -111,46 +111,22 @@ describe("AppHMI dashboard", () => {
 
 describe("AppHMI sensor diagnostics", () => {
     it("applies a historical range and returns the graph to live mode", async () => {
-        vi.stubGlobal(
-            "fetch",
-            vi.fn(async (input: RequestInfo | URL) => {
-                const path = String(input);
-                const body =
-                    path === "/health"
-                        ? { status: "ok", environment: "development", sensor_errors: [] }
-                        : path === "/sensors"
-                          ? [
-                                {
-                                    id: "TEST",
-                                    label: "Test sensor",
-                                    kind: "t10a",
-                                    config: { interval_s: 60 },
-                                },
-                            ]
-                          : path === "/metrics/latest"
-                            ? [
-                                  {
-                                      sensor_id: "TEST",
-                                      metric: "lux",
-                                      value: 42,
-                                      ts: Date.now() / 1000,
-                                  },
-                              ]
-                            : [];
-                return new Response(JSON.stringify(body), {
-                    headers: { "Content-Type": "application/json" },
-                });
-            }),
-        );
+        vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+            const path = String(input);
+            const body = path === "/health"
+                ? { status: "ok", environment: "development", sensor_errors: [] }
+                : path === "/sensors"
+                    ? [{ id: "TEST", label: "Test sensor", kind: "t10a", config: { interval_s: 60 } }]
+                    : path === "/metrics/latest"
+                        ? [{ sensor_id: "TEST", metric: "lux", value: 42, ts: Date.now() / 1000 }]
+                        : [];
+            return new Response(JSON.stringify(body), {
+                headers: { "Content-Type": "application/json" },
+            });
+        }));
 
         await act(async () => {
-            render(
-                <MemoryRouter>
-                    <ToastProvider>
-                        <AppHMI />
-                    </ToastProvider>
-                </MemoryRouter>,
-            );
+            render(<MemoryRouter><ToastProvider><AppHMI /></ToastProvider></MemoryRouter>);
         });
         fireEvent.click(screen.getByRole("button", { name: "Sensors" }));
 
