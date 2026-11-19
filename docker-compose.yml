@@ -58,6 +58,14 @@ services:
       # Optional: the v3 API on :8083 is unauthenticated.
       HALIO_API_KEY: ${HALIO_API_KEY:-}
     restart: unless-stopped
+    # Docker keeps the container's console log for as long as the container
+    # exists and does not limit it by default. Cap it so a trailer left running
+    # for months does not fill the disk; study data lives in audit.db.
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
     healthcheck:
       test:
         - CMD

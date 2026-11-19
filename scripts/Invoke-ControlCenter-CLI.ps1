@@ -41,7 +41,7 @@ if (-not $EnvFile) {
     $EnvFile = Join-Path $PSScriptRoot '../svc/.env.production'
 }
 
-. (Join-Path $PSScriptRoot 'ControlCenter.Common.ps1')
+. (Join-Path $PSScriptRoot 'control-center/ControlCenter.Common.ps1')
 
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $envPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EnvFile)

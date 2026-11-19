@@ -1,9 +1,9 @@
 $scriptsRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$commonScript = Join-Path $scriptsRoot "ControlCenter.Common.ps1"
-$invokeScript = Join-Path $scriptsRoot "Invoke-ControlCenter.ps1"
-$launcherCommon = Join-Path $scriptsRoot "ControlCenter.Launcher.ps1"
-$launcherScript = Join-Path $scriptsRoot "Open-ControlCenter.ps1"
-$cmdLauncher = Join-Path $scriptsRoot "Start-ControlCenter.cmd"
+$commonScript = Join-Path $scriptsRoot "control-center/ControlCenter.Common.ps1"
+$invokeScript = Join-Path $scriptsRoot "Invoke-ControlCenter-CLI.ps1"
+$launcherCommon = Join-Path $scriptsRoot "control-center/ControlCenter.Launcher.ps1"
+$launcherScript = Join-Path $scriptsRoot "control-center/Open-ControlCenter.ps1"
+$cmdLauncher = Join-Path $scriptsRoot "Double-Click-Launcher.cmd"
 
 # The entry script runs under Latest; ControlCenter.Common.ps1 sets no mode of
 # its own, so the tests set the same one.
@@ -189,21 +189,37 @@ Describe "Control Center script syntax" {
 
             ($defaults -join "`n") | Should Not Match "PSScriptRoot"
         }
+
+        It "resolves the repository root and env file from $([System.IO.Path]::GetFileName($scriptPath))'s folder" {
+            # The entry scripts sit at different depths under scripts/, so a
+            # wrong '..' count would point Compose at the wrong directory.
+            $text = Get-Content -LiteralPath $scriptPath -Raw
+            $scriptDirectory = Split-Path -Parent $scriptPath
+            $repositoryRoot = (Resolve-Path (Join-Path $scriptsRoot "..")).Path
+
+            $text -match "repositoryRoot = \(Resolve-Path -LiteralPath \(Join-Path \`$PSScriptRoot '([^']+)'\)\)" |
+                Should Be $true
+            (Resolve-Path (Join-Path $scriptDirectory $Matches[1])).Path | Should Be $repositoryRoot
+
+            $text -match "EnvFile = Join-Path \`$PSScriptRoot '([^']+)'" | Should Be $true
+            [System.IO.Path]::GetFullPath((Join-Path $scriptDirectory $Matches[1])) |
+                Should Be ([System.IO.Path]::GetFullPath((Join-Path $repositoryRoot "svc/.env.production")))
+        }
     }
 
-    It "runs Open-ControlCenter.ps1 from Start-ControlCenter.cmd with CRLF line endings" {
+    It "runs Open-ControlCenter.ps1 from Double-Click-Launcher.cmd with CRLF line endings" {
         $bytes = [System.IO.File]::ReadAllBytes($cmdLauncher)
         $text = [System.Text.Encoding]::ASCII.GetString($bytes)
 
         $expected = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File ' +
-            '"%~dp0Open-ControlCenter.ps1"'
+            '"%~dp0control-center\Open-ControlCenter.ps1"'
         $text | Should Match ([regex]::Escape($expected))
         # cmd.exe misreads some lines of a batch file saved with bare LF.
         ($text -replace "`r`n", "") | Should Not Match "`n"
     }
 }
 
-Describe "Invoke-ControlCenter.ps1 exit codes" {
+Describe "Invoke-ControlCenter-CLI.ps1 exit codes" {
     It "exits 1 when Docker is not installed" {
         $emptyPath = Join-Path $TestDrive "empty-path"
         New-Item -ItemType Directory -Path $emptyPath -Force | Out-Null
@@ -507,6 +523,81 @@ Describe "Start-ControlCenter" {
             Assert-MockCalled Write-Host -Scope It -ParameterFilter {
                 $Object -eq "glazing-control-app is already running."
             }
+        }
+    }
+
+    Context "does not rebuild or restart a running app container with -Build" {
+        It "does not rebuild or restart a running app container with -Build" {
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Get-ControlCenterContainer { $running }
+            Mock Test-ControlCenterPortOpen { $true }
+            Mock Invoke-ControlCenterCompose { New-NativeResult }
+            Mock Get-ControlCenterHealthResponse { New-TestHealth }
+            Mock Write-Host { }
+
+            Start-ControlCenter -Project (New-TestProject) -TimeoutSeconds 1 -Build
+
+            Assert-MockCalled Invoke-ControlCenterCompose -Scope It -Times 0 -Exactly
+        }
+    }
+
+    Context "recreates a running app with -UpdateRunning when compose replaces it" {
+        It "runs compose up on the running app and reports the restart" {
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Get-ControlCenterContainer { [pscustomobject]@{ Id = "old"; Status = "running"; RestartCount = 4 } }
+            Mock Get-ControlCenterContainer {
+                [pscustomobject]@{ Id = "new"; Status = "running"; RestartCount = 0 }
+            } -ParameterFilter { $script:upCalled }
+            Mock Test-ControlCenterPortOpen { $true }
+            Mock Invoke-ControlCenterCompose { $script:upCalled = $true; New-NativeResult }
+            Mock Get-ControlCenterHealthResponse { New-TestHealth }
+            Mock Write-Host { }
+            $script:upCalled = $false
+
+            Start-ControlCenterApp -Project (New-TestProject) -App (New-TestApp) `
+                -TimeoutSeconds 1 -UpdateRunning
+
+            Assert-MockCalled Invoke-ControlCenterCompose -Scope It -Times 1 -Exactly -ParameterFilter {
+                ($Arguments -join " ") -eq "up -d"
+            }
+            Assert-MockCalled Write-Host -Scope It -ParameterFilter {
+                $Object -eq "Restarted glazing-control-app with the latest build."
+            }
+        }
+    }
+
+    Context "leaves an unchanged running app alone with -UpdateRunning" {
+        It "reports that it already runs the latest build" {
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Get-ControlCenterContainer { [pscustomobject]@{ Id = "same"; Status = "running"; RestartCount = 0 } }
+            Mock Test-ControlCenterPortOpen { $true }
+            Mock Invoke-ControlCenterCompose { New-NativeResult }
+            Mock Get-ControlCenterHealthResponse { New-TestHealth }
+            Mock Write-Host { }
+
+            Start-ControlCenterApp -Project (New-TestProject) -App (New-TestApp) `
+                -TimeoutSeconds 1 -UpdateRunning
+
+            Assert-MockCalled Write-Host -Scope It -ParameterFilter {
+                $Object -eq "glazing-control-app is already running the latest build."
+            }
+        }
+    }
+
+    Context "fails with exit 3 when compose up fails on a running app" {
+        It "fails with exit 3 when compose up fails on a running app" {
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Get-ControlCenterContainer { [pscustomobject]@{ Id = "old"; Status = "running"; RestartCount = 0 } }
+            Mock Invoke-ControlCenterCompose { New-NativeResult -ExitCode 1 -Output @("boom") }
+            Mock Write-Host { }
+
+            $thrown = Get-ThrownError {
+                Start-ControlCenterApp -Project (New-TestProject) -App (New-TestApp) `
+                    -TimeoutSeconds 1 -UpdateRunning
+            }
+
+            Get-ControlCenterExitCode -ErrorRecord $thrown | Should Be 3
+            Get-ControlCenterErrorReason -ErrorRecord $thrown | Should Be "ComposeUp"
         }
     }
 
@@ -814,6 +905,12 @@ Describe "Invoke-ControlCenterLauncher" {
     . $commonScript
     . $launcherCommon
 
+    # Defaults for the steps around Start, so no test runs a real git or
+    # docker. Contexts that test these steps mock them again.
+    Mock Get-ControlCenterUpdateCheck { [pscustomobject]@{ Notices = @(); Problem = $null } }
+    Mock Update-ControlCenterImage { $null }
+    Mock Invoke-ControlCenterCleanup { @() }
+
     $launch = {
         Invoke-ControlCenterLauncher -RepositoryRoot "repo" -EnvFile "env.production"
     }
@@ -847,13 +944,102 @@ Describe "Invoke-ControlCenterLauncher" {
             $exitCode | Should Be 0
             Assert-MockCalled Get-ControlCenterApp -Times 1 -Exactly
             Assert-MockCalled Start-ControlCenterApp -Times 1 -Exactly -ParameterFilter {
-                $App.Port -eq 8080 -and $TimeoutSeconds -eq 30 -and -not $Build
+                $App.Port -eq 8080 -and $TimeoutSeconds -eq 30 -and $UpdateRunning -and -not $Build
             }
             Assert-MockCalled Open-ControlCenterBrowser -Times 1 -Exactly -ParameterFilter {
                 $Url -eq "http://localhost:8080/"
             }
-            Assert-MockCalled Wait-ControlCenterClose -Times 1 -Exactly
+            Assert-MockCalled Wait-ControlCenterClose -Times 1 -Exactly -ParameterFilter {
+                $Seconds -eq 10
+            }
             Assert-MockCalled Wait-ControlCenterEnter -Times 0 -Exactly
+            Assert-MockCalled Update-ControlCenterImage -Times 1 -Exactly
+            Assert-MockCalled Invoke-ControlCenterCleanup -Times 1 -Exactly
+        }
+    }
+
+    Context "starts the existing image and warns when the build fails" {
+        It "opens the HMI, shows the warnings, and keeps the window open longer" {
+            Mock Resolve-ControlCenterDocker { "docker" }
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Get-ControlCenterUpdateCheck {
+                [pscustomobject]@{ Notices = @("A newer version is available (2 new changes on main)."); Problem = $null }
+            }
+            Mock Update-ControlCenterImage { "The latest code could not be built" }
+            Mock Start-ControlCenterApp {}
+            Mock Open-ControlCenterBrowser {}
+            Mock Wait-ControlCenterClose {}
+            Mock Wait-ControlCenterEnter {}
+            Mock Write-Warning {}
+            Mock Write-Host {}
+
+            $exitCode = & $launch
+
+            $exitCode | Should Be 0
+            Assert-MockCalled Start-ControlCenterApp -Times 1 -Exactly
+            Assert-MockCalled Open-ControlCenterBrowser -Times 1 -Exactly
+            Assert-MockCalled Write-Warning -Times 1 -Exactly -ParameterFilter {
+                $Message -eq "The latest code could not be built"
+            }
+            Assert-MockCalled Write-Warning -Times 1 -Exactly -ParameterFilter {
+                $Message -match "A newer version is available"
+            }
+            Assert-MockCalled Write-Warning -Times 1 -Exactly -ParameterFilter {
+                $Message -eq "Ask a maintainer or developer to update this computer."
+            }
+            Assert-MockCalled Wait-ControlCenterClose -Times 1 -Exactly -ParameterFilter {
+                $Seconds -eq 30
+            }
+        }
+    }
+
+    Context "fails with the build's next step when there is no image to fall back to" {
+        It "exits 3, names the internet, and does not start" {
+            Mock Resolve-ControlCenterDocker { "docker" }
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Update-ControlCenterImage {
+                throw (New-ControlCenterError -Kind Compose -Reason "ComposeBuild" -Message "build failed")
+            }
+            Mock Start-ControlCenterApp {}
+            Mock Open-ControlCenterBrowser {}
+            Mock Wait-ControlCenterEnter {}
+            Mock Write-Host {}
+
+            $exitCode = & $launch
+
+            $exitCode | Should Be 3
+            Assert-MockCalled Start-ControlCenterApp -Times 0 -Exactly
+            Assert-MockCalled Open-ControlCenterBrowser -Times 0 -Exactly
+            Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                "$Object" -match "connect it to the regular network"
+            }
+            Assert-MockCalled Wait-ControlCenterEnter -Times 1 -Exactly
+        }
+    }
+
+    Context "still opens the HMI when the update check or cleanup throws" {
+        It "reports both and exits 0" {
+            Mock Resolve-ControlCenterDocker { "docker" }
+            Mock Get-ControlCenterApp { New-TestApp }
+            Mock Get-ControlCenterUpdateCheck { throw "git broke" }
+            Mock Invoke-ControlCenterCleanup { throw "prune broke" }
+            Mock Start-ControlCenterApp {}
+            Mock Open-ControlCenterBrowser {}
+            Mock Wait-ControlCenterClose {}
+            Mock Wait-ControlCenterEnter {}
+            Mock Write-Warning {}
+            Mock Write-Host {}
+
+            $exitCode = & $launch
+
+            $exitCode | Should Be 0
+            Assert-MockCalled Open-ControlCenterBrowser -Times 1 -Exactly
+            Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                "$Object" -eq "Could not check for updates: git broke"
+            }
+            Assert-MockCalled Write-Warning -Times 1 -Exactly -ParameterFilter {
+                $Message -eq "Docker cleanup failed: prune broke"
+            }
         }
     }
 
@@ -1084,6 +1270,8 @@ Describe "Invoke-ControlCenterLauncher" {
                 Should Match "Start Docker Desktop or the Docker service"
             Get-ControlCenterNextStep -ExitCode 1 -Reason "EngineTimeout" |
                 Should Match ([regex]::Escape($nextSteps[1]))
+            Get-ControlCenterNextStep -ExitCode 3 -Reason "ComposeBuild" |
+                Should Match "connect it to the regular network"
         }
 
         It "names an exit code it does not know" {
@@ -1280,5 +1468,244 @@ Describe "Wait-ControlCenterDockerEngine" {
             # No sleep after the last check.
             Assert-MockCalled Start-Sleep -Times 59 -Exactly
         }
+    }
+}
+
+Describe "Update-ControlCenterImage" {
+    . $commonScript
+    . $launcherCommon
+
+    Context "builds the app service" {
+        It "returns no warning when the build succeeds" {
+            Mock Invoke-ControlCenterCompose { New-NativeResult }
+            Mock Write-Host {}
+
+            Update-ControlCenterImage -Project (New-TestProject) -App (New-TestApp) | Should BeNullOrEmpty
+
+            Assert-MockCalled Invoke-ControlCenterCompose -Times 1 -Exactly -ParameterFilter {
+                ($Arguments -join " ") -eq "build app"
+            }
+            Assert-MockCalled Write-Host -Times 1 -Exactly -ParameterFilter {
+                "$Object" -match "do not close this window"
+            }
+        }
+    }
+
+    Context "falls back to the existing image" {
+        It "returns a warning instead of failing when an image exists" {
+            Mock Invoke-ControlCenterCompose { New-NativeResult -ExitCode 1 -Output @("no internet") }
+            Mock Test-ControlCenterImage { $true }
+            Mock Write-Host {}
+
+            $warning = Update-ControlCenterImage -Project (New-TestProject) -App (New-TestApp)
+
+            $warning | Should Match "version already on this computer was started"
+        }
+    }
+
+    Context "fails without an image to fall back to" {
+        It "throws exit 3 with reason ComposeBuild and the build output" {
+            Mock Invoke-ControlCenterCompose { New-NativeResult -ExitCode 1 -Output @("no internet") }
+            Mock Test-ControlCenterImage { $false }
+            Mock Write-Host {}
+
+            $thrown = Get-ThrownError { Update-ControlCenterImage -Project (New-TestProject) -App (New-TestApp) }
+
+            Get-ControlCenterExitCode -ErrorRecord $thrown | Should Be 3
+            Get-ControlCenterErrorReason -ErrorRecord $thrown | Should Be "ComposeBuild"
+            $thrown.Exception.Message | Should Match "no internet"
+        }
+    }
+}
+
+Describe "Invoke-ControlCenterCleanup" {
+    . $commonScript
+    . $launcherCommon
+
+    function New-CleanupApp {
+        param([string]$ProjectName = "glazingcontrolapp")
+
+        $app = New-TestApp
+        $app | Add-Member -NotePropertyName ProjectName -NotePropertyValue $ProjectName
+        return $app
+    }
+
+    Context "prunes only this project's old images and caps the build cache" {
+        It "passes the project label and the cache limit" {
+            Mock Invoke-ControlCenterNative { New-NativeResult }
+
+            $warnings = @(Invoke-ControlCenterCleanup -Project (New-TestProject) -App (New-CleanupApp))
+
+            $warnings.Count | Should Be 0
+            Assert-MockCalled Invoke-ControlCenterNative -Times 1 -Exactly -ParameterFilter {
+                ($Arguments -join " ") -eq
+                    "image prune --force --filter label=com.docker.compose.project=glazingcontrolapp"
+            }
+            Assert-MockCalled Invoke-ControlCenterNative -Times 1 -Exactly -ParameterFilter {
+                ($Arguments -join " ") -eq "builder prune --force --max-used-space 5gb"
+            }
+        }
+    }
+
+    Context "skips the image prune without a project name" {
+        It "never runs an unscoped image prune" {
+            Mock Invoke-ControlCenterNative { New-NativeResult }
+
+            [void](Invoke-ControlCenterCleanup -Project (New-TestProject) -App (New-CleanupApp -ProjectName ""))
+
+            Assert-MockCalled Invoke-ControlCenterNative -Times 0 -Exactly -ParameterFilter {
+                $Arguments[0] -eq "image"
+            }
+            Assert-MockCalled Invoke-ControlCenterNative -Times 1 -Exactly -ParameterFilter {
+                $Arguments[0] -eq "builder"
+            }
+        }
+    }
+
+    Context "returns warnings when a prune fails" {
+        It "returns one warning per failed prune" {
+            Mock Invoke-ControlCenterNative { New-NativeResult -ExitCode 1 -Output @("unknown flag") }
+
+            $warnings = @(Invoke-ControlCenterCleanup -Project (New-TestProject) -App (New-CleanupApp))
+
+            $warnings.Count | Should Be 2
+            $warnings[0] | Should Match "Old app images could not be removed"
+            $warnings[1] | Should Match "build cache could not be trimmed: unknown flag"
+        }
+    }
+}
+
+Describe "Get-ControlCenterUpdateCheck" {
+    . $commonScript
+    . $launcherCommon
+
+    function New-GitResult {
+        param([int]$ExitCode = 0, [string[]]$Output = @())
+
+        return [pscustomobject]@{ ExitCode = $ExitCode; Output = $Output; TimedOut = $false }
+    }
+
+    Context "Git is not installed" {
+        It "reports the problem and no notices" {
+            Mock Find-ControlCenterCommand { $null }
+
+            $check = Get-ControlCenterUpdateCheck -RepositoryRoot "repo"
+
+            $check.Problem | Should Be "Git is not installed."
+            @($check.Notices).Count | Should Be 0
+        }
+    }
+
+    Context "the folder is not a Git checkout" {
+        It "reports the problem and stops" {
+            Mock Find-ControlCenterCommand { "git" }
+            Mock Invoke-ControlCenterGit { New-GitResult -ExitCode 128 }
+
+            $check = Get-ControlCenterUpdateCheck -RepositoryRoot "repo"
+
+            $check.Problem | Should Be "this folder is not a Git checkout."
+            Assert-MockCalled Invoke-ControlCenterGit -Times 1 -Exactly
+        }
+    }
+
+    Context "up to date on main" {
+        It "has no notices and no problem" {
+            Mock Find-ControlCenterCommand { "git" }
+            Mock Invoke-ControlCenterGit { New-GitResult }
+            Mock Invoke-ControlCenterGit { New-GitResult -Output @("main") } -ParameterFilter { $Arguments[0] -eq "rev-parse" }
+            Mock Invoke-ControlCenterGit { New-GitResult -Output @("0") } -ParameterFilter { $Arguments[0] -eq "rev-list" }
+
+            $check = Get-ControlCenterUpdateCheck -RepositoryRoot "repo"
+
+            $check.Problem | Should BeNullOrEmpty
+            @($check.Notices).Count | Should Be 0
+            Assert-MockCalled Invoke-ControlCenterGit -Times 1 -Exactly -ParameterFilter {
+                ($Arguments -join " ") -eq "fetch --quiet origin main"
+            }
+        }
+    }
+
+    Context "another branch, local changes, and behind main" {
+        It "gives one notice for each" {
+            Mock Find-ControlCenterCommand { "git" }
+            Mock Invoke-ControlCenterGit { New-GitResult }
+            Mock Invoke-ControlCenterGit { New-GitResult -Output @("feat/x") } -ParameterFilter { $Arguments[0] -eq "rev-parse" }
+            Mock Invoke-ControlCenterGit { New-GitResult -Output @(" M svc/main.py") } -ParameterFilter { $Arguments[0] -eq "status" }
+            Mock Invoke-ControlCenterGit { New-GitResult -Output @("3") } -ParameterFilter { $Arguments[0] -eq "rev-list" }
+
+            $notices = @((Get-ControlCenterUpdateCheck -RepositoryRoot "repo").Notices)
+
+            $notices.Count | Should Be 3
+            $notices[0] | Should Be "This computer runs 'feat/x', not the main version."
+            $notices[1] | Should Be "This computer has code changes that are not in Git."
+            $notices[2] | Should Be "A newer version is available (3 new changes on main)."
+        }
+    }
+
+    Context "GitHub cannot be reached" {
+        It "keeps the local notices and reports the problem" {
+            Mock Find-ControlCenterCommand { "git" }
+            Mock Invoke-ControlCenterGit { New-GitResult }
+            Mock Invoke-ControlCenterGit { New-GitResult -Output @("feat/x") } -ParameterFilter { $Arguments[0] -eq "rev-parse" }
+            Mock Invoke-ControlCenterGit { New-GitResult -ExitCode -1 } -ParameterFilter { $Arguments[0] -eq "fetch" }
+
+            $check = Get-ControlCenterUpdateCheck -RepositoryRoot "repo"
+
+            $check.Problem | Should Be "GitHub could not be reached."
+            @($check.Notices).Count | Should Be 1
+            Assert-MockCalled Invoke-ControlCenterGit -Times 0 -Exactly -ParameterFilter { $Arguments[0] -eq "rev-list" }
+        }
+    }
+}
+
+Describe "Invoke-ControlCenterGit" {
+    . $commonScript
+    . $launcherCommon
+
+    $git = Find-ControlCenterCommand -Name "git"
+
+    It "quotes arguments with spaces, quotes, and trailing backslashes" {
+        ConvertTo-ControlCenterArgument -Value 'C:\my repo\' | Should Be '"C:\my repo\\"'
+        ConvertTo-ControlCenterArgument -Value 'say "hi"' | Should Be '"say \"hi\""'
+        ConvertTo-ControlCenterArgument -Value '' | Should Be '""'
+    }
+
+    It "runs git in a folder whose path has a space" {
+        if (-not $git) {
+            Set-TestInconclusive -Message "git is not installed"
+            return
+        }
+        $repo = Join-Path $TestDrive "a repo"
+        New-Item -ItemType Directory -Path $repo -Force | Out-Null
+        & $git -C $repo init --quiet --initial-branch=main 2>&1 | Out-Null
+
+        $result = Invoke-ControlCenterGit -GitPath $git -RepositoryRoot $repo `
+            -Arguments @("rev-parse", "--show-toplevel") -TimeoutSeconds 30
+
+        $result.ExitCode | Should Be 0
+        $result.TimedOut | Should Be $false
+        (Split-Path -Leaf $result.Output[0]) | Should Be "a repo"
+    }
+
+    It "kills a git that runs past the timeout" {
+        $fakeDirectory = Join-Path $TestDrive "slow-git"
+        New-Item -ItemType Directory -Path $fakeDirectory -Force | Out-Null
+        if ([System.IO.Path]::DirectorySeparatorChar -eq "\") {
+            $fake = Join-Path $fakeDirectory "git.cmd"
+            Set-Content -LiteralPath $fake -Value "@ping -n 30 127.0.0.1 >nul"
+        }
+        else {
+            $fake = Join-Path $fakeDirectory "git"
+            Set-Content -LiteralPath $fake -Value "#!/bin/sh`nsleep 30"
+            & chmod +x $fake
+        }
+
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        $result = Invoke-ControlCenterGit -GitPath $fake -RepositoryRoot $TestDrive `
+            -Arguments @("fetch") -TimeoutSeconds 1
+
+        $result.TimedOut | Should Be $true
+        $result.ExitCode | Should Not Be 0
+        $stopwatch.Elapsed.TotalSeconds | Should BeLessThan 15
     }
 }

@@ -210,15 +210,40 @@ Follow the logs with `docker logs -f glazing-control-app`. Stop with
 
 #### Start with the desktop shortcut
 
-On the Windows host, `scripts\Start-ControlCenter.cmd` starts production with
-Compose and opens the HMI. If Docker Desktop is installed but its engine is
-stopped, it starts Docker Desktop first and waits about 2 minutes for the
-engine. It then does the same Start as
-`scripts\Invoke-ControlCenter.ps1 -Action Start`: it checks Docker,
-`svc\.env.production`, the mount paths, and `audit.db` before it starts
-anything, then waits for `/health`.
+On the Windows host, `scripts\Double-Click-Launcher.cmd` starts production with
+Compose and opens the HMI. It is meant to be the only thing an operator uses:
+no terminal and no Docker Desktop screens. Each double-click:
 
-To make the shortcut once, right-click `scripts\Start-ControlCenter.cmd` in
+1. Starts Docker Desktop if its engine is stopped, and waits up to about 2
+   minutes for it.
+2. Checks Docker, `svc\.env.production`, the mount paths, and `audit.db`
+   before it starts anything, the same checks as
+   `scripts\Invoke-ControlCenter-CLI.ps1 -Action Start`.
+3. Checks whether this computer runs the latest `main`: it fetches from GitHub
+   and warns if the checkout is on another branch, has local changes, or is
+   behind. It never changes the code; updating stays a maintainer's step.
+4. Rebuilds the image from the code on disk. If the build fails, for example
+   with no internet, it starts the image already on the computer and warns
+   that it may be out of date. Only a computer with no image at all fails here.
+5. Starts the app, or restarts it if it is running but the build or
+   configuration changed. A running study routine is interrupted by that
+   restart. An unchanged running app is left alone.
+6. Waits for `/health`, then removes this app's old images and trims Docker's
+   build cache to 5 GB. Images of other projects are not touched.
+
+The build cache is what lets an unchanged build finish in seconds and without
+the internet. After a `git pull` the build needs the internet, which the
+Halio network does not have, so connect the computer to the regular network
+as well before the first double-click after an update. The app's console log
+is capped at 50 MB by `docker-compose.yml`; study data is in `audit.db`.
+
+Docker Desktop on Windows keeps images in a virtual disk that does not always
+shrink when they are removed. The cleanup stops it from growing; space it
+already took may stay allocated until Docker Desktop's **Troubleshoot > Clean /
+Purge data**, which also removes the image, so the next double-click rebuilds
+it with the internet.
+
+To make the shortcut once, right-click `scripts\Double-Click-Launcher.cmd` in
 File Explorer, choose **Send to > Desktop (create shortcut)**, and rename the
 shortcut, for example to "DIAL Control Center". On Windows 11, choose **Show
 more options** first.
@@ -226,12 +251,14 @@ more options** first.
 Double-clicking it then does one of two things:
 
 - **Started, or already running:** the HMI opens in the default browser and
-  the window closes after 10 seconds. A degraded-sensor warning stays in the
-  window until then; the HMI also reports it. A second double-click opens the
-  HMI again and does not start a second copy.
+  the window closes after 10 seconds, or 30 when there are warnings to read: a
+  build that fell back to the old image, an update a maintainer should make,
+  or a cleanup that failed. A degraded-sensor warning also stays in the window
+  until then; the HMI reports it too. A second double-click opens the HMI
+  again and does not start a second copy.
 - **Failed:** the window stays open with the reason and a next step until you
-  press Enter. This includes Docker Desktop not being installed, or its engine
-  not answering within about 2 minutes.
+  press Enter. This includes Docker Desktop not being installed, its engine
+  not answering within about 2 minutes, or a first build with no internet.
 
 ### 5. Start the Sensor Agent
 

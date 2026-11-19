@@ -1,4 +1,4 @@
-# Shared logic for Invoke-ControlCenter.ps1 and ControlCenter.Launcher.ps1, kept
+# Shared logic for Invoke-ControlCenter-CLI.ps1 and ControlCenter.Launcher.ps1, kept
 # separate so Pester can test it without a container engine. Every external
 # command goes through Invoke-ControlCenterNative, and every host check through
 # a small function, so tests can mock them.
@@ -16,7 +16,7 @@
 $script:ControlCenterAppService = 'app'
 $script:ControlCenterDataTarget = '/app/svc/data'
 
-# The exit codes of Invoke-ControlCenter.ps1 and Open-ControlCenter.ps1, named
+# The exit codes of Invoke-ControlCenter-CLI.ps1 and Open-ControlCenter.ps1, named
 # once so every throw site and the launcher's next steps use the same values.
 # Unexpected is for an exception the scripts did not raise themselves, so a bug
 # is never reported as one of the documented causes.
@@ -301,6 +301,9 @@ function Get-ControlCenterApp {
     })
 
     return [pscustomobject]@{
+        # Compose labels the images it builds with this name, which scopes the
+        # launcher's image cleanup to this app.
+        ProjectName = [string](Get-ControlCenterProperty $config 'name')
         ContainerName = [string](Get-ControlCenterProperty $app 'container_name')
         Image = [string](Get-ControlCenterProperty $app 'image')
         Port = $port
@@ -380,6 +383,7 @@ function Get-ControlCenterContainer {
     $container = @(ConvertFrom-ControlCenterJson -Lines $result.Output)[0]
     $state = Get-ControlCenterProperty $container 'State'
     return [pscustomobject]@{
+        Id = [string](Get-ControlCenterProperty $container 'Id')
         Status = [string](Get-ControlCenterProperty $state 'Status')
         RestartCount = [int](Get-ControlCenterProperty $container 'RestartCount')
     }
@@ -582,7 +586,12 @@ function Start-ControlCenterApp {
         [Parameter(Mandatory = $true)]
         [int]$TimeoutSeconds,
 
-        [switch]$Build
+        [switch]$Build,
+
+        # Run compose up on a running app too, so it is recreated when its
+        # image, config, or env file changed. Compose leaves an unchanged
+        # container running.
+        [switch]$UpdateRunning
     )
 
     Assert-ControlCenterMounts -App $App
@@ -597,7 +606,24 @@ function Start-ControlCenterApp {
             "$($app.ContainerName)', or Stop and then Start."
         ))
     }
-    if ($null -ne $container -and $container.Status -eq 'running') {
+    if ($null -ne $container -and $container.Status -eq 'running' -and $UpdateRunning) {
+        $result = Invoke-ControlCenterCompose -Project $Project -Arguments @('up', '-d')
+        if ($result.ExitCode -ne 0) {
+            throw (New-ControlCenterError -Kind Compose -Reason 'ComposeUp' -Message (
+                "docker compose up failed:`n" + (Get-ControlCenterNativeText -Result $result)
+            ))
+        }
+        $current = Get-ControlCenterContainer -Project $Project -Name $app.ContainerName
+        if ($null -ne $current -and $current.Id -ne $container.Id) {
+            Write-Host "Restarted $($app.ContainerName) with the latest build."
+            $restartCount = $current.RestartCount
+        }
+        else {
+            Write-Host "$($app.ContainerName) is already running the latest build."
+            $restartCount = $container.RestartCount
+        }
+    }
+    elseif ($null -ne $container -and $container.Status -eq 'running') {
         Write-Host "$($app.ContainerName) is already running."
         $restartCount = $container.RestartCount
     }

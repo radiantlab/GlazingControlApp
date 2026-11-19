@@ -21,7 +21,7 @@ person looks; the last section lists where each one went.
 | T-10A and serial JETI | Windows Sensor Agent (`svc/scripts/sensor_agent.py`) posting to `POST /sensors/ingest` | Runs when started by hand. Does not start under Task Scheduler (#95). |
 | Database backups | `svc/app/db_backup.py`, when `SVC_DB_BACKUP_INTERVAL_HOURS` > 0 | Code exists and is tested; not yet confirmed on the trailer, and no backup has been restored there. |
 | Routines | User-written Python run as a subprocess by `svc/app/routines/manager.py` | Runs; has no tests. |
-| Lifecycle script | `scripts/Invoke-ControlCenter.ps1` (start, stop, status, health) | Merged in #97; operator docs and CI do not use it yet (#96). |
+| Lifecycle script | `scripts/Invoke-ControlCenter-CLI.ps1` (start, stop, status, health) | Merged in #97; operator docs and CI do not use it yet (#96). |
 | Production stack | Linux container on the Windows trailer PC | Runs under Podman today; the docs mix Podman and Docker (RFC-0007, #86). |
 
 What does not run, or is not confirmed:
