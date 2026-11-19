@@ -90,6 +90,15 @@ describe("api", () => {
         );
     });
 
+    it("preserves the history URL contract with encoded names and Unix seconds", async () => {
+        fetchMock.mockResolvedValue(jsonResponse([]));
+        await api.getMetricHistory("S 1", "lux/raw", 0, 1767290400);
+        expect(fetchMock).toHaveBeenCalledWith(
+            "/metrics/history?sensor_id=S%201&metric=lux%2Fraw&ts_from=0&ts_to=1767290400",
+            expect.any(Object),
+        );
+    });
+
     it("builds grouped sensor log query parameters", async () => {
         fetchMock.mockResolvedValue(jsonResponse([]));
 

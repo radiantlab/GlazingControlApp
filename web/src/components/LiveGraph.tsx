@@ -9,6 +9,7 @@ import {
     YAxis,
 } from "recharts";
 import { api, type SensorReadingResponse } from "../api";
+import type { HistoricalRange } from "./HistoricalTimePicker";
 
 interface LiveGraphProps {
     sensorId: string;
@@ -19,7 +20,9 @@ interface LiveGraphProps {
     variant?: "card" | "embedded";
     yAxisLabel?: string;
     valueFormatter?: (value: number | undefined) => string;
-    /** Show the hour ending here instead of the last hour (offline sensors). */
+    /** Applied historical range in Unix seconds; omit for live mode. */
+    range?: HistoricalRange;
+    /** End of the last-reading window for an offline sensor. */
     endTs?: number;
 }
 
@@ -45,39 +48,63 @@ function LiveGraph({
     variant = "card",
     yAxisLabel,
     valueFormatter,
+    range,
     endTs,
 }: LiveGraphProps) {
     const [data, setData] = useState<SensorReadingResponse[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
 
     useEffect(() => {
+        let active = true;
+        let inFlight = false;
+        setLoading(true);
+        setError(false);
         const loadData = async () => {
+            if (inFlight) return;
+            inFlight = true;
             try {
-                const end = endTs ?? Date.now() / 1000;
-                // Get 1 hour of data ending now, or at the sensor's last reading
-                const history = await api.getMetricHistory(sensorId, metric, end - 3600, end);
-                // Sort by timestamp
-                history.sort((a, b) => a.ts - b.ts);
-                setData(history);
-            } catch (err) {
-                console.error("Failed to load graph data", err);
+                const end = range?.endTs ?? endTs ?? Date.now() / 1000;
+                const history = await api.getMetricHistory(
+                    sensorId,
+                    metric,
+                    range?.startTs ?? end - 3600,
+                    end,
+                );
+                // Ignore responses belonging to a previous range, metric or unmounted graph.
+                if (active) {
+                    setData([...history].sort((a, b) => a.ts - b.ts));
+                    setError(false);
+                }
+            } catch {
+                if (active) setError(true);
             } finally {
-                setLoading(false);
+                if (active) setLoading(false);
+                inFlight = false;
             }
         };
 
         loadData();
-        if (endTs != null) return; // A past window does not change
-        const interval = setInterval(loadData, 2000); // Poll every 2s
-        return () => clearInterval(interval);
-    }, [sensorId, metric, endTs]);
+        const interval = !range && endTs == null ? setInterval(loadData, 2000) : undefined;
+        return () => {
+            active = false;
+            clearInterval(interval);
+        };
+    }, [sensorId, metric, range, endTs]);
 
     const formatTime = (ts: number) => {
         const d = new Date(ts * 1000);
-        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        return range
+            ? d.toLocaleString([], {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+              })
+            : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     };
 
-    const placeholder = (message: string) => (
+    const placeholder = (message: string, failed = false) => (
         <div
             className={
                 variant === "embedded"
@@ -86,7 +113,7 @@ function LiveGraph({
             }
             style={{ height }}
         >
-            {message}
+            <p role={failed ? "alert" : "status"}>{message}</p>
         </div>
     );
 
@@ -95,9 +122,12 @@ function LiveGraph({
         return value != null ? value.toFixed(1) : "N/A";
     };
 
-    if (loading && !data.length) {
+    if (loading) {
         return placeholder("Loading graph...");
     }
+
+    if (error)
+        return placeholder("Unable to load graph data. Apply a time range to try again.", true);
 
     if (!data.length) {
         return placeholder("No data available");
@@ -123,15 +153,14 @@ function LiveGraph({
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
                     <XAxis
                         dataKey="ts"
+                        type="number"
+                        domain={[range?.startTs ?? "dataMin", range?.endTs ?? "dataMax"]}
                         tickFormatter={formatTime}
                         stroke="#888"
                         tick={{ fill: "#888" }}
                         minTickGap={50}
                         label={{
-                            value:
-                                endTs != null
-                                    ? `Time (${new Date(endTs * 1000).toLocaleDateString()})`
-                                    : "Time",
+                            value: "Time (browser local)",
                             position: "insideBottom",
                             offset: -18,
                             fill: "#888",
@@ -157,7 +186,11 @@ function LiveGraph({
                         }}
                         labelFormatter={(label) => {
                             const ts = toFiniteNumber(label);
-                            return ts === undefined ? "" : new Date(ts * 1000).toLocaleString();
+                            return ts === undefined
+                                ? ""
+                                : new Date(ts * 1000).toLocaleString(undefined, {
+                                      timeZoneName: "short",
+                                  });
                         }}
                         formatter={(value) => [
                             formatTooltipValue(toFiniteNumber(value)),
@@ -200,6 +233,7 @@ export default React.memo(LiveGraph, (prevProps, nextProps) => {
         prevProps.height === nextProps.height &&
         prevProps.variant === nextProps.variant &&
         prevProps.yAxisLabel === nextProps.yAxisLabel &&
+        prevProps.range === nextProps.range &&
         prevProps.endTs === nextProps.endTs
     );
 });

@@ -44,6 +44,36 @@ Panel and group commands then change only the mock state, and sensor metrics
 and logs are unavailable. If you see the badge on the trailer, the HMI cannot
 reach the API and your commands are not reaching Halio.
 
+## Historical sensor graphs (Issue #42)
+
+On the Sensors tab, each sensor with a known metric has its own Start and End
+date/time fields. Choose a range and click **Show History** to request stored
+measurements for that sensor and the selected Graph metric. Changing the metric
+keeps the applied range. Editing the fields alone does not change the graph;
+the **Historical range** text identifies the applied selection.
+
+Times use the browser's local timezone, shown beside the fields, and are sent
+to the existing `/metrics/history` endpoint as Unix seconds. Both endpoints
+are inclusive, and the end must be after the start. Nonexistent local times
+(such as the spring daylight-saving gap) are rejected. When clocks go back,
+a repeated time uses its first occurrence; the applied range and tooltips show
+the timezone abbreviation. The graph spaces points by elapsed time and includes
+dates in historical mode.
+
+Historical graphs do not poll or follow changes in live metric freshness.
+Sensor health and the adjacent live/last-reading panel continue updating.
+Applied ranges survive switching between Control and Sensors or hiding and
+restoring a card within the current page session; a page reload resets to live.
+
+Loading, empty results, and failed requests have separate messages. Click
+**Show History** again to retry the same range. Requests use the browser's
+normal network behavior, without a custom timeout or cancellation; results
+from an old selection are ignored. **Back to Live** resumes the preceding-hour graph
+and polling for reporting sensors. Offline sensors retain the existing fixed
+hour ending at their last reading until reporting recovers. A sensor with no
+known readings keeps the existing no-reading notice rather than guessing a
+metric or drawing a zero measurement.
+
 ## Scripts
 
 ```powershell

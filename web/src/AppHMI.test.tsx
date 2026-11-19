@@ -6,7 +6,26 @@ import { api } from "./api";
 import { controlManager } from "./utils/controlManager";
 import { ToastProvider } from "./utils/toast";
 
-vi.mock("./components/LiveGraph", () => ({ default: () => null }));
+vi.mock("./components/LiveGraph", () => ({
+    default: ({
+        sensorId,
+        metric,
+        range,
+        endTs,
+    }: {
+        sensorId: string;
+        metric: string;
+        range?: { startTs: number; endTs: number };
+        endTs?: number;
+    }) => (
+        <output
+            data-testid={`graph-${sensorId}`}
+            data-metric={metric}
+            data-start={range?.startTs}
+            data-end={range?.endTs ?? endTs}
+        />
+    ),
+}));
 
 afterEach(() => {
     cleanup();
@@ -171,5 +190,128 @@ describe("AppHMI sensor diagnostics", () => {
         expect(
             screen.queryByText(/Any displayed readings are from the last successful refresh/),
         ).not.toBeInTheDocument();
+    });
+});
+
+describe("AppHMI historical sensor graphs", () => {
+    const timestamp = new Date("2026-01-02T12:00:00Z").getTime() / 1000;
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(timestamp * 1000);
+        vi.spyOn(api, "health").mockResolvedValue({
+            status: "ok",
+            environment: "development",
+            control_source: "simulated",
+            sensor_source: "simulated",
+            sensor_acquisition: "embedded",
+            sensor_status: "healthy",
+            sensor_errors: [],
+        });
+        vi.spyOn(api, "panels").mockResolvedValue([]);
+        vi.spyOn(api, "groups").mockResolvedValue([]);
+        vi.spyOn(api, "listSensors").mockResolvedValue([
+            { id: "S1", label: "Desk", kind: "jeti_spectraval", config: { interval_s: 1 } },
+            { id: "S2", label: "Window", kind: "t10a", config: { interval_s: 1 } },
+            { id: "EMPTY", label: "No readings sensor", kind: "t10a", config: {} },
+        ]);
+        vi.spyOn(api, "getLatestMetrics").mockResolvedValue([
+            { sensor_id: "S1", metric: "lux", value: 42, ts: timestamp },
+            { sensor_id: "S1", metric: "cri_ra", value: 90, ts: timestamp },
+            { sensor_id: "S2", metric: "lux", value: 10, ts: timestamp - 500 },
+        ]);
+    });
+
+    async function openSensors() {
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <ToastProvider>
+                        <AppHMI />
+                    </ToastProvider>
+                </MemoryRouter>,
+            );
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Sensors" }));
+    }
+
+    function applyHistory(label = "Desk") {
+        const form = within(
+            screen.getByRole("form", { name: `Historical time range for ${label}` }),
+        );
+        fireEvent.change(form.getByLabelText("Start"), { target: { value: "2026-01-01T10:00" } });
+        fireEvent.change(form.getByLabelText("End"), { target: { value: "2026-01-01T11:00" } });
+        fireEvent.click(form.getByRole("button", { name: "Show History" }));
+    }
+
+    it("keeps ranges independent and preserves the no-reading and stale-sensor paths", async () => {
+        await openSensors();
+        expect(screen.queryByTestId("graph-EMPTY")).not.toBeInTheDocument();
+        expect(screen.getByText("No readings sensor", { selector: "h2" })).toBeVisible();
+        expect(screen.getByTestId("graph-S2")).toHaveAttribute("data-end", String(timestamp - 500));
+        applyHistory();
+        const start = String(new Date(2026, 0, 1, 10).getTime() / 1000);
+        expect(screen.getByTestId("graph-S1")).toHaveAttribute("data-start", start);
+        expect(screen.getByTestId("graph-S2")).not.toHaveAttribute("data-start");
+        applyHistory("Window");
+        fireEvent.click(
+            within(screen.getByRole("form", { name: /for Window/ })).getByRole("button", {
+                name: "Back to Live",
+            }),
+        );
+        expect(screen.getByTestId("graph-S2")).not.toHaveAttribute("data-start");
+        expect(screen.getByTestId("graph-S2")).toHaveAttribute("data-end", String(timestamp - 500));
+        fireEvent.click(
+            within(screen.getByRole("form", { name: /for Desk/ })).getByRole("button", {
+                name: "Back to Live",
+            }),
+        );
+        expect(screen.getByTestId("graph-S1")).not.toHaveAttribute("data-start");
+        expect(screen.getByTestId("graph-S1")).not.toHaveAttribute("data-end");
+    });
+
+    it("retains historical range and fields through tab navigation and hiding a sensor", async () => {
+        await openSensors();
+        applyHistory();
+        fireEvent.click(screen.getByRole("button", { name: "Control" }));
+        fireEvent.click(screen.getByRole("button", { name: "Sensors" }));
+        expect(
+            within(screen.getByRole("form", { name: /for Desk/ })).getByLabelText("Start"),
+        ).toHaveValue("2026-01-01T10:00");
+        const start = screen.getByTestId("graph-S1").getAttribute("data-start");
+        fireEvent.click(screen.getByTitle("Hide Desk"));
+        expect(screen.queryByTestId("graph-S1")).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("checkbox", { name: /Desk/ }));
+        expect(screen.getByTestId("graph-S1")).toHaveAttribute("data-start", start);
+        expect(
+            within(screen.getByRole("form", { name: /for Desk/ })).getByLabelText("End"),
+        ).toHaveValue("2026-01-01T11:00");
+    });
+
+    it("does not let fresh metrics replace the selected historical metric and keeps health updating", async () => {
+        await openSensors();
+        fireEvent.change(screen.getByLabelText("Graph metric"), { target: { value: "cri_ra" } });
+        applyHistory();
+        vi.mocked(api.getLatestMetrics).mockImplementation(async () => [
+            { sensor_id: "S1", metric: "lux", value: 43, ts: Date.now() / 1000 },
+            { sensor_id: "S1", metric: "cri_ra", value: 90, ts: timestamp },
+        ]);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(35000);
+        });
+        expect(screen.getByTestId("graph-S1")).toHaveAttribute("data-metric", "cri_ra");
+        expect(screen.getByLabelText("Graph metric")).toHaveValue("cri_ra");
+        expect(api.health).toHaveBeenCalledTimes(8);
+        vi.mocked(api.getLatestMetrics).mockRejectedValue(new Error("503 unavailable"));
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(5000);
+        });
+        expect(screen.getByTestId("graph-S1")).toHaveAttribute("data-metric", "cri_ra");
+        expect(
+            screen.getAllByText(/Any displayed readings are from the last successful refresh/)
+                .length,
+        ).toBeGreaterThan(0);
+        fireEvent.change(screen.getByLabelText("Graph metric"), { target: { value: "lux" } });
+        expect(screen.getByTestId("graph-S1")).toHaveAttribute("data-metric", "lux");
+        expect(screen.getByTestId("graph-S1")).toHaveAttribute("data-start");
     });
 });
