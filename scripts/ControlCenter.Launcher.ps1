@@ -202,7 +202,8 @@ function Resolve-ControlCenterLauncherDocker {
     # return the path when it fails.
     $dockerPath = Find-ControlCenterCommand -Name 'docker'
     if (Test-ControlCenterDockerDesktopRunning) {
-        # Already launched, by an earlier click or at sign-in; only wait.
+        # Open but the engine is stopped, e.g. from the tray; only wait.
+        # (During start-up, 'docker info' itself waits, so it never gets here.)
         Write-Host 'Docker Desktop is starting. Waiting for the Docker engine...'
     }
     else {

@@ -1124,7 +1124,7 @@ Describe "Resolve-ControlCenterLauncherDocker" {
         }
     }
 
-    Context "engine stopped while Docker Desktop is already starting" {
+    Context "engine check fails while Docker Desktop is open" {
         It "only waits for the engine" {
             $script:resolveCalls = 0
             Mock Resolve-ControlCenterDocker $engineStoppedThenRunning
