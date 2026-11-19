@@ -7,10 +7,12 @@ launcher.
 
 .DESCRIPTION
 Run by Start-ControlCenter.cmd, which a desktop shortcut points to (see
-DEV-SETUP.md). Runs the same Start as Invoke-ControlCenter.ps1 -Action Start,
-with its default timeout. On success it opens the HMI in the default browser
-and closes after a few seconds. On failure it keeps the window open with the
-reason and a next step, until Enter is pressed.
+DEV-SETUP.md). If the Docker engine is stopped, starts Docker Desktop and waits
+about 2 minutes for it. Then runs the same Start as
+Invoke-ControlCenter.ps1 -Action Start, with its default timeout. On success it
+opens the HMI in the default browser and closes after a few seconds. On
+failure it keeps the window open with the reason and a next step, until Enter
+is pressed.
 
 Exits with the same codes as Invoke-ControlCenter.ps1, and 5 also when the app
 started but the browser could not be opened.

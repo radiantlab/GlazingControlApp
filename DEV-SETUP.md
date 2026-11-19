@@ -211,7 +211,9 @@ Follow the logs with `docker logs -f glazing-control-app`. Stop with
 #### Start with the desktop shortcut
 
 On the Windows host, `scripts\Start-ControlCenter.cmd` starts production with
-Compose and opens the HMI. It does the same Start as
+Compose and opens the HMI. If Docker Desktop is installed but its engine is
+stopped, it starts Docker Desktop first and waits about 2 minutes for the
+engine. It then does the same Start as
 `scripts\Invoke-ControlCenter.ps1 -Action Start`: it checks Docker,
 `svc\.env.production`, the mount paths, and `audit.db` before it starts
 anything, then waits for `/health`.
@@ -228,8 +230,8 @@ Double-clicking it then does one of two things:
   window until then; the HMI also reports it. A second double-click opens the
   HMI again and does not start a second copy.
 - **Failed:** the window stays open with the reason and a next step until you
-  press Enter. Docker Desktop must already be running; the shortcut does not
-  start it.
+  press Enter. This includes Docker Desktop not being installed, or its engine
+  not answering within about 2 minutes.
 
 ### 5. Start the Sensor Agent
 

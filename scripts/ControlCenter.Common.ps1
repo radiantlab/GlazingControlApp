@@ -166,10 +166,21 @@ function ConvertFrom-ControlCenterJson {
     return @($parsed | ForEach-Object { $_ })
 }
 
+function Test-ControlCenterDockerEngine {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$DockerPath
+    )
+
+    $info = Invoke-ControlCenterNative -FilePath $DockerPath `
+        -Arguments @('info', '--format', '{{.ServerVersion}}')
+    return $info.ExitCode -eq 0
+}
+
 function Resolve-ControlCenterDocker {
-    # Docker is the only supported runtime (docs/adr/0007). Starting Docker
-    # Desktop or the engine is left to the #75 launcher, so a stopped engine
-    # is only reported.
+    # Docker is the only supported runtime (docs/adr/0007). A stopped engine
+    # is only reported here; the double-click launcher starts Docker Desktop
+    # (Resolve-ControlCenterLauncherDocker in ControlCenter.Launcher.ps1).
     $dockerPath = Find-ControlCenterCommand -Name 'docker'
     if (-not $dockerPath) {
         throw (New-ControlCenterError -Kind Engine -Reason 'NotInstalled' -Message (
@@ -178,9 +189,7 @@ function Resolve-ControlCenterDocker {
         ))
     }
 
-    $info = Invoke-ControlCenterNative -FilePath $dockerPath `
-        -Arguments @('info', '--format', '{{.ServerVersion}}')
-    if ($info.ExitCode -ne 0) {
+    if (-not (Test-ControlCenterDockerEngine -DockerPath $dockerPath)) {
         throw (New-ControlCenterError -Kind Engine -Reason 'EngineStopped' -Message (
             'Docker is installed but not running. Start Docker Desktop (or ' +
             'the Docker service) and run this again.'
