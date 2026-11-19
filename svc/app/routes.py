@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 from fastapi import APIRouter, HTTPException, Depends, Header, status, Query
 from fastapi.responses import Response
 from .models import (
@@ -64,6 +65,7 @@ def health() -> HealthResponse:
     return HealthResponse(
         status="degraded" if sensor_status == "degraded" else "ok",
         environment=ENVIRONMENT.value,
+        revision=os.getenv("SVC_BUILD_REVISION", "unknown"),
         control_source=(
             "physical"
             if ENVIRONMENT is Environment.PRODUCTION

@@ -31,6 +31,7 @@ def test_health():
         "sensor_acquisition": "embedded",
         "sensor_status": "healthy",
         "sensor_errors": [],
+        "revision": "unknown",
     }
 
 
