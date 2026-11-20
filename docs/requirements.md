@@ -183,8 +183,7 @@ Glazing control goes through `HalioAdapter` (`svc/app/adapter.py`).
 Operators start the system from one icon on the trailer PC. Tracked in epic
 #75.
 
-- [ ] #68 Lifecycle script: start, stop, status, and health check. PR #97 is
-      merged; the issue is still open.
+- [x] #68 Lifecycle script: start, stop, status, and health check.
 - [ ] #96 Point operator docs and CI at the lifecycle script.
 - [ ] #95 Fix `Start-SensorAgent.ps1` under Task Scheduler.
 - [ ] #108 Double-click launcher and desktop shortcut.

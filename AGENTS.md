@@ -91,9 +91,9 @@ today, and [`docs/risks.md`](./docs/risks.md) for the ranked risks.
     then `npm run lint`, `npm run test`, `npm run typecheck`, and
     `npm run build`. `npm run lint` runs Biome; `npm run format` fixes
     formatting.
-  - Sensor PowerShell scripts: from the repository root in Windows PowerShell
-    5.1, run `Import-Module Pester -RequiredVersion 3.4.0`, then
-    `Invoke-Pester -Path scripts/sensors/tests`.
+  - PowerShell scripts: from the repository root in Windows PowerShell 5.1,
+    run `Import-Module Pester -RequiredVersion 3.4.0`, then
+    `Invoke-Pester -Path scripts/tests, scripts/sensors/tests`.
   - Runtime, Dockerfile, or Compose changes: run
     `./scripts/check-runtime-versions.sh` and the container checks.
 - CI is defined in `.github/workflows/ci.yml` (`backend-tests`,

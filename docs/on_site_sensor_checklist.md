@@ -66,14 +66,18 @@ The file must come from the external directory selected by
    [step 2 in `DEV-SETUP.md`](../DEV-SETUP.md#2-create-svcenvproduction). Set
    `SVC_JETI_CAPTURE_PATH` to the exact LiVal capture file, and set
    `SVC_SENSOR_INGEST_TOKEN` if any device is marked external.
-2. Start the service:
-   [step 4](../DEV-SETUP.md#4-start-production).
+2. Start the service with `.\scripts\Invoke-ControlCenter.ps1`. See
+   [Start with Compose](../DEV-SETUP.md#start-with-compose) for its exit codes
+   and the raw `docker compose` fallback.
 3. If any device is marked external, start the Sensor Agent:
    [step 5](../DEV-SETUP.md#5-start-the-sensor-agent).
+
+Stop production with `.\scripts\Invoke-ControlCenter.ps1 -Action Stop`.
 
 ## Acceptance Checks
 
 ```powershell
+.\scripts\Invoke-ControlCenter.ps1 -Action Status
 Invoke-RestMethod http://127.0.0.1:8000/health
 Invoke-RestMethod http://127.0.0.1:8000/sensors
 Invoke-RestMethod http://127.0.0.1:8000/metrics/latest
