@@ -5,11 +5,14 @@
 Starts, stops, or reports on the production Control Center container.
 
 .DESCRIPTION
-Headless entry point for the operator docs, Task Scheduler, and the #75
-double-click launcher. Start checks Docker and the production env file, starts
-the stack with docker compose, and waits for /health. Stop runs compose down
-and leaves host data untouched. Status reports the container and /health and
-starts nothing.
+Headless entry point for the operator docs and Task Scheduler. Start checks
+Docker and the production env file, starts the stack with docker compose, and
+waits for /health. Stop runs compose down and leaves host data untouched.
+Status reports the container and /health and starts nothing.
+
+The double-click launcher does not call this script: Double-Click-Launcher.cmd
+runs control-center/Open-ControlCenter.ps1, which shares this Start through
+control-center/ControlCenter.Common.ps1 and adds its own steps.
 
 Exit codes: 0 success (including status: degraded), 1 Docker not installed or
 not running, 2 configuration (env file, paths, audit.db, port conflict, wrong
