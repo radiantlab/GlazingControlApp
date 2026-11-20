@@ -85,6 +85,17 @@ Sensor startup/polling errors and stale external readings degrade health instead
 of selecting simulated production data. Invalid configuration fails startup
 before database initialization.
 
+The production adapter also records Halio HTTP outcomes in memory, including
+the last success and error times. The deliberate #113 extension to `GET /health`
+adds `halio_status` (`healthy`, `degraded`, or `not_applicable` in development)
+and `halio_errors`. Overall `status` is degraded for sensor or Halio failures.
+Read failures clear when the same request succeeds, including with an empty 2xx
+response. A successful Halio read also clears recorded command errors from
+system health because it confirms reachability. Until any response succeeds,
+production reports that Halio has not yet responded. The HMI's existing polling
+supplies observations and shows both Halio and sensor reasons in System health
+details. See [the service contract](../svc/README.md#api).
+
 The HTTP application currently has no general user authentication or roles.
 The ingest token protects only sensor ingestion; command `actor` is supplied by
 the client, not verified identity. Halio v3 itself relies on LAN isolation
@@ -200,7 +211,7 @@ backup retention and a verified restore procedure remain open operational work.
 
 | Question / deliberately deferred choice | Current limit and evidence needed |
 | --- | --- |
-| Reliable failure display and command safety | `/health` checks sensors, not Halio. The adapter can return empty lists or zero tint after failed reads; command failures may be reported as dwell errors. Production group commands currently bypass a local dwell check. Which failure representation and interlock should be agreed without breaking the API? Verify against controller behavior. |
+| Reliable failure display and command safety | `/health` reports sensor errors and recorded Halio HTTP failures (#113). The adapter can still return empty lists or zero tint after failed reads; command failures may be reported as dwell errors. Production group commands currently bypass a local dwell check. Which command failure representation and interlock should be agreed without breaking the API? Verify against controller behavior. |
 | Freshness, clocks, and control ownership | External freshness uses receipt time, so delivery of old backlog can appear fresh. Timestamp collisions discard whole observations. Browser manual/group/routine priority does not arbitrate across clients. Define acceptable data age, clock handling, and conflicting-command behavior before concurrent studies. The HMI's explicitly marked mock fallback also needs operator review. |
 | Metric vocabulary and migrations | [RFC-0006](adr/rfc-0006-uniform-modular-sensor-data-model.md) proposes a catalog, driver registry, and schema versioning; all remain proposed. Agree units and migration compatibility before adding new stored metrics; measure SQLite growth/query/backup performance before choosing another store or retention policy. |
 | Remote access and authorization | Docker is the only supported container runtime ([ADR 0007](adr/0007-docker-is-the-only-supported-container-runtime.md)), and the trailer PC runs it (#86). [RFC-0008](adr/rfc-0008-remote-connection-configuration.md) (Tailscale) remains proposed and is not an accepted deployment decision. Confirm partner requirements for access, routine execution, maintenance, and network isolation before enabling remote control. |

@@ -30,6 +30,8 @@ describe("api", () => {
                 sensor_acquisition: "embedded",
                 sensor_status: "healthy",
                 sensor_errors: [],
+                halio_status: "not_applicable",
+                halio_errors: [],
             }),
         );
 
@@ -41,6 +43,8 @@ describe("api", () => {
             sensor_acquisition: "embedded",
             sensor_status: "healthy",
             sensor_errors: [],
+            halio_status: "not_applicable",
+            halio_errors: [],
         });
         expect(fetchMock).toHaveBeenCalledWith(
             "/health",

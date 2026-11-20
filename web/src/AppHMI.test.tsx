@@ -55,6 +55,8 @@ describe("AppHMI dashboard", () => {
             sensor_acquisition: "embedded",
             sensor_status: "healthy",
             sensor_errors: [],
+            halio_status: "not_applicable",
+            halio_errors: [],
         });
         vi.spyOn(api, "panels").mockResolvedValue(panels);
         vi.spyOn(api, "groups").mockResolvedValue(groups);
@@ -107,6 +109,66 @@ describe("AppHMI dashboard", () => {
         expect(within(screen.getByTestId("panel-tile-P01")).getByText("75%")).toBeVisible();
         expect(within(screen.getByTestId("panel-tile-P02")).getByText("75%")).toBeVisible();
         expect(screen.getByText('Group "Facade" set to 75%')).toBeVisible();
+    });
+
+    it("shows Halio failures beside sensor errors and clears them after recovery", async () => {
+        const healthy = await api.health();
+        const halioReason = "Halio: connection refused at http://halio.invalid/api/v3";
+        vi.mocked(api.health).mockResolvedValue({
+            ...healthy,
+            status: "degraded",
+            environment: "production",
+            control_source: "physical",
+            sensor_status: "degraded",
+            sensor_errors: ["TEST: Sensor disconnected"],
+            halio_status: "degraded",
+            halio_errors: [halioReason],
+        });
+        await renderDashboard();
+        fireEvent.click(screen.getByRole("button", { name: /degraded.*Details/ }));
+        expect(screen.getByText(halioReason)).toBeVisible();
+        expect(screen.getByText("Sensor disconnected")).toBeVisible();
+        expect(screen.queryByText("No error details were provided.")).not.toBeInTheDocument();
+
+        // Halio can recover while a sensor still keeps the popup degraded.
+        vi.mocked(api.health).mockResolvedValue({
+            ...healthy,
+            status: "degraded",
+            sensor_status: "degraded",
+            sensor_errors: ["TEST: Sensor disconnected"],
+            halio_status: "healthy",
+            halio_errors: [],
+        });
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(5000);
+        });
+        expect(screen.queryByText(halioReason)).not.toBeInTheDocument();
+        expect(screen.getByText("Sensor disconnected")).toBeVisible();
+
+        vi.mocked(api.health).mockResolvedValue(healthy);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(5000);
+        });
+        expect(screen.getByText("ok")).toBeVisible();
+        expect(
+            screen.queryByRole("region", { name: "System health details" }),
+        ).not.toBeInTheDocument();
+    });
+
+    it("shows a Halio-only degraded reason in the health popup", async () => {
+        const healthy = await api.health();
+        vi.mocked(api.health).mockResolvedValue({
+            ...healthy,
+            status: "degraded",
+            environment: "production",
+            control_source: "physical",
+            halio_status: "degraded",
+            halio_errors: ["Halio: request timed out at http://halio.invalid/api/v3"],
+        });
+        await renderDashboard();
+        fireEvent.click(screen.getByRole("button", { name: /degraded.*Details/ }));
+        expect(screen.getByText(/Halio: request timed out/)).toBeVisible();
+        expect(screen.queryByText("No error details were provided.")).not.toBeInTheDocument();
     });
 
     it("shows a failed group tint request without reporting success", async () => {
@@ -206,6 +268,8 @@ describe("AppHMI historical sensor graphs", () => {
             sensor_acquisition: "embedded",
             sensor_status: "healthy",
             sensor_errors: [],
+            halio_status: "not_applicable",
+            halio_errors: [],
         });
         vi.spyOn(api, "panels").mockResolvedValue([]);
         vi.spyOn(api, "groups").mockResolvedValue([]);

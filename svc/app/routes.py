@@ -58,11 +58,16 @@ def get_service() -> ControlService:
     description="Returns service health status, environment, and effective data sources",
     tags=["Health"]
 )
-def health() -> HealthResponse:
+def health(service: ControlService = Depends(get_service)) -> HealthResponse:
     """Health check endpoint."""
     sensor_status, sensor_errors = get_sensor_health()
+    halio_status, halio_errors = service.get_halio_health()
     return HealthResponse(
-        status="degraded" if sensor_status == "degraded" else "ok",
+        status=(
+            "degraded"
+            if "degraded" in (sensor_status, halio_status)
+            else "ok"
+        ),
         environment=ENVIRONMENT.value,
         control_source=(
             "physical"
@@ -73,6 +78,8 @@ def health() -> HealthResponse:
         sensor_acquisition=SENSOR_ACQUISITION.value,
         sensor_status=sensor_status,
         sensor_errors=sensor_errors,
+        halio_status=halio_status,
+        halio_errors=halio_errors,
     )
 
 

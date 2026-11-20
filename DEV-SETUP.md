@@ -262,7 +262,10 @@ Invoke-RestMethod http://127.0.0.1:8000/metrics/latest
 Health must report `environment: production`, `control_source: physical`, and
 `sensor_source: physical`. Disconnected configured hardware shows as
 `sensor_status: degraded` with `sensor_errors`; production never substitutes
-simulated readings. For per-sensor acceptance checks, use
+simulated readings. Halio request failures appear in `halio_errors` and in the
+HMI's System health details. Overall `status` is degraded when either subsystem
+is degraded. The HMI's regular polling updates Halio health as reads recover.
+For per-sensor acceptance checks, use
 [`docs/on_site_sensor_checklist.md`](./docs/on_site_sensor_checklist.md).
 
 ## Tests and hooks
@@ -282,9 +285,9 @@ tests use a temporary database and cannot write to `svc/data/audit.db`.
 - **`SVC_MODE is no longer supported`:** remove the old variable.
 - **Production refuses to start:** fix the reported Halio or sensor
   configuration error.
-- **`/health` is `ok` but the HMI shows 0 panels and no groups:** the app
-  cannot reach Halio (`/health` does not probe it). Look for `app.adapter`
-  errors in the logs, and confirm `HALIO_API_URL` and `HALIO_SITE_ID` match
+- **The HMI shows 0 panels and no groups:** check `halio_errors` in `/health`
+  or open System health details. A successful response with no windows is
+  healthy. If Halio requests fail, confirm `HALIO_API_URL` and `HALIO_SITE_ID` match
   `LOCAL-DEVELOPMENT.md`. From a machine on the Halio network,
   `curl <HALIO_API_URL>/sites/<HALIO_SITE_ID>/groups` should return
   `"success":true`.

@@ -9,6 +9,7 @@ function renderDetails() {
                 status: "degraded",
                 environment: "development",
                 sensor_errors: ["Sensor disconnected"],
+                halio_errors: [],
             }}
             sensors={[]}
             latestMetrics={[]}

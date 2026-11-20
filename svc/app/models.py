@@ -87,6 +87,13 @@ class HealthResponse(BaseModel):
         default_factory=list,
         description="Current sensor startup or polling errors",
     )
+    halio_status: Literal["healthy", "degraded", "not_applicable"] = Field(
+        description="Observed Halio HTTP health; not applicable to the development simulator"
+    )
+    halio_errors: List[str] = Field(
+        default_factory=list,
+        description="Halio HTTP failures, cleared when the same request succeeds",
+    )
 
 
 class GroupCreate(BaseModel):

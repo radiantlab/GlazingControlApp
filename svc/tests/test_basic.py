@@ -31,6 +31,8 @@ def test_health():
         "sensor_acquisition": "embedded",
         "sensor_status": "healthy",
         "sensor_errors": [],
+        "halio_status": "not_applicable",
+        "halio_errors": [],
     }
 
 

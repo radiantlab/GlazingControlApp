@@ -19,6 +19,11 @@ class ControlService:
             self.backend = Simulator()
 
     # read
+    def get_halio_health(self) -> tuple[str, list[str]]:
+        if self.environment is not Environment.PRODUCTION:
+            return "not_applicable", []
+        return self.backend.get_health()
+
     def list_panels(self):
         return self.backend.list_panels()
 

@@ -190,14 +190,37 @@ Endpoints an operator checks by hand:
   "sensor_source": "simulated",
   "sensor_acquisition": "embedded",
   "sensor_status": "healthy",
-  "sensor_errors": []
+  "sensor_errors": [],
+  "halio_status": "not_applicable",
+  "halio_errors": []
 }
 ```
 
 When any sensor client has an error, or an external sensor has no fresh agent
 observation, `sensor_status` and `status` both become `degraded` and each
-problem is listed in `sensor_errors` as `"<sensor_id>: <message>"`. `/health`
-does not probe Halio.
+problem is listed in `sensor_errors` as `"<sensor_id>: <message>"`.
+
+For #113, the `/health` response deliberately adds `halio_status` and
+`halio_errors`; existing fields and HTTP 200 behavior are preserved. In
+production, `halio_status` is `healthy` or `degraded`. The adapter records the
+Unix times of its last successful HTTP response and last error in memory.
+Connection failures, timeouts, and non-2xx responses are reported in
+`halio_errors`, for example `"Halio: connection refused at <url>"`. Diagnostics
+omit URL credentials and query parameters. Read errors clear when the same
+request succeeds again, including with an empty 2xx response. Command errors
+clear when that command request succeeds or when a successful Halio read
+confirms reachability. A successful read leaves the command's original result
+unchanged. HTTP health does not confirm physical tint completion or validate
+the response payload.
+
+Overall `status` is `degraded` if either sensors or Halio are degraded. The
+HMI's System health details popup displays both sets of reasons and updates
+on its usual five-second refresh. `/health` reads recorded outcomes without
+making Halio requests, retrying, or creating groups. Until the first response,
+production reports `degraded` with `"Halio: no successful response received
+yet"`. Subsequent panel/group reads and commands update health without a
+restart. In development, `halio_status` is `not_applicable` and `halio_errors`
+is always empty; the simulator is unchanged.
 
 Group creation, editing, and deletion are available only in development.
 

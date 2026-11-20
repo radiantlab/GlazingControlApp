@@ -10,7 +10,12 @@ import {
 import "./SystemHealthDetails.css";
 
 type Props = {
-    health: { status: string; environment: string; sensor_errors: string[] } | null;
+    health: {
+        status: string;
+        environment: string;
+        sensor_errors: string[];
+        halio_errors: string[];
+    } | null;
     sensors: SensorInfo[];
     latestMetrics: SensorReadingResponse[];
     metricsAvailable: boolean;
@@ -104,8 +109,11 @@ export default function SystemHealthDetails({
                                 {health.status} • {health.environment}
                             </p>
                         )}
-                        {issues.length > 0 ? (
+                        {issues.length > 0 || (health?.halio_errors?.length ?? 0) > 0 ? (
                             <ul>
+                                {health?.halio_errors?.map((reason) => (
+                                    <li key={reason}>{reason}</li>
+                                ))}
                                 {withContentKeys(issues, (issue) => issue.raw).map(
                                     ({ key, item: issue }) => (
                                         <li key={key}>
@@ -128,7 +136,7 @@ export default function SystemHealthDetails({
                                 )}
                             </ul>
                         ) : health?.status === "degraded" ? (
-                            <p>No sensor error details were provided.</p>
+                            <p>No error details were provided.</p>
                         ) : null}
                     </section>,
                     document.body,
