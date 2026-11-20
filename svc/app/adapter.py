@@ -1,7 +1,9 @@
 from __future__ import annotations
 import time
 import logging
+from threading import Lock
 from typing import Any, List, Dict, Optional
+from urllib.parse import urlsplit, urlunsplit
 from .models import Panel, Group, TintLevel
 from .config import (
     HALIO_API_URL,
@@ -54,11 +56,60 @@ class HalioAdapter:
 
         # Cache for window states to enforce dwell time
         self._state_cache: Dict[str, Dict] = {}
+        self._health_lock = Lock()
+        self.last_success_ts: float | None = None
+        self.last_error_ts: float | None = None
+        self.last_error: str | None = None
+        self._request_errors: Dict[tuple[str, str], str] = {}
 
         logger.info(
             "HalioAdapter initialized for site %s; panels are Halio windows",
             self.site_id,
         )
+
+    def _request(self, method: str, url: str, **kwargs: Any) -> Any:
+        """Record HTTP outcomes without changing callers' fallback behavior."""
+        # Exclude credentials and query values from operator-facing diagnostics.
+        parts = urlsplit(url)
+        safe_url = urlunsplit(
+            (parts.scheme, parts.netloc.rsplit("@", 1)[-1], parts.path, "", "")
+        )
+        key = (method, safe_url)
+        try:
+            response = getattr(requests, method)(url, **kwargs)
+        except Exception as exc:
+            if isinstance(exc, requests.exceptions.Timeout):
+                reason = "request timed out"
+            elif isinstance(exc, requests.exceptions.ConnectionError):
+                message = str(exc).lower()
+                refused = any(term in message for term in ("refused", "10061", "errno 111"))
+                reason = "connection refused" if refused else "connection failed"
+            else:
+                reason = "request failed"
+            self._record_error(key, f"Halio: {reason} at {safe_url}")
+            raise
+
+        if 200 <= response.status_code < 300:
+            with self._health_lock:
+                self.last_success_ts = time.time()
+                self._request_errors.pop(key, None)
+        else:
+            self._record_error(key, f"Halio: HTTP {response.status_code} at {safe_url}")
+        return response
+
+    def _record_error(self, key: tuple[str, str], reason: str) -> None:
+        with self._health_lock:
+            self.last_error_ts = time.time()
+            self.last_error = reason
+            self._request_errors[key] = reason
+
+    def get_health(self) -> tuple[str, list[str]]:
+        """Return observed health; a successful empty response is healthy."""
+        with self._health_lock:
+            errors = sorted(set(self._request_errors.values()))
+            if not errors and self.last_success_ts is None:
+                errors = ["Halio: no successful response received yet"]
+            return ("degraded" if errors else "healthy"), errors
 
     def _extract_results(self, response_data: Any) -> Any:
         if isinstance(response_data, dict) and "results" in response_data:
@@ -76,8 +127,8 @@ class HalioAdapter:
 
     def _get_group_details(self, group_id: str) -> Optional[Dict[str, Any]]:
         try:
-            response = requests.get(
-                self._group_detail_url(group_id), headers=self.headers, timeout=10
+            response = self._request(
+                "get", self._group_detail_url(group_id), headers=self.headers, timeout=10
             )
             if response.status_code != 200:
                 logger.error(
@@ -94,7 +145,7 @@ class HalioAdapter:
             return None
 
     def _list_windows(self) -> List[Dict[str, Any]]:
-        response = requests.get(self._windows_url(), headers=self.headers, timeout=10)
+        response = self._request("get", self._windows_url(), headers=self.headers, timeout=10)
         if response.status_code != 200:
             logger.error(f"Failed to list windows: {response.status_code}")
             return []
@@ -134,8 +185,8 @@ class HalioAdapter:
                 "windows": window_ids,
             }
         }
-        response = requests.post(
-            self._groups_url(),
+        response = self._request(
+            "post", self._groups_url(),
             headers=self.headers,
             json=payload,
             timeout=10,
@@ -187,7 +238,7 @@ class HalioAdapter:
         """Query current state of a window from Halio API."""
         try:
             url = f"{self.base_url}/sites/{self.site_id}/windows/{window_id}/live-tint-data"
-            response = requests.get(url, headers=self.headers, timeout=10)
+            response = self._request("get", url, headers=self.headers, timeout=10)
 
             if response.status_code == 200:
                 data = response.json()
@@ -289,7 +340,7 @@ class HalioAdapter:
         Fetch all groups from Halio API and convert to Group objects.
         """
         try:
-            response = requests.get(self._groups_url(), headers=self.headers, timeout=10)
+            response = self._request("get", self._groups_url(), headers=self.headers, timeout=10)
 
             if response.status_code != 200:
                 logger.error(f"Failed to list groups: {response.status_code}")
@@ -391,8 +442,8 @@ class HalioAdapter:
                 f"level={level} payload={payload} url={url}"
             )
 
-            response = requests.post(
-                url, headers=self.headers, json=payload, timeout=10
+            response = self._request(
+                "post", url, headers=self.headers, json=payload, timeout=10
             )
 
             logger.info(

@@ -31,6 +31,8 @@ export const api = {
             sensor_acquisition: "embedded" | "external";
             sensor_status: "healthy" | "degraded";
             sensor_errors: string[];
+            halio_status: "healthy" | "degraded" | "not_applicable";
+            halio_errors: string[];
         }>("/health", { signal }),
     panels: () => http<Panel[]>("/panels"),
     groups: () => http<Group[]>("/groups"),
