@@ -17,7 +17,7 @@ param(
     [ValidateSet('continuous', 'once', 'list-ports')]
     [string]$Command = 'continuous',
 
-    [string]$ServiceDirectory = (Join-Path $PSScriptRoot '..\..\svc'),
+    [string]$ServiceDirectory,
 
     [string]$ConfigPath,
 
@@ -32,6 +32,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+
+# Windows PowerShell 5.1 leaves $PSScriptRoot empty while it evaluates param()
+# defaults for a script started with -File, as Task Scheduler does, so
+# defaults that need it are filled in here.
+if (-not $ServiceDirectory) {
+    $ServiceDirectory = Join-Path $PSScriptRoot '..\..\svc'
+}
 
 $servicePath = (Resolve-Path -LiteralPath $ServiceDirectory).Path
 $agentScript = Join-Path $servicePath 'scripts\sensor_agent.py'
