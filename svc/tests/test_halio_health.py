@@ -156,6 +156,45 @@ def test_command_failure_and_recovery_are_reported(halio):
     assert client.get("/health").json()["status"] == "ok"
 
 
+@pytest.mark.parametrize(
+    "failure, reason",
+    [
+        (requests.exceptions.Timeout(), "request timed out"),
+        (response(503), "HTTP 503"),
+    ],
+)
+def test_polling_clears_command_error_without_hiding_read_failure(halio, failure, reason):
+    adapter, get, post, client = halio
+    assert adapter.list_panels() == []
+    if isinstance(failure, Exception):
+        post.side_effect = failure
+    else:
+        post.return_value = failure
+
+    assert adapter.set_group("group-1", 50, 0) is None
+    health = client.get("/health").json()
+    assert health["status"] == "degraded"
+    assert health["halio_errors"] == [
+        f"Halio: {reason} at http://halio.invalid/api/v3/sites/test-site/groups/group-1/tint"
+    ]
+
+    get.return_value = response(503)
+    assert adapter.list_panels() == []
+    get.return_value = response()
+    assert adapter.list_groups() == []
+    health = client.get("/health").json()
+    assert health["status"] == "degraded"
+    assert health["halio_errors"] == [
+        "Halio: HTTP 503 at http://halio.invalid/api/v3/sites/test-site/windows"
+    ]
+
+    assert adapter.list_panels() == []
+    health = client.get("/health").json()
+    assert health["status"] == "ok"
+    assert health["halio_errors"] == []
+    post.assert_called_once()
+
+
 def test_development_never_reports_halio_errors(halio, monkeypatch):
     adapter, get, _, client = halio
     get.side_effect = requests.exceptions.ConnectionError("Connection refused")

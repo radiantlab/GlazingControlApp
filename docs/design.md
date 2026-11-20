@@ -89,11 +89,12 @@ The production adapter also records Halio HTTP outcomes in memory, including
 the last success and error times. The deliberate #113 extension to `GET /health`
 adds `halio_status` (`healthy`, `degraded`, or `not_applicable` in development)
 and `halio_errors`. Overall `status` is degraded for sensor or Halio failures.
-Failures are tracked per method and URL and clear when that request succeeds,
-including empty 2xx responses. Until any response succeeds, production reports
-that Halio has not yet responded. Health reads do not contact Halio; the HMI's
-existing polling supplies observations and shows both Halio and sensor reasons
-in System health details. See [the service contract](../svc/README.md#api).
+Read failures clear when the same request succeeds, including with an empty 2xx
+response. A successful Halio read also clears recorded command errors from
+system health because it confirms reachability. Until any response succeeds,
+production reports that Halio has not yet responded. The HMI's existing polling
+supplies observations and shows both Halio and sensor reasons in System health
+details. See [the service contract](../svc/README.md#api).
 
 The HTTP application currently has no general user authentication or roles.
 The ingest token protects only sensor ingestion; command `actor` is supplied by

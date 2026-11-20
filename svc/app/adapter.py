@@ -93,6 +93,13 @@ class HalioAdapter:
             with self._health_lock:
                 self.last_success_ts = time.time()
                 self._request_errors.pop(key, None)
+                if method == "get" and self._request_errors:
+                    # Reads confirm reachability without repeating failed commands.
+                    self._request_errors = {
+                        request: reason
+                        for request, reason in self._request_errors.items()
+                        if request[0] != "post"
+                    }
         else:
             self._record_error(key, f"Halio: HTTP {response.status_code} at {safe_url}")
         return response

@@ -206,10 +206,11 @@ production, `halio_status` is `healthy` or `degraded`. The adapter records the
 Unix times of its last successful HTTP response and last error in memory.
 Connection failures, timeouts, and non-2xx responses are reported in
 `halio_errors`, for example `"Halio: connection refused at <url>"`. Diagnostics
-omit URL credentials and query parameters. Errors are tracked per HTTP method
-and URL, so success at another endpoint cannot hide a failure. Each reason
-clears when that same request succeeds again; an empty successful response is
-healthy. HTTP health does not confirm physical tint completion or validate
+omit URL credentials and query parameters. Read errors clear when the same
+request succeeds again, including with an empty 2xx response. Command errors
+clear when that command request succeeds or when a successful Halio read
+confirms reachability. A successful read leaves the command's original result
+unchanged. HTTP health does not confirm physical tint completion or validate
 the response payload.
 
 Overall `status` is `degraded` if either sensors or Halio are degraded. The

@@ -268,6 +268,8 @@ describe("AppHMI historical sensor graphs", () => {
             sensor_acquisition: "embedded",
             sensor_status: "healthy",
             sensor_errors: [],
+            halio_status: "not_applicable",
+            halio_errors: [],
         });
         vi.spyOn(api, "panels").mockResolvedValue([]);
         vi.spyOn(api, "groups").mockResolvedValue([]);
